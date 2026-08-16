@@ -3,6 +3,7 @@ package com.example.expensestracker.domain
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.data.repository.ExpenseRepository
+import com.example.expensestracker.data.repository.PersonalDataRepository
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -14,19 +15,27 @@ import java.time.temporal.TemporalAdjusters
  * Caps catch-up generation so re-opening the app after a long time doesn't flood
  * the expense list with dozens of backdated entries.
  *
+ * One instance covers one scope (personal or group) - [repository] reads/writes that scope's
+ * expenses+recurring collections, while [personalDataRepository] always supplies currency
+ * conversion (rates are personal even when the expense being generated is group-scoped).
+ *
  * Generated occurrences use a deterministic Firestore document id (see
  * [ExpenseRepository.insertGeneratedExpense]), so two devices independently generating the
  * same overdue occurrence while offline converge on one document instead of duplicating it.
  */
-class RecurringExpenseGenerator(private val repository: ExpenseRepository) {
+class RecurringExpenseGenerator(
+    private val repository: ExpenseRepository,
+    private val personalDataRepository: PersonalDataRepository
+) {
 
     suspend fun generateDueExpenses(today: LocalDate = LocalDate.now()) {
         val active = repository.getActiveRecurring()
         for (recurring in active) {
             val dueDates = computeDueDates(recurring, today)
             if (dueDates.isEmpty()) continue
+            val amountInBaseCurrency = personalDataRepository.convertToBase(recurring.amount, recurring.currencyCode)
             for (date in dueDates) {
-                repository.insertGeneratedExpense(recurring, date)
+                repository.insertGeneratedExpense(recurring, date, amountInBaseCurrency)
             }
             repository.updateRecurring(recurring.copy(lastGeneratedDate = dueDates.last().toString()))
         }

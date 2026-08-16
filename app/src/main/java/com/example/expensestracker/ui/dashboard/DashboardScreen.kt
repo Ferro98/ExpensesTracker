@@ -51,7 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.data.model.CategorySpending
-import com.example.expensestracker.data.model.ExpenseWithCategory
+import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.util.formatMoney
@@ -78,13 +78,15 @@ fun DashboardScreen(factory: AppViewModelFactory) {
             )
         }
 
-        item {
-            BalanceCard(
-                balance = uiState.balance,
-                myUid = uiState.myUid,
-                partnerName = uiState.partnerName,
-                onRecordSettlement = { showSettlementDialog = true }
-            )
+        if (uiState.inGroup) {
+            item {
+                BalanceCard(
+                    balance = uiState.balance,
+                    myUid = uiState.myUid,
+                    partnerName = uiState.partnerName,
+                    onRecordSettlement = { showSettlementDialog = true }
+                )
+            }
         }
 
         item { BudgetOverviewCard(uiState.totalSpent, uiState.monthlyBudget, uiState.categoryBudgetTotal) }
@@ -116,7 +118,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
-                    onDelete = { viewModel.deleteExpense(expense.id) }
+                    onDelete = { viewModel.deleteExpense(expense.id, expense.isShared) }
                 )
             }
         }
@@ -358,7 +360,7 @@ private fun CategorySpendingRow(category: CategorySpending) {
 }
 
 @Composable
-private fun ExpenseRow(expense: ExpenseWithCategory, myUid: String, partnerName: String, onDelete: () -> Unit) {
+private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onDelete: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -377,7 +379,7 @@ private fun ExpenseRow(expense: ExpenseWithCategory, myUid: String, partnerName:
             Text(expense.categoryName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             val payerLabel = if (expense.paidByUid == myUid) "You" else partnerName
             val sharedLabel = if (expense.isShared) "Paid by $payerLabel" else "Personal"
-            val subtitle = listOfNotNull(formatShortDate(expense.date), sharedLabel, expense.note?.takeIf { it.isNotBlank() })
+            val subtitle = listOfNotNull(formatShortDate(expense.localDate), sharedLabel, expense.note?.takeIf { it.isNotBlank() })
                 .joinToString(" · ")
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

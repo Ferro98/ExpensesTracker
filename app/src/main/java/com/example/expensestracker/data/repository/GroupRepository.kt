@@ -1,27 +1,19 @@
 package com.example.expensestracker.data.repository
 
-import com.example.expensestracker.data.model.DefaultGroupData
+import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.Group
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 
-class GroupRepository(
-    private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth
-) {
+class GroupRepository(private val firestore: FirebaseFirestore) {
     private val groupsRef get() = firestore.collection("groups")
-
-    suspend fun ensureSignedIn(): String =
-        auth.currentUser?.uid ?: auth.signInAnonymously().await().user!!.uid
 
     fun observeGroup(groupId: String): Flow<Group?> = groupsRef.document(groupId).observeAsFlow()
 
-    suspend fun createGroup(displayName: String): Result<Group> = runCatching {
-        val uid = ensureSignedIn()
+    suspend fun createGroup(uid: String, displayName: String): Result<Group> = runCatching {
         val codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         lateinit var ref: com.google.firebase.firestore.DocumentReference
         do {
@@ -35,15 +27,13 @@ class GroupRepository(
             createdByUid = uid,
             memberUids = listOf(uid),
             memberNames = mapOf(uid to displayName),
-            baseCurrency = DefaultGroupData.BASE_CURRENCY
+            baseCurrency = DefaultUserData.BASE_CURRENCY
         )
         ref.set(group).await()
-        seedDefaults(ref.id)
         group
     }
 
-    suspend fun joinGroup(code: String, displayName: String): Result<Group> = runCatching {
-        val uid = ensureSignedIn()
+    suspend fun joinGroup(code: String, uid: String, displayName: String): Result<Group> = runCatching {
         val ref = groupsRef.document(code.trim().uppercase())
         firestore.runTransaction { txn ->
             val snapshot = txn.get(ref)
@@ -64,15 +54,12 @@ class GroupRepository(
             ?: error("Group ${code.uppercase()} disappeared after joining")
     }
 
-    private suspend fun seedDefaults(groupId: String) {
-        val groupRef = groupsRef.document(groupId)
-        val batch = firestore.batch()
-        DefaultGroupData.categories.forEach { category ->
-            batch.set(groupRef.collection("categories").document(), category)
-        }
-        DefaultGroupData.currencyRates.forEach { rate ->
-            batch.set(groupRef.collection("currencyRates").document(rate.code), rate)
-        }
-        batch.commit().await()
+    suspend fun leaveGroup(groupId: String, uid: String): Result<Unit> = runCatching {
+        groupsRef.document(groupId).update(
+            mapOf(
+                "memberUids" to FieldValue.arrayRemove(uid),
+                "memberNames.$uid" to FieldValue.delete()
+            )
+        ).await()
     }
 }

@@ -23,7 +23,6 @@ class SettingsRepository(private val context: Context) {
         val MY_CATEGORY_BUDGETS = stringPreferencesKey("my_category_budgets")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val GROUP_ID = stringPreferencesKey("group_id")
-        val MY_UID = stringPreferencesKey("my_uid")
         val MY_DISPLAY_NAME = stringPreferencesKey("my_display_name")
     }
 
@@ -56,13 +55,11 @@ class SettingsRepository(private val context: Context) {
     }
 
     val groupId: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.GROUP_ID] }
-    val myUid: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_UID] }
     val myDisplayName: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_DISPLAY_NAME] }
 
-    suspend fun saveGroup(groupId: String, uid: String, displayName: String) {
+    suspend fun saveGroup(groupId: String, displayName: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.GROUP_ID] = groupId
-            prefs[Keys.MY_UID] = uid
             prefs[Keys.MY_DISPLAY_NAME] = displayName
         }
     }
@@ -70,8 +67,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun clearGroup() {
         context.dataStore.edit { prefs ->
             prefs.remove(Keys.GROUP_ID)
-            prefs.remove(Keys.MY_UID)
-            prefs.remove(Keys.MY_DISPLAY_NAME)
         }
     }
 

@@ -14,13 +14,14 @@ data class OnboardingUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     // Set once a group is created, before it's persisted locally - lets the UI show the
-    // invite code so it can be shared before navigating into the (now shared) app.
+    // invite code so it can be shared before actually switching into that group.
     val createdGroup: Group? = null
 )
 
 class OnboardingViewModel(
     private val groupRepository: GroupRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val myUid: String
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -29,18 +30,18 @@ class OnboardingViewModel(
         if (displayName.isBlank()) return
         _uiState.value = OnboardingUiState(isLoading = true)
         viewModelScope.launch {
-            groupRepository.createGroup(displayName.trim()).fold(
+            groupRepository.createGroup(myUid, displayName.trim()).fold(
                 onSuccess = { group -> _uiState.value = OnboardingUiState(createdGroup = group) },
                 onFailure = { e -> _uiState.value = OnboardingUiState(errorMessage = e.message ?: "Couldn't create the group.") }
             )
         }
     }
 
-    /** Called once the user has seen/shared the invite code - this is what actually enters the app. */
+    /** Called once the user has seen/shared the invite code - this is what actually joins the group. */
     fun confirmGroupCreated(displayName: String) {
         val group = _uiState.value.createdGroup ?: return
         viewModelScope.launch {
-            settingsRepository.saveGroup(group.id, group.createdByUid, displayName.trim())
+            settingsRepository.saveGroup(group.id, displayName.trim())
         }
     }
 
@@ -48,11 +49,8 @@ class OnboardingViewModel(
         if (displayName.isBlank() || code.isBlank()) return
         _uiState.value = OnboardingUiState(isLoading = true)
         viewModelScope.launch {
-            groupRepository.joinGroup(code.trim(), displayName.trim()).fold(
-                onSuccess = { group ->
-                    val uid = groupRepository.ensureSignedIn()
-                    settingsRepository.saveGroup(group.id, uid, displayName.trim())
-                },
+            groupRepository.joinGroup(code.trim(), myUid, displayName.trim()).fold(
+                onSuccess = { settingsRepository.saveGroup(it.id, displayName.trim()) },
                 onFailure = { e -> _uiState.value = OnboardingUiState(errorMessage = e.message ?: "Couldn't join that group.") }
             )
         }

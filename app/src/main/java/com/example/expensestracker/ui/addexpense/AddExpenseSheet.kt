@@ -131,33 +131,35 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        if (isShared) "Splits the balance between you two" else "Only counts against your own budget",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (uiState.inGroup) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            if (isShared) "Splits the balance between you two" else "Only counts against your own budget",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = isShared, onCheckedChange = { isShared = it })
+                }
+
+                if (isShared && uiState.partnerUid != null) {
+                    Spacer(Modifier.height(16.dp))
+                    PaidByAndSplitFields(
+                        myUid = uiState.myUid,
+                        partnerUid = uiState.partnerUid!!,
+                        partnerName = uiState.partnerName,
+                        paidByUid = paidByUid,
+                        onPaidByChange = { paidByUid = it },
+                        customSplitEnabled = customSplitEnabled,
+                        onCustomSplitToggle = { customSplitEnabled = it },
+                        payerShare = payerShare,
+                        onPayerShareChange = { payerShare = it }
                     )
                 }
-                Switch(checked = isShared, onCheckedChange = { isShared = it })
-            }
-
-            if (isShared && uiState.partnerUid != null) {
                 Spacer(Modifier.height(16.dp))
-                PaidByAndSplitFields(
-                    myUid = uiState.myUid,
-                    partnerUid = uiState.partnerUid!!,
-                    partnerName = uiState.partnerName,
-                    paidByUid = paidByUid,
-                    onPaidByChange = { paidByUid = it },
-                    customSplitEnabled = customSplitEnabled,
-                    onCustomSplitToggle = { customSplitEnabled = it },
-                    payerShare = payerShare,
-                    onPayerShareChange = { payerShare = it }
-                )
             }
-            Spacer(Modifier.height(16.dp))
 
             OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("Date: ${formatShortDate(selectedDate)}")

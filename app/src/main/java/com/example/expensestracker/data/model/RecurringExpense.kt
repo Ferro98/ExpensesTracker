@@ -6,6 +6,9 @@ import java.time.LocalDate
 data class RecurringExpense(
     @DocumentId val id: String = "",
     val categoryId: String = "",
+    val categoryName: String = "",
+    val categoryIcon: String = "",
+    val categoryColorHex: String = "",
     val amount: Double = 0.0,
     val currencyCode: String = "EUR",
     val note: String? = null,

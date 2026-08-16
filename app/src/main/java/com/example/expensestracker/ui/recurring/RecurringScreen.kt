@@ -115,12 +115,11 @@ fun RecurringScreen(factory: AppViewModelFactory) {
             }
 
             items(uiState.items, key = { it.id }) { item ->
-                val category = uiState.categories.firstOrNull { it.id == item.categoryId }
                 RecurringRow(
                     item = item,
-                    categoryName = category?.name ?: "—",
-                    categoryIcon = category?.icon ?: "📦",
-                    categoryColor = category?.colorHex ?: "#78909C",
+                    categoryName = item.categoryName,
+                    categoryIcon = item.categoryIcon,
+                    categoryColor = item.categoryColorHex,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
                     onToggle = { viewModel.toggleActive(item) },
@@ -316,25 +315,27 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 }
                 Spacer(Modifier.height(16.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                    Switch(checked = isShared, onCheckedChange = { isShared = it })
-                }
-                if (isShared && uiState.partnerUid != null) {
+                if (uiState.inGroup) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                        Switch(checked = isShared, onCheckedChange = { isShared = it })
+                    }
+                    if (isShared && uiState.partnerUid != null) {
+                        Spacer(Modifier.height(12.dp))
+                        PaidByAndSplitFields(
+                            myUid = uiState.myUid,
+                            partnerUid = uiState.partnerUid!!,
+                            partnerName = uiState.partnerName,
+                            paidByUid = paidByUid,
+                            onPaidByChange = { paidByUid = it },
+                            customSplitEnabled = customSplitEnabled,
+                            onCustomSplitToggle = { customSplitEnabled = it },
+                            payerShare = payerShare,
+                            onPayerShareChange = { payerShare = it }
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
-                    PaidByAndSplitFields(
-                        myUid = uiState.myUid,
-                        partnerUid = uiState.partnerUid!!,
-                        partnerName = uiState.partnerName,
-                        paidByUid = paidByUid,
-                        onPaidByChange = { paidByUid = it },
-                        customSplitEnabled = customSplitEnabled,
-                        onCustomSplitToggle = { customSplitEnabled = it },
-                        payerShare = payerShare,
-                        onPayerShareChange = { payerShare = it }
-                    )
                 }
-                Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
                     value = note,

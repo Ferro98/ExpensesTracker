@@ -54,9 +54,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.data.model.CurrencyRate
-import com.example.expensestracker.data.model.DefaultGroupData
+import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
+import com.example.expensestracker.ui.onboarding.GroupSetupSection
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,6 +75,8 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val scope = rememberCoroutineScope()
     var editingRate by remember { mutableStateOf<CurrencyRate?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
+    val isLeaving by viewModel.isLeaving.collectAsState()
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -96,22 +99,32 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                 Spacer(Modifier.height(8.dp))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        val members = group?.memberNames?.values?.toList().orEmpty()
-                        Text(
-                            if (members.isEmpty()) "Loading…" else members.joinToString(" & "),
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Invite code: ${group?.id ?: "—"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Copy invite code") }
+                        if (viewModel.inGroup) {
+                            val members = group?.memberNames?.values?.toList().orEmpty()
+                            Text(
+                                if (members.isEmpty()) "Loading…" else members.joinToString(" & "),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Invite code: ${group?.id ?: "—"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Copy invite code") }
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { showLeaveConfirm = true },
+                                enabled = !isLeaving,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Leave group") }
+                        } else {
+                            GroupSetupSection(factory)
+                        }
                     }
                 }
             }
@@ -144,7 +157,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             item {
                 Text("Currencies", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Base currency: ${DefaultGroupData.BASE_CURRENCY}. The rate is how many euros 1 unit of that currency is worth.",
+                    "Base currency: ${DefaultUserData.BASE_CURRENCY}. The rate is how many euros 1 unit of that currency is worth.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -167,7 +180,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                             )
                         }
                         TextButton(onClick = { editingRate = rate }) { Text("Edit") }
-                        if (rate.code != DefaultGroupData.BASE_CURRENCY) {
+                        if (rate.code != DefaultUserData.BASE_CURRENCY) {
                             IconButton(onClick = { viewModel.deleteCurrency(rate.code) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete")
                             }
@@ -228,6 +241,23 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             onSave = { code, rate ->
                 viewModel.addCurrency(code, rate)
                 showAddDialog = false
+            }
+        )
+    }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text("Leave this group?") },
+            text = { Text("Your own expenses and budget stay on this device. You'll need the invite code to rejoin.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveConfirm = false
+                    viewModel.leaveGroup {}
+                }) { Text("Leave") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirm = false }) { Text("Cancel") }
             }
         )
     }

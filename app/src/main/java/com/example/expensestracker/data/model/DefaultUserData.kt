@@ -1,11 +1,11 @@
 package com.example.expensestracker.data.model
 
 /**
- * Seed data written once into a new group when it's created.
- * The group's base currency is fixed to EUR; all other rates are expressed
+ * Seed data written once for a new user (first sign-in), regardless of whether they're
+ * ever part of a group. The base currency is fixed to EUR; all other rates are expressed
  * as "value of 1 unit of that currency in EUR".
  */
-object DefaultGroupData {
+object DefaultUserData {
     const val BASE_CURRENCY = "EUR"
 
     val categories = listOf(

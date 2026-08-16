@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
-import com.example.expensestracker.data.repository.ExpenseRepository
+import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +20,7 @@ data class CategoriesUiState(
 )
 
 class CategoriesViewModel(
-    private val repository: ExpenseRepository,
+    private val repository: PersonalDataRepository,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     val uiState: StateFlow<CategoriesUiState> = combine(
@@ -32,7 +32,7 @@ class CategoriesViewModel(
         CategoriesUiState(categories, budget, categoryBudgets, rates)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoriesUiState())
 
-    /** Converts an amount entered in [currencyCode] to the group's base currency (EUR). */
+    /** Converts an amount entered in [currencyCode] to the base currency (EUR). */
     private fun toBase(amount: Double, currencyCode: String): Double {
         val rate = uiState.value.currencyRates.firstOrNull { it.code == currencyCode }?.rateToBase ?: 1.0
         return amount * rate

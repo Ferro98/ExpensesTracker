@@ -5,9 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -18,11 +21,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -37,7 +43,6 @@ import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesScreen
 import com.example.expensestracker.ui.dashboard.DashboardScreen
 import com.example.expensestracker.ui.navigation.Screen
-import com.example.expensestracker.ui.onboarding.OnboardingScreen
 import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
@@ -54,23 +59,39 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
+
+            var myUid by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(Unit) {
+                val uid = app.authRepository.ensureSignedIn()
+                app.personalDataRepositoryFor(uid).seedDefaultsIfNeeded()
+                myUid = uid
+            }
             val groupId by app.settingsRepository.groupId.collectAsState(initial = null)
-            val myUid by app.settingsRepository.myUid.collectAsState(initial = null)
-            val currentGroupId = groupId
-            val currentUid = myUid
 
             ExpensesTrackerTheme(darkTheme = darkTheme) {
-                if (currentGroupId == null || currentUid == null) {
-                    val factory = remember { AppViewModelFactory(app, groupId = null, myUid = null) }
-                    OnboardingScreen(factory)
+                val uid = myUid
+                if (uid == null) {
+                    SplashScreen()
                 } else {
-                    val factory = remember(currentGroupId, currentUid) {
-                        AppViewModelFactory(app, currentGroupId, currentUid)
+                    val factory = remember(groupId, uid) { AppViewModelFactory(app, groupId, uid) }
+                    // Screen ViewModels are cached per nav back-stack entry and only pull from the
+                    // factory the first time they're created, so joining/creating/leaving a group
+                    // (which changes groupContext) wouldn't otherwise be picked up by an
+                    // already-mounted screen. Keying on groupId forces the whole nav tree - and
+                    // every ViewModel in it - to be recreated when group membership changes.
+                    key(groupId, uid) {
+                        ExpensesTrackerRoot(factory)
                     }
-                    ExpensesTrackerRoot(factory)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 

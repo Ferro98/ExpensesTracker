@@ -7,6 +7,9 @@ import java.time.LocalDate
 data class Expense(
     @DocumentId val id: String = "",
     val categoryId: String = "",
+    val categoryName: String = "",
+    val categoryIcon: String = "",
+    val categoryColorHex: String = "",
     val amount: Double = 0.0,
     val currencyCode: String = "EUR",
     val amountInBaseCurrency: Double = 0.0,

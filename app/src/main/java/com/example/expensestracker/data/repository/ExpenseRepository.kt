@@ -1,48 +1,24 @@
 package com.example.expensestracker.data.repository
 
-import com.example.expensestracker.data.model.Category
-import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.model.RecurringExpense
-import com.example.expensestracker.data.model.Settlement
-import com.example.expensestracker.data.remote.CurrencyRateService
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 
-/** All reads/writes for one group's shared data (categories, expenses, recurring templates, rates, settlements). */
-class ExpenseRepository(
-    private val firestore: FirebaseFirestore,
-    private val groupId: String,
-    private val currencyRateService: CurrencyRateService
-) {
-    private val groupRef get() = firestore.collection("groups").document(groupId)
-    private val categoriesRef get() = groupRef.collection("categories")
-    private val expensesRef get() = groupRef.collection("expenses")
-    private val recurringRef get() = groupRef.collection("recurringExpenses")
-    private val currencyRatesRef get() = groupRef.collection("currencyRates")
-    private val settlementsRef get() = groupRef.collection("settlements")
-
-    // Categories
-    fun observeCategories(): Flow<List<Category>> = categoriesRef.observeAsFlow<Category>()
-    suspend fun getCategories(): List<Category> = categoriesRef.get().await().toObjects(Category::class.java)
-
-    suspend fun addCategory(category: Category): String {
-        val ref = categoriesRef.document()
-        ref.set(category).await()
-        return ref.id
-    }
-
-    suspend fun updateCategory(category: Category) {
-        categoriesRef.document(category.id).set(category).await()
-    }
-
-    suspend fun deleteCategory(categoryId: String) {
-        categoriesRef.document(categoryId).delete().await()
-    }
+/**
+ * Expenses + recurring templates for one scope - either `users/{uid}` (personal, private) or
+ * `groups/{groupId}` (shared, both members). The caller decides which scope root to construct
+ * this against; nothing in here assumes one or the other, so it can't be misused to read/write
+ * the wrong collection type. Currency conversion is NOT done here (rates are always personal -
+ * see [PersonalDataRepository]) - callers pass the already-converted [amountInBaseCurrency] in.
+ */
+class ExpenseRepository(private val scopeRef: DocumentReference) {
+    private val expensesRef get() = scopeRef.collection("expenses")
+    private val recurringRef get() = scopeRef.collection("recurringExpenses")
 
     // Expenses
     fun observeExpensesBetween(start: LocalDate, end: LocalDate): Flow<List<Expense>> =
@@ -52,7 +28,7 @@ class ExpenseRepository(
             .orderBy("date", Query.Direction.DESCENDING)
             .observeAsFlow()
 
-    /** Every expense ever, unfiltered — needed for lifetime balance and personal-budget attribution. */
+    /** Every expense in this scope, unfiltered - needed for lifetime balance and budget attribution. */
     fun observeAllExpenses(): Flow<List<Expense>> = expensesRef.observeAsFlow()
 
     fun observeRecent(limit: Int): Flow<List<Expense>> =
@@ -60,22 +36,28 @@ class ExpenseRepository(
 
     suspend fun addExpense(
         categoryId: String,
+        categoryName: String,
+        categoryIcon: String,
+        categoryColorHex: String,
         amount: Double,
         currencyCode: String,
+        amountInBaseCurrency: Double,
         date: LocalDate,
         note: String?,
         paidByUid: String,
         isShared: Boolean,
         payerShare: Double
     ): String {
-        val amountInBase = convertToBase(amount, currencyCode)
         val ref = expensesRef.document()
         ref.set(
             Expense(
                 categoryId = categoryId,
+                categoryName = categoryName,
+                categoryIcon = categoryIcon,
+                categoryColorHex = categoryColorHex,
                 amount = amount,
                 currencyCode = currencyCode,
-                amountInBaseCurrency = amountInBase,
+                amountInBaseCurrency = amountInBaseCurrency,
                 date = date.toString(),
                 note = note,
                 createdAt = Timestamp.now(),
@@ -115,14 +97,16 @@ class ExpenseRepository(
      * two devices independently generating the same overdue occurrence while offline converge
      * on the same document instead of creating a duplicate once both reconnect.
      */
-    suspend fun insertGeneratedExpense(recurring: RecurringExpense, date: LocalDate) {
-        val amountInBase = convertToBase(recurring.amount, recurring.currencyCode)
+    suspend fun insertGeneratedExpense(recurring: RecurringExpense, date: LocalDate, amountInBaseCurrency: Double) {
         expensesRef.document("${recurring.id}_$date").set(
             Expense(
                 categoryId = recurring.categoryId,
+                categoryName = recurring.categoryName,
+                categoryIcon = recurring.categoryIcon,
+                categoryColorHex = recurring.categoryColorHex,
                 amount = recurring.amount,
                 currencyCode = recurring.currencyCode,
-                amountInBaseCurrency = amountInBase,
+                amountInBaseCurrency = amountInBaseCurrency,
                 date = date.toString(),
                 note = recurring.note,
                 recurringExpenseId = recurring.id,
@@ -132,65 +116,5 @@ class ExpenseRepository(
                 payerShare = recurring.payerShare
             )
         ).await()
-    }
-
-    // Settlements
-    fun observeSettlements(): Flow<List<Settlement>> = settlementsRef.observeAsFlow()
-
-    suspend fun addSettlement(fromUid: String, toUid: String, amount: Double, currencyCode: String, date: LocalDate, note: String?) {
-        val amountInBase = convertToBase(amount, currencyCode)
-        settlementsRef.document().set(
-            Settlement(
-                fromUid = fromUid,
-                toUid = toUid,
-                amount = amount,
-                currencyCode = currencyCode,
-                amountInBaseCurrency = amountInBase,
-                date = date.toString(),
-                note = note,
-                createdAt = Timestamp.now()
-            )
-        ).await()
-    }
-
-    suspend fun deleteSettlement(settlementId: String) {
-        settlementsRef.document(settlementId).delete().await()
-    }
-
-    // Currency rates
-    fun observeCurrencyRates(): Flow<List<CurrencyRate>> = currencyRatesRef.observeAsFlow()
-    suspend fun getCurrencyRates(): List<CurrencyRate> = currencyRatesRef.get().await().toObjects(CurrencyRate::class.java)
-
-    suspend fun setCurrencyRate(code: String, rateToBase: Double) {
-        currencyRatesRef.document(code.uppercase()).set(
-            CurrencyRate(code = code.uppercase(), rateToBase = rateToBase, updatedAt = Timestamp.now())
-        ).await()
-    }
-
-    suspend fun deleteCurrencyRate(code: String) {
-        currencyRatesRef.document(code).delete().await()
-    }
-
-    suspend fun refreshRatesFromNetwork(): Result<Int> {
-        val codes = getCurrencyRates().map { it.code }
-        if (codes.isEmpty()) return Result.success(0)
-        return currencyRateService.fetchRatesInEur(codes).map { fetched ->
-            val batch = firestore.batch()
-            var count = 0
-            codes.forEach { code ->
-                fetched[code]?.let { rate ->
-                    batch.set(currencyRatesRef.document(code), CurrencyRate(code = code, rateToBase = rate, updatedAt = Timestamp.now()))
-                    count++
-                }
-            }
-            batch.commit().await()
-            count
-        }
-    }
-
-    private suspend fun convertToBase(amount: Double, currencyCode: String): Double {
-        val rate = currencyRatesRef.document(currencyCode.uppercase()).get().await()
-            .toObject(CurrencyRate::class.java)?.rateToBase ?: 1.0
-        return amount * rate
     }
 }
