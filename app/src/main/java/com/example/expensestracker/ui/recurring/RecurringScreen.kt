@@ -55,9 +55,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.expensestracker.data.local.entity.RecurrenceFrequency
-import com.example.expensestracker.data.local.entity.RecurringExpenseEntity
+import com.example.expensestracker.data.model.RecurrenceFrequency
+import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.ui.AppViewModelFactory
+import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
 import com.example.expensestracker.util.toColor
@@ -120,6 +121,8 @@ fun RecurringScreen(factory: AppViewModelFactory) {
                     categoryName = category?.name ?: "—",
                     categoryIcon = category?.icon ?: "📦",
                     categoryColor = category?.colorHex ?: "#78909C",
+                    myUid = uiState.myUid,
+                    partnerName = uiState.partnerName,
                     onToggle = { viewModel.toggleActive(item) },
                     onDelete = { viewModel.deleteRecurring(item) }
                 )
@@ -139,10 +142,12 @@ fun RecurringScreen(factory: AppViewModelFactory) {
 
 @Composable
 private fun RecurringRow(
-    item: RecurringExpenseEntity,
+    item: RecurringExpense,
     categoryName: String,
     categoryIcon: String,
     categoryColor: String,
+    myUid: String,
+    partnerName: String,
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -165,8 +170,10 @@ private fun RecurringRow(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(categoryName, fontWeight = FontWeight.Medium)
+                val payerLabel = if (item.paidByUid == myUid) "You" else partnerName
+                val sharedLabel = if (item.isShared) "Paid by $payerLabel" else "Personal"
                 Text(
-                    text = "${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)}",
+                    text = "${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)} · $sharedLabel",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -179,7 +186,7 @@ private fun RecurringRow(
     }
 }
 
-private fun frequencyLabel(item: RecurringExpenseEntity): String = when (item.frequency) {
+private fun frequencyLabel(item: RecurringExpense): String = when (item.frequency) {
     RecurrenceFrequency.MONTHLY -> "Every month, day ${item.dayOfPeriod}"
     RecurrenceFrequency.WEEKLY -> {
         val dayName = DayOfWeek.of(item.dayOfPeriod).getDisplayName(TextStyle.FULL, Locale.ENGLISH)
@@ -194,7 +201,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     val uiState by viewModel.uiState.collectAsState()
 
     var amountText by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf<Long?>(null) }
+    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var selectedCurrency by remember { mutableStateOf("EUR") }
     var frequency by remember { mutableStateOf(RecurrenceFrequency.MONTHLY) }
     var dayOfMonthText by remember { mutableStateOf("1") }
@@ -202,6 +209,10 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     var note by remember { mutableStateOf("") }
     var startDate by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var isShared by remember { mutableStateOf(true) }
+    var paidByUid by remember { mutableStateOf("") }
+    var customSplitEnabled by remember { mutableStateOf(false) }
+    var payerShare by remember { mutableStateOf(0.5) }
 
     LaunchedEffect(uiState.categories) {
         if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
@@ -211,6 +222,11 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     LaunchedEffect(uiState.currencyRates) {
         if (uiState.currencyRates.isNotEmpty() && uiState.currencyRates.none { it.code == selectedCurrency }) {
             selectedCurrency = uiState.currencyRates.first().code
+        }
+    }
+    LaunchedEffect(uiState.myUid) {
+        if (paidByUid.isEmpty() && uiState.myUid.isNotEmpty()) {
+            paidByUid = uiState.myUid
         }
     }
 
@@ -298,7 +314,28 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("Start: ${formatShortDate(startDate)}")
                 }
+                Spacer(Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                    Switch(checked = isShared, onCheckedChange = { isShared = it })
+                }
+                if (isShared && uiState.partnerUid != null) {
+                    Spacer(Modifier.height(12.dp))
+                    PaidByAndSplitFields(
+                        myUid = uiState.myUid,
+                        partnerUid = uiState.partnerUid!!,
+                        partnerName = uiState.partnerName,
+                        paidByUid = paidByUid,
+                        onPaidByChange = { paidByUid = it },
+                        customSplitEnabled = customSplitEnabled,
+                        onCustomSplitToggle = { customSplitEnabled = it },
+                        payerShare = payerShare,
+                        onPayerShareChange = { payerShare = it }
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
+
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
@@ -321,7 +358,10 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                             note = note,
                             frequency = frequency,
                             dayOfPeriod = day,
-                            startDate = startDate
+                            startDate = startDate,
+                            paidByUid = if (isShared) paidByUid else uiState.myUid,
+                            isShared = isShared,
+                            payerShare = if (customSplitEnabled) payerShare else 0.5
                         )
                         onDismiss()
                     }

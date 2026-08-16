@@ -2,8 +2,10 @@ package com.example.expensestracker.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.expensestracker.data.local.entity.CurrencyRateEntity
+import com.example.expensestracker.data.model.CurrencyRate
+import com.example.expensestracker.data.model.Group
 import com.example.expensestracker.data.repository.ExpenseRepository
+import com.example.expensestracker.data.repository.GroupRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.data.settings.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,13 +16,18 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val repository: ExpenseRepository,
-    private val settingsRepository: SettingsRepository
+    groupRepository: GroupRepository,
+    private val settingsRepository: SettingsRepository,
+    groupId: String
 ) : ViewModel() {
-    val currencyRates: StateFlow<List<CurrencyRateEntity>> = repository.observeCurrencyRates()
+    val currencyRates: StateFlow<List<CurrencyRate>> = repository.observeCurrencyRates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
+
+    val group: StateFlow<Group?> = groupRepository.observeGroup(groupId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage

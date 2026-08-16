@@ -52,8 +52,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.expensestracker.data.local.entity.CategoryEntity
-import com.example.expensestracker.data.local.entity.CurrencyRateEntity
+import com.example.expensestracker.data.model.Category
+import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
@@ -71,7 +71,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     val uiState by viewModel.uiState.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<CategoryEntity?>(null) }
+    var editingCategory by remember { mutableStateOf<Category?>(null) }
     var budgetText by remember(uiState.monthlyBudget) {
         mutableStateOf(uiState.monthlyBudget?.let { String.format("%.2f", it) } ?: "")
     }
@@ -138,6 +138,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             items(uiState.categories, key = { it.id }) { category ->
                 CategoryRow(
                     category = category,
+                    budget = uiState.categoryBudgets[category.id],
                     onEdit = { editingCategory = category },
                     onDelete = { viewModel.deleteCategory(category) }
                 )
@@ -150,6 +151,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     if (showAddDialog) {
         CategoryEditDialog(
             initial = null,
+            initialBudget = null,
             currencyRates = uiState.currencyRates,
             onDismiss = { showAddDialog = false },
             onSave = { name, icon, color, budget, budgetCcy ->
@@ -162,6 +164,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     editingCategory?.let { category ->
         CategoryEditDialog(
             initial = category,
+            initialBudget = uiState.categoryBudgets[category.id],
             currencyRates = uiState.currencyRates,
             onDismiss = { editingCategory = null },
             onSave = { name, icon, color, budget, budgetCcy ->
@@ -173,7 +176,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
 }
 
 @Composable
-private fun CategoryRow(category: CategoryEntity, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -194,7 +197,7 @@ private fun CategoryRow(category: CategoryEntity, onEdit: () -> Unit, onDelete: 
             Column(modifier = Modifier.weight(1f)) {
                 Text(category.name, fontWeight = FontWeight.Medium)
                 Text(
-                    text = category.monthlyBudget?.let { "Budget: ${formatMoney(it)}" } ?: "No budget",
+                    text = budget?.let { "Budget: ${formatMoney(it)}" } ?: "No budget",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -212,15 +215,16 @@ private fun CategoryRow(category: CategoryEntity, onEdit: () -> Unit, onDelete: 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryEditDialog(
-    initial: CategoryEntity?,
-    currencyRates: List<CurrencyRateEntity>,
+    initial: Category?,
+    initialBudget: Double?,
+    currencyRates: List<CurrencyRate>,
     onDismiss: () -> Unit,
     onSave: (name: String, icon: String, color: String, budget: Double?, budgetCurrency: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: presetIcons.first()) }
     var color by remember { mutableStateOf(initial?.colorHex ?: presetColors.first()) }
-    var budgetText by remember { mutableStateOf(initial?.monthlyBudget?.let { String.format("%.2f", it) } ?: "") }
+    var budgetText by remember { mutableStateOf(initialBudget?.let { String.format("%.2f", it) } ?: "") }
     var budgetCurrency by remember { mutableStateOf("EUR") }
 
     AlertDialog(

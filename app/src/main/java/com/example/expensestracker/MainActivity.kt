@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,17 +37,16 @@ import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesScreen
 import com.example.expensestracker.ui.dashboard.DashboardScreen
 import com.example.expensestracker.ui.navigation.Screen
+import com.example.expensestracker.ui.onboarding.OnboardingScreen
 import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
-import androidx.compose.runtime.collectAsState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val app = application as ExpensesTrackerApp
-        val factory = AppViewModelFactory(app)
         setContent {
             val themeMode by app.settingsRepository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val darkTheme = when (themeMode) {
@@ -54,8 +54,21 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
+            val groupId by app.settingsRepository.groupId.collectAsState(initial = null)
+            val myUid by app.settingsRepository.myUid.collectAsState(initial = null)
+            val currentGroupId = groupId
+            val currentUid = myUid
+
             ExpensesTrackerTheme(darkTheme = darkTheme) {
-                ExpensesTrackerRoot(factory)
+                if (currentGroupId == null || currentUid == null) {
+                    val factory = remember { AppViewModelFactory(app, groupId = null, myUid = null) }
+                    OnboardingScreen(factory)
+                } else {
+                    val factory = remember(currentGroupId, currentUid) {
+                        AppViewModelFactory(app, currentGroupId, currentUid)
+                    }
+                    ExpensesTrackerRoot(factory)
+                }
             }
         }
     }

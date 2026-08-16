@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /groups/{groupId} {
+      // `resource == null` first: lets a client check whether an invite code is already
+      // taken (a `get` on a not-yet-created group) without dereferencing a null document.
+      allow get: if signedIn() && (
+        resource == null ||
+        request.auth.uid in resource.data.memberUids ||
+        resource.data.memberUids.size() < 2
+      );
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.memberUids == [request.auth.uid]
+        && request.resource.data.createdByUid == request.auth.uid;
+
+      allow update: if signedIn() && (
+        (resource.data.memberUids.size() == 1 &&
+         request.resource.data.memberUids.size() == 2 &&
+         request.resource.data.memberUids.hasAll(resource.data.memberUids) &&
+         request.auth.uid in request.resource.data.memberUids &&
+         request.resource.data.createdByUid == resource.data.createdByUid) ||
+        (request.auth.uid in resource.data.memberUids &&
+         request.resource.data.memberUids == resource.data.memberUids &&
+         request.resource.data.createdByUid == resource.data.createdByUid)
+      );
+      allow delete: if false;
+    }
+
+    match /groups/{groupId}/{collection}/{docId} {
+      allow read, write: if signedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+    }
+  }
+}

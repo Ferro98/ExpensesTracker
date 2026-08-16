@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase project config (contains per-project API keys) - never commit
+app/google-services.json

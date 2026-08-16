@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -31,9 +33,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatShortDate
 import java.time.Instant
 import java.time.LocalDate
@@ -42,24 +46,32 @@ import java.time.ZoneOffset
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
-    val categories by viewModel.categories.collectAsState()
-    val currencyRates by viewModel.currencyRates.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     var amountText by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf<Long?>(null) }
+    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var selectedCurrency by remember { mutableStateOf("EUR") }
     var note by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var isShared by remember { mutableStateOf(true) }
+    var paidByUid by remember { mutableStateOf("") }
+    var customSplitEnabled by remember { mutableStateOf(false) }
+    var payerShare by remember { mutableStateOf(0.5) }
 
-    LaunchedEffect(categories) {
-        if (selectedCategoryId == null && categories.isNotEmpty()) {
-            selectedCategoryId = categories.first().id
+    LaunchedEffect(uiState.categories) {
+        if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
+            selectedCategoryId = uiState.categories.first().id
         }
     }
-    LaunchedEffect(currencyRates) {
-        if (currencyRates.isNotEmpty() && currencyRates.none { it.code == selectedCurrency }) {
-            selectedCurrency = currencyRates.first().code
+    LaunchedEffect(uiState.currencyRates) {
+        if (uiState.currencyRates.isNotEmpty() && uiState.currencyRates.none { it.code == selectedCurrency }) {
+            selectedCurrency = uiState.currencyRates.first().code
+        }
+    }
+    LaunchedEffect(uiState.myUid) {
+        if (paidByUid.isEmpty() && uiState.myUid.isNotEmpty()) {
+            paidByUid = uiState.myUid
         }
     }
 
@@ -93,7 +105,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             Text("Currency", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                currencyRates.forEach { rate ->
+                uiState.currencyRates.forEach { rate ->
                     FilterChip(
                         selected = selectedCurrency == rate.code,
                         onClick = { selectedCurrency = rate.code },
@@ -109,13 +121,41 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.forEach { category ->
+                uiState.categories.forEach { category ->
                     FilterChip(
                         selected = selectedCategoryId == category.id,
                         onClick = { selectedCategoryId = category.id },
                         label = { Text("${category.icon} ${category.name}") }
                     )
                 }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        if (isShared) "Splits the balance between you two" else "Only counts against your own budget",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = isShared, onCheckedChange = { isShared = it })
+            }
+
+            if (isShared && uiState.partnerUid != null) {
+                Spacer(Modifier.height(16.dp))
+                PaidByAndSplitFields(
+                    myUid = uiState.myUid,
+                    partnerUid = uiState.partnerUid!!,
+                    partnerName = uiState.partnerName,
+                    paidByUid = paidByUid,
+                    onPaidByChange = { paidByUid = it },
+                    customSplitEnabled = customSplitEnabled,
+                    onCustomSplitToggle = { customSplitEnabled = it },
+                    payerShare = payerShare,
+                    onPayerShareChange = { payerShare = it }
+                )
             }
             Spacer(Modifier.height(16.dp))
 
@@ -144,6 +184,9 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                             currencyCode = selectedCurrency,
                             date = selectedDate,
                             note = note,
+                            paidByUid = if (isShared) paidByUid else uiState.myUid,
+                            isShared = isShared,
+                            payerShare = if (customSplitEnabled) payerShare else 0.5,
                             onSaved = onDismiss
                         )
                     }

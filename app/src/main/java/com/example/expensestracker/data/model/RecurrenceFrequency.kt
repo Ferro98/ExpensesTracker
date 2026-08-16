@@ -1,4 +1,4 @@
-package com.example.expensestracker.data.local.entity
+package com.example.expensestracker.data.model
 
 enum class RecurrenceFrequency {
     WEEKLY,

@@ -47,12 +47,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.expensestracker.data.local.DefaultData
-import com.example.expensestracker.data.local.entity.CurrencyRateEntity
+import com.example.expensestracker.data.model.CurrencyRate
+import com.example.expensestracker.data.model.DefaultGroupData
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
 import kotlinx.coroutines.launch
@@ -65,10 +67,12 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val themeMode by viewModel.themeMode.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
+    val group by viewModel.group.collectAsState()
+    val clipboard = LocalClipboardManager.current
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var editingRate by remember { mutableStateOf<CurrencyRateEntity?>(null) }
+    var editingRate by remember { mutableStateOf<CurrencyRate?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(statusMessage) {
@@ -87,6 +91,31 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                Text("Group", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        val members = group?.memberNames?.values?.toList().orEmpty()
+                        Text(
+                            if (members.isEmpty()) "Loading…" else members.joinToString(" & "),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Invite code: ${group?.id ?: "—"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Copy invite code") }
+                    }
+                }
+            }
+
             item {
                 Text("Theme", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
@@ -115,7 +144,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             item {
                 Text("Currencies", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Base currency: ${DefaultData.BASE_CURRENCY}. The rate is how many euros 1 unit of that currency is worth.",
+                    "Base currency: ${DefaultGroupData.BASE_CURRENCY}. The rate is how many euros 1 unit of that currency is worth.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -138,7 +167,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                             )
                         }
                         TextButton(onClick = { editingRate = rate }) { Text("Edit") }
-                        if (rate.code != DefaultData.BASE_CURRENCY) {
+                        if (rate.code != DefaultGroupData.BASE_CURRENCY) {
                             IconButton(onClick = { viewModel.deleteCurrency(rate.code) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete")
                             }

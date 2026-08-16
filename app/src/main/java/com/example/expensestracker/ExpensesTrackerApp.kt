@@ -1,30 +1,22 @@
 package com.example.expensestracker
 
 import android.app.Application
-import com.example.expensestracker.data.local.AppDatabase
 import com.example.expensestracker.data.remote.CurrencyRateService
 import com.example.expensestracker.data.repository.ExpenseRepository
+import com.example.expensestracker.data.repository.GroupRepository
 import com.example.expensestracker.data.settings.SettingsRepository
-import com.example.expensestracker.domain.RecurringExpenseGenerator
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ExpensesTrackerApp : Application() {
-    val applicationScope = CoroutineScope(SupervisorJob())
-
-    val database by lazy { AppDatabase.getInstance(this, applicationScope) }
-
     val settingsRepository by lazy { SettingsRepository(this) }
 
-    val expenseRepository by lazy {
-        ExpenseRepository(
-            categoryDao = database.categoryDao(),
-            expenseDao = database.expenseDao(),
-            recurringExpenseDao = database.recurringExpenseDao(),
-            currencyRateDao = database.currencyRateDao(),
-            currencyRateService = CurrencyRateService()
-        )
-    }
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
+    private val auth by lazy { FirebaseAuth.getInstance() }
 
-    val recurringExpenseGenerator by lazy { RecurringExpenseGenerator(expenseRepository) }
+    val groupRepository by lazy { GroupRepository(firestore, auth) }
+
+    /** Cheap to construct (no connection handle to manage) - a fresh instance per call is fine. */
+    fun expenseRepositoryFor(groupId: String): ExpenseRepository =
+        ExpenseRepository(firestore, groupId, CurrencyRateService())
 }
