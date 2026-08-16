@@ -31,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.data.local.entity.CategoryEntity
+import com.example.expensestracker.data.local.entity.CurrencyRateEntity
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
@@ -62,7 +64,7 @@ private val presetColors = listOf(
     "#26A69A", "#29B6F6", "#78909C", "#8D6E63", "#66BB6A", "#EF5350"
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CategoriesScreen(factory: AppViewModelFactory) {
     val viewModel: CategoriesViewModel = viewModel(factory = factory)
@@ -73,6 +75,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     var budgetText by remember(uiState.monthlyBudget) {
         mutableStateOf(uiState.monthlyBudget?.let { String.format("%.2f", it) } ?: "")
     }
+    var budgetCurrency by remember { mutableStateOf("EUR") }
 
     Scaffold(
         floatingActionButton = {
@@ -103,7 +106,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
                                         budgetText = input
                                     }
                                 },
-                                label = { Text("Amount (€)") },
+                                label = { Text("Amount") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f)
@@ -111,8 +114,18 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
                             Spacer(Modifier.width(8.dp))
                             TextButton(onClick = {
                                 val value = budgetText.replace(',', '.').toDoubleOrNull()
-                                viewModel.setMonthlyBudget(value)
+                                viewModel.setMonthlyBudget(value, budgetCurrency)
                             }) { Text("Save") }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            uiState.currencyRates.forEach { rate ->
+                                FilterChip(
+                                    selected = budgetCurrency == rate.code,
+                                    onClick = { budgetCurrency = rate.code },
+                                    label = { Text(rate.code) }
+                                )
+                            }
                         }
                     }
                 }
@@ -137,9 +150,10 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     if (showAddDialog) {
         CategoryEditDialog(
             initial = null,
+            currencyRates = uiState.currencyRates,
             onDismiss = { showAddDialog = false },
-            onSave = { name, icon, color, budget ->
-                viewModel.addCategory(name, icon, color, budget)
+            onSave = { name, icon, color, budget, budgetCcy ->
+                viewModel.addCategory(name, icon, color, budget, budgetCcy)
                 showAddDialog = false
             }
         )
@@ -148,9 +162,10 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     editingCategory?.let { category ->
         CategoryEditDialog(
             initial = category,
+            currencyRates = uiState.currencyRates,
             onDismiss = { editingCategory = null },
-            onSave = { name, icon, color, budget ->
-                viewModel.updateCategory(category.copy(name = name, icon = icon, colorHex = color, monthlyBudget = budget))
+            onSave = { name, icon, color, budget, budgetCcy ->
+                viewModel.updateCategory(category, name, icon, color, budget, budgetCcy)
                 editingCategory = null
             }
         )
@@ -198,13 +213,15 @@ private fun CategoryRow(category: CategoryEntity, onEdit: () -> Unit, onDelete: 
 @Composable
 private fun CategoryEditDialog(
     initial: CategoryEntity?,
+    currencyRates: List<CurrencyRateEntity>,
     onDismiss: () -> Unit,
-    onSave: (name: String, icon: String, color: String, budget: Double?) -> Unit
+    onSave: (name: String, icon: String, color: String, budget: Double?, budgetCurrency: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: presetIcons.first()) }
     var color by remember { mutableStateOf(initial?.colorHex ?: presetColors.first()) }
     var budgetText by remember { mutableStateOf(initial?.monthlyBudget?.let { String.format("%.2f", it) } ?: "") }
+    var budgetCurrency by remember { mutableStateOf("EUR") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -272,13 +289,23 @@ private fun CategoryEditDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    currencyRates.forEach { rate ->
+                        FilterChip(
+                            selected = budgetCurrency == rate.code,
+                            onClick = { budgetCurrency = rate.code },
+                            label = { Text(rate.code) }
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onSave(name.trim(), icon, color, budgetText.replace(',', '.').toDoubleOrNull())
+                        onSave(name.trim(), icon, color, budgetText.replace(',', '.').toDoubleOrNull(), budgetCurrency)
                     }
                 },
                 enabled = name.isNotBlank()

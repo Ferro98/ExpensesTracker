@@ -62,7 +62,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
             )
         }
 
-        item { BudgetOverviewCard(uiState.totalSpent, uiState.monthlyBudget) }
+        item { BudgetOverviewCard(uiState.totalSpent, uiState.monthlyBudget, uiState.categoryBudgetTotal) }
 
         if (uiState.categorySpending.any { it.spent > 0 || it.monthlyBudget != null }) {
             item {
@@ -96,7 +96,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
 }
 
 @Composable
-private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?) {
+private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categoryBudgetTotal: Double) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text("Spent this month", style = MaterialTheme.typography.labelLarge)
@@ -133,6 +133,34 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?) {
                     style = MaterialTheme.typography.bodySmall,
                     color = if (overBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (categoryBudgetTotal > 0) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Category budgets", style = MaterialTheme.typography.labelLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val allocationProgress = (categoryBudgetTotal / monthlyBudget).toFloat().coerceIn(0f, 1f)
+                    val overAllocated = categoryBudgetTotal > monthlyBudget
+                    LinearProgressIndicator(
+                        progress = { allocationProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val unallocated = monthlyBudget - categoryBudgetTotal
+                    Text(
+                        text = if (unallocated >= 0)
+                            "${formatMoney(categoryBudgetTotal)} allocated · ${formatMoney(unallocated)} unallocated"
+                        else
+                            "${formatMoney(categoryBudgetTotal)} allocated · over by ${formatMoney(-unallocated)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

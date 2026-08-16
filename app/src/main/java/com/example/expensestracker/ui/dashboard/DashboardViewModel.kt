@@ -25,7 +25,11 @@ data class DashboardUiState(
     val monthlyBudget: Double? = null,
     val categorySpending: List<CategorySpending> = emptyList(),
     val recentExpenses: List<ExpenseWithCategory> = emptyList()
-)
+) {
+    /** Sum of the per-category budgets that have been set, in the base currency. */
+    val categoryBudgetTotal: Double
+        get() = categorySpending.sumOf { it.monthlyBudget ?: 0.0 }
+}
 
 class DashboardViewModel(
     private val repository: ExpenseRepository,
