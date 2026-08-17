@@ -3,6 +3,7 @@ package com.example.expensestracker.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.expensestracker.ExpensesTrackerApp
+import com.example.expensestracker.R
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesViewModel
 import com.example.expensestracker.ui.dashboard.DashboardViewModel
@@ -26,7 +27,10 @@ class AppViewModelFactory(
 
         return when {
             modelClass.isAssignableFrom(DashboardViewModel::class.java) ->
-                DashboardViewModel(personalExpenseRepository, personalDataRepository, groupContext, myUid, app.settingsRepository) as T
+                DashboardViewModel(
+                    personalExpenseRepository, personalDataRepository, groupContext, myUid,
+                    app.getString(R.string.dashboard_shared_category), app.settingsRepository
+                ) as T
 
             modelClass.isAssignableFrom(AddExpenseViewModel::class.java) ->
                 AddExpenseViewModel(personalExpenseRepository, personalDataRepository, groupContext, myUid) as T
@@ -38,10 +42,10 @@ class AppViewModelFactory(
                 RecurringViewModel(personalExpenseRepository, personalDataRepository, groupContext, myUid) as T
 
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(personalDataRepository, groupContext, app.settingsRepository, myUid) as T
+                SettingsViewModel(app, personalDataRepository, groupContext, app.settingsRepository, myUid) as T
 
             modelClass.isAssignableFrom(OnboardingViewModel::class.java) ->
-                OnboardingViewModel(app.groupRepository, app.settingsRepository, myUid) as T
+                OnboardingViewModel(app, app.groupRepository, app.settingsRepository, myUid) as T
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

@@ -1,3 +1,138 @@
 <resources>
     <string name="app_name">Expenses Tracker</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_recurring">Recurring</string>
+    <string name="nav_categories">Categories</string>
+    <string name="nav_settings">Settings</string>
+    <string name="title_dashboard">My Expenses</string>
+    <string name="title_recurring">Recurring Expenses</string>
+    <string name="title_categories">Categories &amp; Budget</string>
+    <string name="title_settings">Settings</string>
+    <string name="cd_add_expense">Add expense</string>
+    <string name="cd_edit">Edit</string>
+    <string name="cd_delete">Delete</string>
+
+    <!-- Common -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+    <string name="label_amount">Amount</string>
+    <string name="label_note_optional">Note (optional)</string>
+    <string name="label_name">Name</string>
+    <string name="you">You</string>
+    <string name="loading_ellipsis">Loading…</string>
+
+    <!-- Dashboard -->
+    <string name="balance_label">Balance</string>
+    <string name="balance_settled_up">Settled up</string>
+    <string name="balance_you_owe">You owe %1$s %2$s</string>
+    <string name="balance_owes_you">%1$s owes you %2$s</string>
+    <string name="record_settlement">Record a settlement</string>
+    <string name="settlement_i_paid">I paid %1$s</string>
+    <string name="settlement_partner_paid_me">%1$s paid me</string>
+    <string name="spent_this_month">Spent this month</string>
+    <string name="no_personal_budget">No personal budget set. Set one in Categories.</string>
+    <string name="budget_left">Budget: %1$s · %2$s left</string>
+    <string name="budget_over_by">Budget: %1$s · Over by %2$s</string>
+    <string name="category_budgets_label">Category budgets</string>
+    <string name="allocated_unallocated">%1$s allocated · %2$s unallocated</string>
+    <string name="allocated_over_by">%1$s allocated · over by %2$s</string>
+    <string name="by_category">By category</string>
+    <string name="recent_expenses">Recent expenses</string>
+    <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
+    <string name="paid_by_partner">Paid by %1$s</string>
+    <string name="personal_label">Personal</string>
+    <string name="dashboard_shared_category">Shared</string>
+
+    <!-- Add expense -->
+    <string name="new_expense_title">New expense</string>
+    <string name="currency_label">Currency</string>
+    <string name="category_label">Category</string>
+    <string name="shared_with">Shared with %1$s</string>
+    <string name="shared_splits_balance">Splits the balance between you two</string>
+    <string name="shared_counts_own_budget">Only counts against your own budget</string>
+    <string name="date_prefix">Date: %1$s</string>
+    <string name="save_expense">Save expense</string>
+
+    <!-- Paid by / split -->
+    <string name="paid_by_label">Paid by</string>
+    <string name="me_label">Me</string>
+    <string name="custom_split_label">Custom split (default 50/50)</string>
+    <string name="split_percent">%1$s: %2$d%% · %3$s: %4$d%%</string>
+
+    <!-- Categories -->
+    <string name="fab_category">Category</string>
+    <string name="total_monthly_budget">Total monthly budget</string>
+    <string name="categories_label">Categories</string>
+    <string name="budget_prefix">Budget: %1$s</string>
+    <string name="no_budget">No budget</string>
+    <string name="new_category_title">New category</string>
+    <string name="edit_category_title">Edit category</string>
+    <string name="icon_label">Icon</string>
+    <string name="color_label">Color</string>
+    <string name="monthly_budget_optional">Monthly budget (optional)</string>
+
+    <!-- Recurring -->
+    <string name="fab_recurring_expense">Recurring expense</string>
+    <string name="fixed_recurring_title">Fixed &amp; recurring expenses</string>
+    <string name="fixed_recurring_subtitle">These are automatically added to this month\'s expenses when their due date arrives.</string>
+    <string name="no_recurring_yet">No recurring expenses set up yet.</string>
+    <string name="every_month_day">Every month, day %1$d</string>
+    <string name="every_week_day">Every week, %1$s</string>
+    <string name="new_recurring_title">New recurring expense</string>
+    <string name="frequency_label">Frequency</string>
+    <string name="frequency_monthly">Monthly</string>
+    <string name="frequency_weekly">Weekly</string>
+    <string name="day_of_month_label">Day of month (1-31)</string>
+    <string name="start_prefix">Start: %1$s</string>
+
+    <!-- Settings -->
+    <string name="group_label">Group</string>
+    <string name="group_intro">Share this trip\'s expenses with one other person - split costs, see a running balance, and settle up.</string>
+    <string name="create_a_group">Create a group</string>
+    <string name="join_a_group">Join a group</string>
+    <string name="invite_code_prefix">Invite code: %1$s</string>
+    <string name="copy_invite_code">Copy invite code</string>
+    <string name="leave_group">Leave group</string>
+    <string name="leave_group_dialog_title">Leave this group?</string>
+    <string name="leave_group_dialog_text">Your own expenses and budget stay on this device. You\'ll need the invite code to rejoin.</string>
+    <string name="action_leave">Leave</string>
+    <string name="theme_label">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+    <string name="currencies_label">Currencies</string>
+    <string name="base_currency_desc">Base currency: %1$s. The rate is how many euros 1 unit of that currency is worth.</string>
+    <string name="rate_equals_eur">1 %1$s = %2$s EUR</string>
+    <string name="add_currency">Add currency</string>
+    <string name="refresh_online">Refresh online</string>
+    <string name="edit_rate_title">Edit %1$s rate</string>
+    <string name="rate_in_eur_label">1 %1$s in EUR</string>
+    <string name="new_currency_title">New currency</string>
+    <string name="currency_code_hint">Code (e.g. USD)</string>
+    <string name="unit_in_eur_label">1 unit in EUR</string>
+    <string name="rates_updated">Rates updated (%1$d currencies).</string>
+    <string name="rates_update_failed">Couldn\'t update rates. Check your connection.</string>
+    <string name="leave_group_failed">Couldn\'t leave the group.</string>
+
+    <!-- Onboarding / group setup -->
+    <string name="create_group_title">Create a group</string>
+    <string name="create_group_description">Pick the name your partner will see for you.</string>
+    <string name="your_name_label">Your name</string>
+    <string name="action_create">Create</string>
+    <string name="action_back">Back</string>
+    <string name="join_group_title">Join a group</string>
+    <string name="join_group_description">Enter the invite code your partner shared with you.</string>
+    <string name="invite_code_label">Invite code</string>
+    <string name="action_join">Join</string>
+    <string name="group_created_title">Group created!</string>
+    <string name="group_created_description">Share this code with your partner so they can join.</string>
+    <string name="copy_code">Copy code</string>
+    <string name="action_continue">Continue</string>
+    <string name="error_create_group_failed">Couldn\'t create the group.</string>
+    <string name="error_group_not_found">No group found with that code.</string>
+    <string name="error_group_full">This group already has two members.</string>
+    <string name="error_group_vanished">Something went wrong joining the group. Try again.</string>
 </resources>

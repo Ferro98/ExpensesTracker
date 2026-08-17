@@ -23,11 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensestracker.R
 import com.example.expensestracker.ui.AppViewModelFactory
 
 private enum class Mode { LANDING, CREATE, JOIN }
@@ -54,29 +56,29 @@ fun GroupSetupSection(factory: AppViewModelFactory) {
         )
 
         mode == Mode.CREATE -> NameAndActionCard(
-            title = "Create a group",
-            description = "Pick the name your partner will see for you.",
+            title = stringResource(R.string.create_group_title),
+            description = stringResource(R.string.create_group_description),
             name = name,
             onNameChange = { name = it },
             code = null,
             onCodeChange = {},
             isLoading = uiState.isLoading,
             errorMessage = uiState.errorMessage,
-            actionLabel = "Create",
+            actionLabel = stringResource(R.string.action_create),
             onAction = { viewModel.createGroup(name) },
             onBack = { mode = Mode.LANDING; viewModel.clearError() }
         )
 
         else -> NameAndActionCard(
-            title = "Join a group",
-            description = "Enter the invite code your partner shared with you.",
+            title = stringResource(R.string.join_group_title),
+            description = stringResource(R.string.join_group_description),
             name = name,
             onNameChange = { name = it },
             code = code,
             onCodeChange = { if (it.length <= 6) code = it.uppercase() },
             isLoading = uiState.isLoading,
             errorMessage = uiState.errorMessage,
-            actionLabel = "Join",
+            actionLabel = stringResource(R.string.action_join),
             onAction = { viewModel.joinGroup(code, name) },
             onBack = { mode = Mode.LANDING; viewModel.clearError() }
         )
@@ -87,14 +89,14 @@ fun GroupSetupSection(factory: AppViewModelFactory) {
 private fun LandingCard(onCreate: () -> Unit, onJoin: () -> Unit) {
     Column {
         Text(
-            "Share this trip's expenses with one other person - split costs, see a running balance, and settle up.",
+            stringResource(R.string.group_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Create a group") }
+        Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.create_a_group)) }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onJoin, modifier = Modifier.fillMaxWidth()) { Text("Join a group") }
+        OutlinedButton(onClick = onJoin, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.join_a_group)) }
     }
 }
 
@@ -120,7 +122,7 @@ private fun NameAndActionCard(
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
-            label = { Text("Your name") },
+            label = { Text(stringResource(R.string.your_name_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -129,7 +131,7 @@ private fun NameAndActionCard(
             OutlinedTextField(
                 value = code,
                 onValueChange = onCodeChange,
-                label = { Text("Invite code") },
+                label = { Text(stringResource(R.string.invite_code_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -151,7 +153,7 @@ private fun NameAndActionCard(
             }
         }
         Spacer(Modifier.height(4.dp))
-        TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+        TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_back)) }
     }
 }
 
@@ -159,10 +161,10 @@ private fun NameAndActionCard(
 private fun InviteCodeCard(code: String, onContinue: () -> Unit) {
     val clipboard = LocalClipboardManager.current
     Column {
-        Text("Group created!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.group_created_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Share this code with your partner so they can join.",
+            stringResource(R.string.group_created_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -181,8 +183,8 @@ private fun InviteCodeCard(code: String, onContinue: () -> Unit) {
             OutlinedButton(
                 onClick = { clipboard.setText(AnnotatedString(code)) },
                 modifier = Modifier.weight(1f)
-            ) { Text("Copy code") }
-            Button(onClick = onContinue, modifier = Modifier.weight(1f)) { Text("Continue") }
+            ) { Text(stringResource(R.string.copy_code)) }
+            Button(onClick = onContinue, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.action_continue)) }
         }
     }
 }

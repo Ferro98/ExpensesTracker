@@ -35,8 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.expensestracker.R
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatShortDate
 import java.time.Instant
@@ -85,7 +87,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Text("New expense", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.new_expense_title), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -95,14 +97,14 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                         amountText = input
                     }
                 },
-                label = { Text("Amount") },
+                label = { Text(stringResource(R.string.label_amount)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
 
-            Text("Currency", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.currency_label), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 uiState.currencyRates.forEach { rate ->
@@ -115,7 +117,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
 
-            Text("Category", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.category_label), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(6.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -134,9 +136,9 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             if (uiState.inGroup) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.shared_with, uiState.partnerName), style = MaterialTheme.typography.labelLarge)
                         Text(
-                            if (isShared) "Splits the balance between you two" else "Only counts against your own budget",
+                            stringResource(if (isShared) R.string.shared_splits_balance else R.string.shared_counts_own_budget),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -162,14 +164,14 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             }
 
             OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Date: ${formatShortDate(selectedDate)}")
+                Text(stringResource(R.string.date_prefix, formatShortDate(selectedDate)))
             }
             Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Note (optional)") },
+                label = { Text(stringResource(R.string.label_note_optional)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -196,7 +198,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 enabled = amount != null && amount > 0 && selectedCategoryId != null,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save expense")
+                Text(stringResource(R.string.save_expense))
             }
         }
     }
@@ -213,10 +215,10 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                         selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     }
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

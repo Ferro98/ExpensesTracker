@@ -1,0 +1,138 @@
+<resources>
+    <string name="app_name">Expenses Tracker</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_recurring">Ricorrenti</string>
+    <string name="nav_categories">Categorie</string>
+    <string name="nav_settings">Impostazioni</string>
+    <string name="title_dashboard">Le mie spese</string>
+    <string name="title_recurring">Spese ricorrenti</string>
+    <string name="title_categories">Categorie e budget</string>
+    <string name="title_settings">Impostazioni</string>
+    <string name="cd_add_expense">Aggiungi spesa</string>
+    <string name="cd_edit">Modifica</string>
+    <string name="cd_delete">Elimina</string>
+
+    <!-- Common -->
+    <string name="action_save">Salva</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_ok">OK</string>
+    <string name="label_amount">Importo</string>
+    <string name="label_note_optional">Nota (opzionale)</string>
+    <string name="label_name">Nome</string>
+    <string name="you">Tu</string>
+    <string name="loading_ellipsis">Caricamento…</string>
+
+    <!-- Dashboard -->
+    <string name="balance_label">Saldo</string>
+    <string name="balance_settled_up">In pari</string>
+    <string name="balance_you_owe">Devi %2$s a %1$s</string>
+    <string name="balance_owes_you">%1$s ti deve %2$s</string>
+    <string name="record_settlement">Registra un saldo</string>
+    <string name="settlement_i_paid">Ho pagato io a %1$s</string>
+    <string name="settlement_partner_paid_me">%1$s ha pagato me</string>
+    <string name="spent_this_month">Speso questo mese</string>
+    <string name="no_personal_budget">Nessun budget personale impostato. Impostane uno in Categorie.</string>
+    <string name="budget_left">Budget: %1$s · %2$s rimasti</string>
+    <string name="budget_over_by">Budget: %1$s · Superato di %2$s</string>
+    <string name="category_budgets_label">Budget per categoria</string>
+    <string name="allocated_unallocated">%1$s allocato · %2$s non allocato</string>
+    <string name="allocated_over_by">%1$s allocato · superato di %2$s</string>
+    <string name="by_category">Per categoria</string>
+    <string name="recent_expenses">Spese recenti</string>
+    <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
+    <string name="paid_by_partner">Pagato da %1$s</string>
+    <string name="personal_label">Personale</string>
+    <string name="dashboard_shared_category">Condivise</string>
+
+    <!-- Add expense -->
+    <string name="new_expense_title">Nuova spesa</string>
+    <string name="currency_label">Valuta</string>
+    <string name="category_label">Categoria</string>
+    <string name="shared_with">Condivisa con %1$s</string>
+    <string name="shared_splits_balance">Divide il saldo tra voi due</string>
+    <string name="shared_counts_own_budget">Conta solo sul tuo budget personale</string>
+    <string name="date_prefix">Data: %1$s</string>
+    <string name="save_expense">Salva spesa</string>
+
+    <!-- Paid by / split -->
+    <string name="paid_by_label">Pagato da</string>
+    <string name="me_label">Io</string>
+    <string name="custom_split_label">Divisione personalizzata (predefinita 50/50)</string>
+    <string name="split_percent">%1$s: %2$d%% · %3$s: %4$d%%</string>
+
+    <!-- Categories -->
+    <string name="fab_category">Categoria</string>
+    <string name="total_monthly_budget">Budget mensile totale</string>
+    <string name="categories_label">Categorie</string>
+    <string name="budget_prefix">Budget: %1$s</string>
+    <string name="no_budget">Nessun budget</string>
+    <string name="new_category_title">Nuova categoria</string>
+    <string name="edit_category_title">Modifica categoria</string>
+    <string name="icon_label">Icona</string>
+    <string name="color_label">Colore</string>
+    <string name="monthly_budget_optional">Budget mensile (opzionale)</string>
+
+    <!-- Recurring -->
+    <string name="fab_recurring_expense">Spesa ricorrente</string>
+    <string name="fixed_recurring_title">Spese fisse e ricorrenti</string>
+    <string name="fixed_recurring_subtitle">Vengono aggiunte automaticamente alle spese del mese quando arriva la loro scadenza.</string>
+    <string name="no_recurring_yet">Nessuna spesa ricorrente impostata.</string>
+    <string name="every_month_day">Ogni mese, giorno %1$d</string>
+    <string name="every_week_day">Ogni settimana, %1$s</string>
+    <string name="new_recurring_title">Nuova spesa ricorrente</string>
+    <string name="frequency_label">Frequenza</string>
+    <string name="frequency_monthly">Mensile</string>
+    <string name="frequency_weekly">Settimanale</string>
+    <string name="day_of_month_label">Giorno del mese (1-31)</string>
+    <string name="start_prefix">Inizio: %1$s</string>
+
+    <!-- Settings -->
+    <string name="group_label">Gruppo</string>
+    <string name="group_intro">Condividi le spese del viaggio con un\'altra persona: dividete i costi, vedete il saldo aggiornato e saldate i conti.</string>
+    <string name="create_a_group">Crea un gruppo</string>
+    <string name="join_a_group">Unisciti a un gruppo</string>
+    <string name="invite_code_prefix">Codice invito: %1$s</string>
+    <string name="copy_invite_code">Copia codice invito</string>
+    <string name="leave_group">Esci dal gruppo</string>
+    <string name="leave_group_dialog_title">Uscire da questo gruppo?</string>
+    <string name="leave_group_dialog_text">Le tue spese e il tuo budget restano su questo dispositivo. Ti servirà il codice invito per rientrare.</string>
+    <string name="action_leave">Esci</string>
+    <string name="theme_label">Tema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="theme_system">Sistema</string>
+    <string name="currencies_label">Valute</string>
+    <string name="base_currency_desc">Valuta base: %1$s. Il tasso indica quanti euro vale 1 unità di quella valuta.</string>
+    <string name="rate_equals_eur">1 %1$s = %2$s EUR</string>
+    <string name="add_currency">Aggiungi valuta</string>
+    <string name="refresh_online">Aggiorna online</string>
+    <string name="edit_rate_title">Modifica tasso %1$s</string>
+    <string name="rate_in_eur_label">1 %1$s in EUR</string>
+    <string name="new_currency_title">Nuova valuta</string>
+    <string name="currency_code_hint">Codice (es. USD)</string>
+    <string name="unit_in_eur_label">1 unità in EUR</string>
+    <string name="rates_updated">Tassi aggiornati (%1$d valute).</string>
+    <string name="rates_update_failed">Impossibile aggiornare i tassi. Controlla la connessione.</string>
+    <string name="leave_group_failed">Impossibile uscire dal gruppo.</string>
+
+    <!-- Onboarding / group setup -->
+    <string name="create_group_title">Crea un gruppo</string>
+    <string name="create_group_description">Scegli il nome che vedrà il tuo partner.</string>
+    <string name="your_name_label">Il tuo nome</string>
+    <string name="action_create">Crea</string>
+    <string name="action_back">Indietro</string>
+    <string name="join_group_title">Unisciti a un gruppo</string>
+    <string name="join_group_description">Inserisci il codice invito che ti ha condiviso il tuo partner.</string>
+    <string name="invite_code_label">Codice invito</string>
+    <string name="action_join">Unisciti</string>
+    <string name="group_created_title">Gruppo creato!</string>
+    <string name="group_created_description">Condividi questo codice con il tuo partner per farlo unire.</string>
+    <string name="copy_code">Copia codice</string>
+    <string name="action_continue">Continua</string>
+    <string name="error_create_group_failed">Impossibile creare il gruppo.</string>
+    <string name="error_group_not_found">Nessun gruppo trovato con questo codice.</string>
+    <string name="error_group_full">Questo gruppo ha già due membri.</string>
+    <string name="error_group_vanished">Qualcosa è andato storto durante l\'accesso al gruppo. Riprova.</string>
+</resources>

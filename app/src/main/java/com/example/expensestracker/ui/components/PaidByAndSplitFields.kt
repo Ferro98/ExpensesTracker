@@ -13,7 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.expensestracker.R
 import kotlin.math.roundToInt
 
 /**
@@ -34,23 +36,24 @@ fun PaidByAndSplitFields(
     onPayerShareChange: (Double) -> Unit
 ) {
     Column {
-        Text("Paid by", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.paid_by_label), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = paidByUid == myUid, onClick = { onPaidByChange(myUid) }, label = { Text("Me") })
+            FilterChip(selected = paidByUid == myUid, onClick = { onPaidByChange(myUid) }, label = { Text(stringResource(R.string.me_label)) })
             FilterChip(selected = paidByUid == partnerUid, onClick = { onPaidByChange(partnerUid) }, label = { Text(partnerName) })
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = customSplitEnabled, onCheckedChange = onCustomSplitToggle)
-            Text("Custom split (default 50/50)", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.custom_split_label), style = MaterialTheme.typography.bodyMedium)
         }
         if (customSplitEnabled) {
-            val payerName = if (paidByUid == myUid) "You" else partnerName
-            val otherName = if (paidByUid == myUid) partnerName else "You"
+            val you = stringResource(R.string.you)
+            val payerName = if (paidByUid == myUid) you else partnerName
+            val otherName = if (paidByUid == myUid) partnerName else you
             val payerPercent = (payerShare * 100).roundToInt()
             Text(
-                "$payerName: $payerPercent% · $otherName: ${100 - payerPercent}%",
+                stringResource(R.string.split_percent, payerName, payerPercent, otherName, 100 - payerPercent),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

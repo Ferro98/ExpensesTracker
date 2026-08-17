@@ -51,10 +51,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensestracker.R
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.ui.AppViewModelFactory
@@ -81,7 +83,7 @@ fun RecurringScreen(factory: AppViewModelFactory) {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Recurring expense") }
+                text = { Text(stringResource(R.string.fab_recurring_expense)) }
             )
         }
     ) { padding ->
@@ -94,11 +96,11 @@ fun RecurringScreen(factory: AppViewModelFactory) {
         ) {
             item {
                 Text(
-                    "Fixed & recurring expenses",
+                    stringResource(R.string.fixed_recurring_title),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    "These are automatically added to this month's expenses when their due date arrives.",
+                    stringResource(R.string.fixed_recurring_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -107,7 +109,7 @@ fun RecurringScreen(factory: AppViewModelFactory) {
             if (uiState.items.isEmpty()) {
                 item {
                     Text(
-                        "No recurring expenses set up yet.",
+                        stringResource(R.string.no_recurring_yet),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -169,8 +171,8 @@ private fun RecurringRow(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(categoryName, fontWeight = FontWeight.Medium)
-                val payerLabel = if (item.paidByUid == myUid) "You" else partnerName
-                val sharedLabel = if (item.isShared) "Paid by $payerLabel" else "Personal"
+                val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
+                val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
                 Text(
                     text = "${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)} · $sharedLabel",
                     style = MaterialTheme.typography.bodySmall,
@@ -179,18 +181,19 @@ private fun RecurringRow(
             }
             Switch(checked = item.active, onCheckedChange = { onToggle() })
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
             }
         }
     }
 }
 
+@Composable
 private fun frequencyLabel(item: RecurringExpense): String = when (item.frequency) {
-    RecurrenceFrequency.MONTHLY -> "Every month, day ${item.dayOfPeriod}"
+    RecurrenceFrequency.MONTHLY -> stringResource(R.string.every_month_day, item.dayOfPeriod)
     RecurrenceFrequency.WEEKLY -> {
-        val dayName = DayOfWeek.of(item.dayOfPeriod).getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+        val dayName = DayOfWeek.of(item.dayOfPeriod).getDisplayName(TextStyle.FULL, Locale.getDefault())
             .replaceFirstChar { it.uppercase() }
-        "Every week, $dayName"
+        stringResource(R.string.every_week_day, dayName)
     }
 }
 
@@ -234,7 +237,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New recurring expense") },
+        title = { Text(stringResource(R.string.new_recurring_title)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
@@ -242,7 +245,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     onValueChange = { input ->
                         if (input.isEmpty() || input.matches(Regex("^\\d{0,7}([.,]\\d{0,2})?$"))) amountText = input
                     },
-                    label = { Text("Amount") },
+                    label = { Text(stringResource(R.string.label_amount)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -258,7 +261,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("Category", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.category_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     uiState.categories.forEach { category ->
@@ -270,18 +273,18 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("Frequency", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.frequency_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = frequency == RecurrenceFrequency.MONTHLY,
                         onClick = { frequency = RecurrenceFrequency.MONTHLY },
-                        label = { Text("Monthly") }
+                        label = { Text(stringResource(R.string.frequency_monthly)) }
                     )
                     FilterChip(
                         selected = frequency == RecurrenceFrequency.WEEKLY,
                         onClick = { frequency = RecurrenceFrequency.WEEKLY },
-                        label = { Text("Weekly") }
+                        label = { Text(stringResource(R.string.frequency_weekly)) }
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -291,7 +294,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                         onValueChange = { input ->
                             if (input.isEmpty() || input.matches(Regex("^\\d{0,2}$"))) dayOfMonthText = input
                         },
-                        label = { Text("Day of month (1-31)") },
+                        label = { Text(stringResource(R.string.day_of_month_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
@@ -303,7 +306,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                                 selected = selectedWeekday == dow,
                                 onClick = { selectedWeekday = dow },
                                 label = {
-                                    Text(dow.getDisplayName(TextStyle.SHORT, Locale.ENGLISH).replaceFirstChar { it.uppercase() })
+                                    Text(dow.getDisplayName(TextStyle.SHORT, Locale.getDefault()).replaceFirstChar { it.uppercase() })
                                 }
                             )
                         }
@@ -311,13 +314,13 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Start: ${formatShortDate(startDate)}")
+                    Text(stringResource(R.string.start_prefix, formatShortDate(startDate)))
                 }
                 Spacer(Modifier.height(16.dp))
 
                 if (uiState.inGroup) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("Shared with ${uiState.partnerName}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.shared_with, uiState.partnerName), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                         Switch(checked = isShared, onCheckedChange = { isShared = it })
                     }
                     if (isShared && uiState.partnerUid != null) {
@@ -340,7 +343,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Note (optional)") },
+                    label = { Text(stringResource(R.string.label_note_optional)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -368,10 +371,10 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     }
                 },
                 enabled = amount != null && amount > 0 && selectedCategoryId != null && (frequency == RecurrenceFrequency.WEEKLY || dayOfMonth != null)
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 
@@ -387,10 +390,10 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                         startDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     }
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

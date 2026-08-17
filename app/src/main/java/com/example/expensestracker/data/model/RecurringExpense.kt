@@ -1,6 +1,7 @@
 package com.example.expensestracker.data.model
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 import java.time.LocalDate
 
 data class RecurringExpense(
@@ -19,7 +20,9 @@ data class RecurringExpense(
     val active: Boolean = true,
     val lastGeneratedDate: String? = null,
     val paidByUid: String = "",
-    val isShared: Boolean = false,
+    // See Expense.isShared for why this needs a pinned Firestore field name.
+    @get:PropertyName("isShared") @set:PropertyName("isShared")
+    var isShared: Boolean = false,
     val payerShare: Double = 0.5
 ) {
     val localStartDate: LocalDate get() = LocalDate.parse(startDate)

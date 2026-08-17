@@ -8,6 +8,14 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 
+/** Thrown by [GroupRepository.joinGroup] for specific, user-facing failure reasons - kept free of
+ *  hardcoded English text so the ViewModel layer can map each case to a localized string. */
+sealed class JoinGroupException : Exception() {
+    class NotFound : JoinGroupException()
+    class Full : JoinGroupException()
+    class Vanished : JoinGroupException()
+}
+
 class GroupRepository(private val firestore: FirebaseFirestore) {
     private val groupsRef get() = firestore.collection("groups")
 
@@ -37,10 +45,10 @@ class GroupRepository(private val firestore: FirebaseFirestore) {
         val ref = groupsRef.document(code.trim().uppercase())
         firestore.runTransaction { txn ->
             val snapshot = txn.get(ref)
-            if (!snapshot.exists()) error("No group found for code ${code.uppercase()}")
+            if (!snapshot.exists()) throw JoinGroupException.NotFound()
             val members = (snapshot.get("memberUids") as? List<*>).orEmpty()
             if (uid !in members) {
-                if (members.size >= 2) error("This group already has two members")
+                if (members.size >= 2) throw JoinGroupException.Full()
                 txn.update(
                     ref,
                     mapOf(
@@ -50,8 +58,7 @@ class GroupRepository(private val firestore: FirebaseFirestore) {
                 )
             }
         }.await()
-        ref.get().await().toObject(Group::class.java)
-            ?: error("Group ${code.uppercase()} disappeared after joining")
+        ref.get().await().toObject(Group::class.java) ?: throw JoinGroupException.Vanished()
     }
 
     suspend fun leaveGroup(groupId: String, uid: String): Result<Unit> = runCatching {

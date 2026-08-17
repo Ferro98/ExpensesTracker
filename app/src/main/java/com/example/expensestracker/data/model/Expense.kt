@@ -2,6 +2,7 @@ package com.example.expensestracker.data.model
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 import java.time.LocalDate
 
 data class Expense(
@@ -18,7 +19,12 @@ data class Expense(
     val recurringExpenseId: String? = null,
     val createdAt: Timestamp? = null,
     val paidByUid: String = "",
-    val isShared: Boolean = false,
+    // Without a pinned name, Firestore's reflection strips the "is" prefix when writing
+    // (serializes as field "shared") but looks for the literal property name "isShared" when
+    // deserializing via the Kotlin constructor - so every write silently round-tripped back as
+    // false. Pinning the name makes both directions agree.
+    @get:PropertyName("isShared") @set:PropertyName("isShared")
+    var isShared: Boolean = false,
     val payerShare: Double = 0.5
 ) {
     val localDate: LocalDate get() = LocalDate.parse(date)

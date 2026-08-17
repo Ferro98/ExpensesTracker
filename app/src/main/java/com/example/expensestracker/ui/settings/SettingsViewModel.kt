@@ -1,7 +1,9 @@
 package com.example.expensestracker.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Group
 import com.example.expensestracker.data.repository.PersonalDataRepository
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
+    private val androidContext: Context,
     private val repository: PersonalDataRepository,
     private val groupContext: GroupContext?,
     private val settingsRepository: SettingsRepository,
@@ -62,26 +65,26 @@ class SettingsViewModel(
             _isRefreshing.value = true
             val result = repository.refreshRatesFromNetwork()
             _statusMessage.value = result.fold(
-                onSuccess = { count -> "Rates updated ($count currencies)." },
-                onFailure = { "Couldn't update rates. Check your connection." }
+                onSuccess = { count -> androidContext.getString(R.string.rates_updated, count) },
+                onFailure = { androidContext.getString(R.string.rates_update_failed) }
             )
             _isRefreshing.value = false
         }
     }
 
     fun leaveGroup(onLeft: () -> Unit) {
-        val context = groupContext ?: return
+        val activeGroup = groupContext ?: return
         viewModelScope.launch {
             _isLeaving.value = true
-            context.groupRepository.leaveGroup(context.groupId, myUid).fold(
+            activeGroup.groupRepository.leaveGroup(activeGroup.groupId, myUid).fold(
                 onSuccess = {
                     settingsRepository.clearGroup()
                     _isLeaving.value = false
                     onLeft()
                 },
-                onFailure = { e ->
+                onFailure = {
                     _isLeaving.value = false
-                    _statusMessage.value = e.message ?: "Couldn't leave the group."
+                    _statusMessage.value = androidContext.getString(R.string.leave_group_failed)
                 }
             )
         }

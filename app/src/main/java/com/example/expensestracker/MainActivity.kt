@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
                     // already-mounted screen. Keying on groupId forces the whole nav tree - and
                     // every ViewModel in it - to be recreated when group membership changes.
                     key(groupId, uid) {
-                        ExpensesTrackerRoot(factory)
+                        ExpensesTrackerRoot(factory, vmKey = "$groupId:$uid")
                     }
                 }
             }
@@ -97,29 +98,34 @@ private fun SplashScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpensesTrackerRoot(factory: AppViewModelFactory) {
+fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     val navController = rememberNavController()
     var showAddExpense by remember { mutableStateOf(false) }
-    val addExpenseViewModel: AddExpenseViewModel = viewModel(factory = factory)
+    // Unlike the per-screen ViewModels (each scoped to its own NavBackStackEntry, which gets
+    // recreated whenever the NavHost itself is rebuilt below), this ViewModel is requested
+    // directly here - outside any nav route - so it resolves to the Activity's own, long-lived
+    // ViewModelStore. Without an explicit key tied to group identity, it would keep returning
+    // the instance built with whatever groupContext was active the first time this screen ever
+    // ran, silently going stale after joining/leaving a group.
+    val addExpenseViewModel: AddExpenseViewModel = viewModel(factory = factory, key = vmKey)
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Screen.Dashboard.route
-    val currentTitle = Screen.bottomBarItems.firstOrNull { it.route == currentRoute }?.let {
-        when (it) {
-            Screen.Dashboard -> "My Expenses"
-            Screen.Recurring -> "Recurring Expenses"
-            Screen.Categories -> "Categories & Budget"
-            Screen.Settings -> "Settings"
-        }
-    } ?: "My Expenses"
+    val currentTitleRes = when (currentRoute) {
+        Screen.Recurring.route -> R.string.title_recurring
+        Screen.Categories.route -> R.string.title_categories
+        Screen.Settings.route -> R.string.title_settings
+        else -> R.string.title_dashboard
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(currentTitle) })
+            TopAppBar(title = { Text(stringResource(currentTitleRes)) })
         },
         bottomBar = {
             NavigationBar {
                 Screen.bottomBarItems.forEach { screen ->
+                    val label = stringResource(screen.labelRes)
                     NavigationBarItem(
                         selected = currentRoute == screen.route,
                         onClick = {
@@ -129,8 +135,8 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        label = { Text(screen.label) }
+                        icon = { Icon(screen.icon, contentDescription = label) },
+                        label = { Text(label) }
                     )
                 }
             }
@@ -140,7 +146,7 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory) {
             // showing this one too would stack two FABs in the same corner.
             if (currentRoute == Screen.Dashboard.route) {
                 FloatingActionButton(onClick = { showAddExpense = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add expense")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_expense))
                 }
             }
         }

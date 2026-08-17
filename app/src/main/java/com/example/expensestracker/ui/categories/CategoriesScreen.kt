@@ -48,10 +48,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensestracker.R
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.ui.AppViewModelFactory
@@ -82,7 +84,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Category") }
+                text = { Text(stringResource(R.string.fab_category)) }
             )
         }
     ) { padding ->
@@ -96,7 +98,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Total monthly budget", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.total_monthly_budget), style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
@@ -106,7 +108,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
                                         budgetText = input
                                     }
                                 },
-                                label = { Text("Amount") },
+                                label = { Text(stringResource(R.string.label_amount)) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f)
@@ -115,7 +117,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
                             TextButton(onClick = {
                                 val value = budgetText.replace(',', '.').toDoubleOrNull()
                                 viewModel.setMonthlyBudget(value, budgetCurrency)
-                            }) { Text("Save") }
+                            }) { Text(stringResource(R.string.action_save)) }
                         }
                         Spacer(Modifier.height(8.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -132,7 +134,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             }
 
             item {
-                Text("Categories", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.categories_label), style = MaterialTheme.typography.titleMedium)
             }
 
             items(uiState.categories, key = { it.id }) { category ->
@@ -197,16 +199,16 @@ private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit,
             Column(modifier = Modifier.weight(1f)) {
                 Text(category.name, fontWeight = FontWeight.Medium)
                 Text(
-                    text = budget?.let { "Budget: ${formatMoney(it)}" } ?: "No budget",
+                    text = budget?.let { stringResource(R.string.budget_prefix, formatMoney(it)) } ?: stringResource(R.string.no_budget),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
             }
         }
     }
@@ -229,18 +231,18 @@ private fun CategoryEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "New category" else "Edit category") },
+        title = { Text(stringResource(if (initial == null) R.string.new_category_title else R.string.edit_category_title)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.label_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.icon_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     presetIcons.forEach { candidate ->
@@ -262,7 +264,7 @@ private fun CategoryEditDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("Color", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.color_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     presetColors.forEach { candidate ->
@@ -288,7 +290,7 @@ private fun CategoryEditDialog(
                             budgetText = input
                         }
                     },
-                    label = { Text("Monthly budget (optional)") },
+                    label = { Text(stringResource(R.string.monthly_budget_optional)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -313,10 +315,10 @@ private fun CategoryEditDialog(
                     }
                 },
                 enabled = name.isNotBlank()
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

@@ -48,11 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.settings.ThemeMode
@@ -95,19 +97,19 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text("Group", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.group_label), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (viewModel.inGroup) {
                             val members = group?.memberNames?.values?.toList().orEmpty()
                             Text(
-                                if (members.isEmpty()) "Loading…" else members.joinToString(" & "),
+                                if (members.isEmpty()) stringResource(R.string.loading_ellipsis) else members.joinToString(" & "),
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Invite code: ${group?.id ?: "—"}",
+                                stringResource(R.string.invite_code_prefix, group?.id ?: "—"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -115,13 +117,13 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                             OutlinedButton(
                                 onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Copy invite code") }
+                            ) { Text(stringResource(R.string.copy_invite_code)) }
                             Spacer(Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showLeaveConfirm = true },
                                 enabled = !isLeaving,
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Leave group") }
+                            ) { Text(stringResource(R.string.leave_group)) }
                         } else {
                             GroupSetupSection(factory)
                         }
@@ -130,34 +132,34 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             }
 
             item {
-                Text("Theme", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.theme_label), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = themeMode == ThemeMode.LIGHT,
                         onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },
                         leadingIcon = { Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text("Light") }
+                        label = { Text(stringResource(R.string.theme_light)) }
                     )
                     FilterChip(
                         selected = themeMode == ThemeMode.DARK,
                         onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
                         leadingIcon = { Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text("Dark") }
+                        label = { Text(stringResource(R.string.theme_dark)) }
                     )
                     FilterChip(
                         selected = themeMode == ThemeMode.SYSTEM,
                         onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) },
                         leadingIcon = { Icon(Icons.Default.BrightnessAuto, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        label = { Text("System") }
+                        label = { Text(stringResource(R.string.theme_system)) }
                     )
                 }
             }
 
             item {
-                Text("Currencies", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.currencies_label), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Base currency: ${DefaultUserData.BASE_CURRENCY}. The rate is how many euros 1 unit of that currency is worth.",
+                    stringResource(R.string.base_currency_desc, DefaultUserData.BASE_CURRENCY),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -174,15 +176,15 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(rate.code, fontWeight = FontWeight.Medium)
                             Text(
-                                "1 ${rate.code} = ${String.format("%.4f", rate.rateToBase)} EUR",
+                                stringResource(R.string.rate_equals_eur, rate.code, String.format("%.4f", rate.rateToBase)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        TextButton(onClick = { editingRate = rate }) { Text("Edit") }
+                        TextButton(onClick = { editingRate = rate }) { Text(stringResource(R.string.cd_edit)) }
                         if (rate.code != DefaultUserData.BASE_CURRENCY) {
                             IconButton(onClick = { viewModel.deleteCurrency(rate.code) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
                             }
                         }
                     }
@@ -200,7 +202,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(Modifier.width(6.dp))
-                        Text("Add currency")
+                        Text(stringResource(R.string.add_currency))
                     }
                     Button(
                         onClick = { viewModel.refreshRates() },
@@ -213,7 +215,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                             Icon(Icons.Default.Refresh, contentDescription = null)
                         }
                         Spacer(Modifier.width(6.dp))
-                        Text("Refresh online")
+                        Text(stringResource(R.string.refresh_online))
                     }
                 }
             }
@@ -248,16 +250,16 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     if (showLeaveConfirm) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirm = false },
-            title = { Text("Leave this group?") },
-            text = { Text("Your own expenses and budget stay on this device. You'll need the invite code to rejoin.") },
+            title = { Text(stringResource(R.string.leave_group_dialog_title)) },
+            text = { Text(stringResource(R.string.leave_group_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showLeaveConfirm = false
                     viewModel.leaveGroup {}
-                }) { Text("Leave") }
+                }) { Text(stringResource(R.string.action_leave)) }
             },
             dismissButton = {
-                TextButton(onClick = { showLeaveConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showLeaveConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
@@ -270,12 +272,12 @@ private fun RateEditDialog(code: String, initialRate: Double, onDismiss: () -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit $code rate") },
+        title = { Text(stringResource(R.string.edit_rate_title, code)) },
         text = {
             OutlinedTextField(
                 value = rateText,
                 onValueChange = { rateText = it },
-                label = { Text("1 $code in EUR") },
+                label = { Text(stringResource(R.string.rate_in_eur_label, code)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
@@ -283,10 +285,10 @@ private fun RateEditDialog(code: String, initialRate: Double, onDismiss: () -> U
         },
         confirmButton = {
             TextButton(onClick = { if (rate != null && rate > 0) onSave(rate) }, enabled = rate != null && rate > 0) {
-                Text("Save")
+                Text(stringResource(R.string.action_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }
 
@@ -303,13 +305,13 @@ private fun AddCurrencyDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New currency") },
+        title = { Text(stringResource(R.string.new_currency_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = code,
                     onValueChange = { if (it.length <= 3) code = it.uppercase() },
-                    label = { Text("Code (e.g. USD)") },
+                    label = { Text(stringResource(R.string.currency_code_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -317,7 +319,7 @@ private fun AddCurrencyDialog(
                 OutlinedTextField(
                     value = rateText,
                     onValueChange = { rateText = it },
-                    label = { Text("1 unit in EUR") },
+                    label = { Text(stringResource(R.string.unit_in_eur_label)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -328,8 +330,8 @@ private fun AddCurrencyDialog(
             TextButton(
                 onClick = { if (validCode && rate != null && rate > 0) onSave(code.trim().uppercase(), rate) },
                 enabled = validCode && rate != null && rate > 0
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     )
 }

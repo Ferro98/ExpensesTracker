@@ -46,10 +46,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.domain.Balance
@@ -93,7 +95,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
 
         if (uiState.categorySpending.any { it.spent > 0 || it.monthlyBudget != null }) {
             item {
-                Text("By category", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.by_category), style = MaterialTheme.typography.titleMedium)
             }
             items(uiState.categorySpending.filter { it.spent > 0 || it.monthlyBudget != null }) { category ->
                 CategorySpendingRow(category)
@@ -101,13 +103,13 @@ fun DashboardScreen(factory: AppViewModelFactory) {
         }
 
         item {
-            Text("Recent expenses", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.recent_expenses), style = MaterialTheme.typography.titleMedium)
         }
 
         if (uiState.recentExpenses.isEmpty()) {
             item {
                 Text(
-                    "No expenses yet. Tap + to add one.",
+                    stringResource(R.string.no_expenses_yet),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -118,7 +120,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
-                    onDelete = { viewModel.deleteExpense(expense.id, expense.isShared) }
+                    onDelete = { viewModel.deleteExpense(expense.id) }
                 )
             }
         }
@@ -148,19 +150,19 @@ fun DashboardScreen(factory: AppViewModelFactory) {
 private fun BalanceCard(balance: Balance, myUid: String, partnerName: String, onRecordSettlement: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Balance", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.balance_label), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(4.dp))
             val (text, color) = when {
-                balance.owedByUid == null -> "Settled up" to MaterialTheme.colorScheme.onSurface
+                balance.owedByUid == null -> stringResource(R.string.balance_settled_up) to MaterialTheme.colorScheme.onSurface
                 balance.owedByUid == myUid ->
-                    "You owe $partnerName ${formatMoney(balance.netAmount)}" to MaterialTheme.colorScheme.error
+                    stringResource(R.string.balance_you_owe, partnerName, formatMoney(balance.netAmount)) to MaterialTheme.colorScheme.error
                 else ->
-                    "$partnerName owes you ${formatMoney(balance.netAmount)}" to MaterialTheme.colorScheme.tertiary
+                    stringResource(R.string.balance_owes_you, partnerName, formatMoney(balance.netAmount)) to MaterialTheme.colorScheme.tertiary
             }
             Text(text, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color)
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = onRecordSettlement, modifier = Modifier.fillMaxWidth()) {
-                Text("Record a settlement")
+                Text(stringResource(R.string.record_settlement))
             }
         }
     }
@@ -185,12 +187,12 @@ private fun SettlementDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Record a settlement") },
+        title = { Text(stringResource(R.string.record_settlement)) },
         text = {
             Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = iPaid, onClick = { iPaid = true }, label = { Text("I paid $partnerName") })
-                    FilterChip(selected = !iPaid, onClick = { iPaid = false }, label = { Text("$partnerName paid me") })
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = iPaid, onClick = { iPaid = true }, label = { Text(stringResource(R.string.settlement_i_paid, partnerName)) })
+                    FilterChip(selected = !iPaid, onClick = { iPaid = false }, label = { Text(stringResource(R.string.settlement_partner_paid_me, partnerName)) })
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -198,7 +200,7 @@ private fun SettlementDialog(
                     onValueChange = { input ->
                         if (input.isEmpty() || input.matches(Regex("^\\d{0,7}([.,]\\d{0,2})?$"))) amountText = input
                     },
-                    label = { Text("Amount") },
+                    label = { Text(stringResource(R.string.label_amount)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -213,7 +215,7 @@ private fun SettlementDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Note (optional)") },
+                    label = { Text(stringResource(R.string.label_note_optional)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -229,9 +231,11 @@ private fun SettlementDialog(
                     }
                 },
                 enabled = amount != null && amount > 0
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        }
     )
 }
 
@@ -239,7 +243,7 @@ private fun SettlementDialog(
 private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categoryBudgetTotal: Double) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Spent this month", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.spent_this_month), style = MaterialTheme.typography.labelLarge)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 formatMoney(totalSpent),
@@ -267,9 +271,9 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categ
                 val remaining = monthlyBudget - totalSpent
                 Text(
                     text = if (remaining >= 0)
-                        "Budget: ${formatMoney(monthlyBudget)} · ${formatMoney(remaining)} left"
+                        stringResource(R.string.budget_left, formatMoney(monthlyBudget), formatMoney(remaining))
                     else
-                        "Budget: ${formatMoney(monthlyBudget)} · Over by ${formatMoney(-remaining)}",
+                        stringResource(R.string.budget_over_by, formatMoney(monthlyBudget), formatMoney(-remaining)),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (overBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -278,7 +282,7 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categ
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Category budgets", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.category_budgets_label), style = MaterialTheme.typography.labelLarge)
                     Spacer(modifier = Modifier.height(8.dp))
                     val allocationProgress = (categoryBudgetTotal / monthlyBudget).toFloat().coerceIn(0f, 1f)
                     val overAllocated = categoryBudgetTotal > monthlyBudget
@@ -294,9 +298,9 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categ
                     val unallocated = monthlyBudget - categoryBudgetTotal
                     Text(
                         text = if (unallocated >= 0)
-                            "${formatMoney(categoryBudgetTotal)} allocated · ${formatMoney(unallocated)} unallocated"
+                            stringResource(R.string.allocated_unallocated, formatMoney(categoryBudgetTotal), formatMoney(unallocated))
                         else
-                            "${formatMoney(categoryBudgetTotal)} allocated · over by ${formatMoney(-unallocated)}",
+                            stringResource(R.string.allocated_over_by, formatMoney(categoryBudgetTotal), formatMoney(-unallocated)),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -304,7 +308,7 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categ
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "No personal budget set. Set one in Categories.",
+                    stringResource(R.string.no_personal_budget),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -377,15 +381,15 @@ private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onD
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(expense.categoryName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            val payerLabel = if (expense.paidByUid == myUid) "You" else partnerName
-            val sharedLabel = if (expense.isShared) "Paid by $payerLabel" else "Personal"
+            val payerLabel = if (expense.paidByUid == myUid) stringResource(R.string.you) else partnerName
+            val sharedLabel = if (expense.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
             val subtitle = listOfNotNull(formatShortDate(expense.localDate), sharedLabel, expense.note?.takeIf { it.isNotBlank() })
                 .joinToString(" · ")
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text(formatMoney(expense.amount, expense.currencyCode), style = MaterialTheme.typography.bodyMedium)
         IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     HorizontalDivider()

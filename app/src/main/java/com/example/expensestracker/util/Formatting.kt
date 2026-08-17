@@ -7,7 +7,10 @@ import java.time.format.TextStyle
 import java.util.Currency
 import java.util.Locale
 
-private val appLocale = Locale.ENGLISH
+// Resolved fresh on every call (not cached) so it follows the device's current locale even if
+// it changes while the app is running, rather than freezing whatever locale was active at
+// first use.
+private val appLocale: Locale get() = Locale.getDefault()
 
 fun formatMoney(amount: Double, currencyCode: String = "EUR"): String {
     val symbol = try {

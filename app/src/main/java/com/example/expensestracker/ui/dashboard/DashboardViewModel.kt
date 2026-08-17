@@ -49,6 +49,7 @@ class DashboardViewModel(
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
     private val myUid: String,
+    private val sharedCategoryLabel: String,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val today = LocalDate.now()
@@ -105,7 +106,7 @@ class DashboardViewModel(
             .sumOf { it.shareFor(myUid) }
         val categorySpendingWithFallback = if (unmatchedSharedSpend > 0) {
             categorySpending + CategorySpending(
-                categoryId = SHARED_BUCKET_ID, name = "Shared", icon = "🤝", colorHex = "#8D6E63",
+                categoryId = SHARED_BUCKET_ID, name = sharedCategoryLabel, icon = "🤝", colorHex = "#8D6E63",
                 monthlyBudget = null, spent = unmatchedSharedSpend
             )
         } else categorySpending
@@ -120,7 +121,7 @@ class DashboardViewModel(
         val partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner"
 
         DashboardUiState(
-            monthLabel = monthStart.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+            monthLabel = monthStart.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
                 .replaceFirstChar { it.uppercase() } + " " + monthStart.year,
             monthStart = monthStart,
             monthEnd = monthEnd,
@@ -141,10 +142,16 @@ class DashboardViewModel(
         initialValue = DashboardUiState(monthStart = monthStart, monthEnd = monthEnd, inGroup = groupContext != null, myUid = myUid)
     )
 
-    fun deleteExpense(expenseId: String, isShared: Boolean) {
+    /**
+     * Deletes from both scopes rather than trusting [Expense.isShared] to route to the right one.
+     * Deleting a nonexistent document is a silent no-op in Firestore, so this is safe either way -
+     * and it's the only way to guarantee removal if an expense's stored flag ever disagreed with
+     * which collection it actually lives in (e.g. from a stale-ViewModel write in the past).
+     */
+    fun deleteExpense(expenseId: String) {
         viewModelScope.launch {
-            if (isShared && groupContext != null) groupContext.expenseRepository.deleteExpense(expenseId)
-            else personalExpenseRepository.deleteExpense(expenseId)
+            personalExpenseRepository.deleteExpense(expenseId)
+            groupContext?.expenseRepository?.deleteExpense(expenseId)
         }
     }
 
