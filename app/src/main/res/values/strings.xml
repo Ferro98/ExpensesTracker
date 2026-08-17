@@ -76,6 +76,8 @@
     <string name="icon_label">Icon</string>
     <string name="color_label">Color</string>
     <string name="monthly_budget_optional">Monthly budget (optional)</string>
+    <string name="budget_remaining_to_allocate">%1$s left to allocate from the total budget</string>
+    <string name="budget_over_allocated_by">%1$s over the total budget</string>
 
     <!-- Recurring -->
     <string name="fab_recurring_expense">Recurring expense</string>
@@ -85,6 +87,7 @@
     <string name="every_month_day">Every month, day %1$d</string>
     <string name="every_week_day">Every week, %1$s</string>
     <string name="new_recurring_title">New recurring expense</string>
+    <string name="edit_recurring_title">Edit recurring expense</string>
     <string name="frequency_label">Frequency</string>
     <string name="frequency_monthly">Monthly</string>
     <string name="frequency_weekly">Weekly</string>

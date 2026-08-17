@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -80,6 +81,7 @@ fun RecurringScreen(factory: AppViewModelFactory) {
     val viewModel: RecurringViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    val dismissDialog = { viewModel.clearEdit(); showAddDialog = false }
 
     Scaffold(
         floatingActionButton = {
@@ -145,6 +147,7 @@ fun RecurringScreen(factory: AppViewModelFactory) {
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
                     onToggle = { viewModel.toggleActive(item) },
+                    onEdit = { viewModel.startEdit(item); showAddDialog = true },
                     onDelete = { viewModel.deleteRecurring(item) }
                 )
             }
@@ -156,7 +159,7 @@ fun RecurringScreen(factory: AppViewModelFactory) {
     if (showAddDialog) {
         AddRecurringDialog(
             viewModel = viewModel,
-            onDismiss = { showAddDialog = false }
+            onDismiss = dismissDialog
         )
     }
 }
@@ -170,6 +173,7 @@ private fun RecurringRow(
     myUid: String,
     partnerName: String,
     onToggle: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -204,6 +208,9 @@ private fun RecurringRow(
                 )
             }
             Switch(checked = item.active, onCheckedChange = { onToggle() })
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit))
+            }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
             }
@@ -225,20 +232,24 @@ private fun frequencyLabel(item: RecurringExpense): String = when (item.frequenc
 @Composable
 private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    val editing = remember { viewModel.editingRecurring.value }
+    val isEditing = editing != null
 
-    var amountText by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
-    var selectedCurrency by remember { mutableStateOf("EUR") }
-    var frequency by remember { mutableStateOf(RecurrenceFrequency.MONTHLY) }
-    var dayOfMonthText by remember { mutableStateOf("1") }
-    var selectedWeekday by remember { mutableStateOf(DayOfWeek.MONDAY) }
-    var note by remember { mutableStateOf("") }
-    var startDate by remember { mutableStateOf(LocalDate.now()) }
+    var amountText by remember { mutableStateOf(editing?.amount?.let { formatAmountInput(it) } ?: "") }
+    var selectedCategoryId by remember { mutableStateOf(editing?.categoryId) }
+    var selectedCurrency by remember { mutableStateOf(editing?.currencyCode ?: "EUR") }
+    var frequency by remember { mutableStateOf(editing?.frequency ?: RecurrenceFrequency.MONTHLY) }
+    var dayOfMonthText by remember { mutableStateOf(if (editing?.frequency == RecurrenceFrequency.MONTHLY) editing.dayOfPeriod.toString() else "1") }
+    var selectedWeekday by remember {
+        mutableStateOf(if (editing?.frequency == RecurrenceFrequency.WEEKLY) DayOfWeek.of(editing.dayOfPeriod) else DayOfWeek.MONDAY)
+    }
+    var note by remember { mutableStateOf(editing?.note ?: "") }
+    var startDate by remember { mutableStateOf(editing?.localStartDate ?: LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isShared by remember { mutableStateOf(true) }
-    var paidByUid by remember { mutableStateOf("") }
-    var customSplitEnabled by remember { mutableStateOf(false) }
-    var payerShare by remember { mutableStateOf(0.5) }
+    var isShared by remember { mutableStateOf(editing?.isShared ?: true) }
+    var paidByUid by remember { mutableStateOf(editing?.paidByUid ?: "") }
+    var customSplitEnabled by remember { mutableStateOf(editing?.let { it.payerShare != 0.5 } ?: false) }
+    var payerShare by remember { mutableStateOf(editing?.payerShare ?: 0.5) }
 
     LaunchedEffect(uiState.categories) {
         if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
@@ -261,7 +272,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.new_recurring_title)) },
+        title = { Text(stringResource(if (isEditing) R.string.edit_recurring_title else R.string.new_recurring_title)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
@@ -375,7 +386,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     val categoryId = selectedCategoryId
                     val day = if (frequency == RecurrenceFrequency.MONTHLY) dayOfMonth else selectedWeekday.value
                     if (amount != null && amount > 0 && categoryId != null && day != null) {
-                        viewModel.addRecurring(
+                        viewModel.saveRecurring(
                             categoryId = categoryId,
                             amount = amount,
                             currencyCode = selectedCurrency,
@@ -391,7 +402,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     }
                 },
                 enabled = amount != null && amount > 0 && selectedCategoryId != null && (frequency == RecurrenceFrequency.WEEKLY || dayOfMonth != null)
-            ) { Text(stringResource(R.string.action_save)) }
+            ) { Text(stringResource(if (isEditing) R.string.save_changes else R.string.action_save)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
@@ -420,3 +431,6 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
         }
     }
 }
+
+private fun formatAmountInput(amount: Double): String =
+    if (amount == amount.toLong().toDouble()) amount.toLong().toString() else String.format("%.2f", amount)

@@ -76,6 +76,8 @@
     <string name="icon_label">Icona</string>
     <string name="color_label">Colore</string>
     <string name="monthly_budget_optional">Budget mensile (opzionale)</string>
+    <string name="budget_remaining_to_allocate">%1$s ancora da allocare sul budget totale</string>
+    <string name="budget_over_allocated_by">%1$s oltre il budget totale</string>
 
     <!-- Recurring -->
     <string name="fab_recurring_expense">Spesa ricorrente</string>
@@ -85,6 +87,7 @@
     <string name="every_month_day">Ogni mese, giorno %1$d</string>
     <string name="every_week_day">Ogni settimana, %1$s</string>
     <string name="new_recurring_title">Nuova spesa ricorrente</string>
+    <string name="edit_recurring_title">Modifica spesa ricorrente</string>
     <string name="frequency_label">Frequenza</string>
     <string name="frequency_monthly">Mensile</string>
     <string name="frequency_weekly">Settimanale</string>

@@ -170,6 +170,8 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             initial = null,
             initialBudget = null,
             currencyRates = uiState.currencyRates,
+            monthlyBudget = uiState.monthlyBudget,
+            otherCategoryBudgetsTotal = uiState.categoryBudgets.values.sum(),
             onDismiss = { showAddDialog = false },
             onSave = { name, icon, color, budget, budgetCcy ->
                 viewModel.addCategory(name, icon, color, budget, budgetCcy)
@@ -183,6 +185,8 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             initial = category,
             initialBudget = uiState.categoryBudgets[category.id],
             currencyRates = uiState.currencyRates,
+            monthlyBudget = uiState.monthlyBudget,
+            otherCategoryBudgetsTotal = uiState.categoryBudgets.filterKeys { it != category.id }.values.sum(),
             onDismiss = { editingCategory = null },
             onSave = { name, icon, color, budget, budgetCcy ->
                 viewModel.updateCategory(category, name, icon, color, budget, budgetCcy)
@@ -239,6 +243,8 @@ private fun CategoryEditDialog(
     initial: Category?,
     initialBudget: Double?,
     currencyRates: List<CurrencyRate>,
+    monthlyBudget: Double?,
+    otherCategoryBudgetsTotal: Double,
     onDismiss: () -> Unit,
     onSave: (name: String, icon: String, color: String, budget: Double?, budgetCurrency: String) -> Unit
 ) {
@@ -323,6 +329,21 @@ private fun CategoryEditDialog(
                             label = { Text(rate.code) }
                         )
                     }
+                }
+                if (monthlyBudget != null) {
+                    val enteredBudget = budgetText.replace(',', '.').toDoubleOrNull()
+                    val rate = currencyRates.firstOrNull { it.code == budgetCurrency }?.rateToBase ?: 1.0
+                    val enteredInBase = (enteredBudget ?: 0.0) * rate
+                    val remaining = monthlyBudget - otherCategoryBudgetsTotal - enteredInBase
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = if (remaining >= 0)
+                            stringResource(R.string.budget_remaining_to_allocate, formatMoney(remaining))
+                        else
+                            stringResource(R.string.budget_over_allocated_by, formatMoney(-remaining)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (remaining >= 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                    )
                 }
             }
         },
