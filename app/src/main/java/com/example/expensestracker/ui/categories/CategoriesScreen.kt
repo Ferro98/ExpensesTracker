@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -96,10 +97,19 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(stringResource(R.string.total_monthly_budget), style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            stringResource(R.string.total_monthly_budget),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(Modifier.height(10.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
                                 value = budgetText,
@@ -134,7 +144,12 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             }
 
             item {
-                Text(stringResource(R.string.categories_label), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.categories_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
             items(uiState.categories, key = { it.id }) { category ->
@@ -179,7 +194,11 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
 
 @Composable
 private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -188,16 +207,16 @@ private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit,
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(category.colorHex.toColor().copy(alpha = 0.2f)),
+                    .background(category.colorHex.toColor().copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(category.icon)
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(category.name, fontWeight = FontWeight.Medium)
+                Text(category.name, fontWeight = FontWeight.SemiBold)
                 Text(
                     text = budget?.let { stringResource(R.string.budget_prefix, formatMoney(it)) } ?: stringResource(R.string.no_budget),
                     style = MaterialTheme.typography.bodySmall,

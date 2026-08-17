@@ -1,5 +1,6 @@
 package com.example.expensestracker.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,7 +24,9 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -97,15 +100,25 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text(stringResource(R.string.group_label), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.group_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
                 Spacer(Modifier.height(8.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         if (viewModel.inGroup) {
                             val members = group?.memberNames?.values?.toList().orEmpty()
                             Text(
                                 if (members.isEmpty()) stringResource(R.string.loading_ellipsis) else members.joinToString(" & "),
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
@@ -113,16 +126,20 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(12.dp))
                             OutlinedButton(
                                 onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.4f))
                             ) { Text(stringResource(R.string.copy_invite_code)) }
                             Spacer(Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showLeaveConfirm = true },
                                 enabled = !isLeaving,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.4f))
                             ) { Text(stringResource(R.string.leave_group)) }
                         } else {
                             GroupSetupSection(factory)
@@ -132,7 +149,12 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             }
 
             item {
-                Text(stringResource(R.string.theme_label), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.theme_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -157,7 +179,12 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             }
 
             item {
-                Text(stringResource(R.string.currencies_label), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.currencies_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 Text(
                     stringResource(R.string.base_currency_desc, DefaultUserData.BASE_CURRENCY),
                     style = MaterialTheme.typography.bodySmall,
@@ -166,7 +193,11 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             }
 
             items(currencyRates, key = { it.code }) { rate ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
