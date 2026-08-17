@@ -3,6 +3,8 @@ package com.example.expensestracker.ui.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,7 +67,7 @@ import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.onboarding.GroupSetupSection
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(factory: AppViewModelFactory) {
     val viewModel: SettingsViewModel = viewModel(factory = factory)
@@ -156,7 +158,7 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = themeMode == ThemeMode.LIGHT,
                         onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },

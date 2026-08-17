@@ -298,7 +298,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.frequency_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = frequency == RecurrenceFrequency.MONTHLY,
                         onClick = { frequency = RecurrenceFrequency.MONTHLY },

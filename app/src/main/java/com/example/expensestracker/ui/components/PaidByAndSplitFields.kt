@@ -2,6 +2,8 @@ package com.example.expensestracker.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -23,6 +25,7 @@ import kotlin.math.roundToInt
  * recurring-expense dialog so the two never drift apart. [payerShare] is the fraction
  * (0..1) of the expense the *payer* is responsible for; the other member owes the rest.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PaidByAndSplitFields(
     myUid: String,
@@ -38,7 +41,7 @@ fun PaidByAndSplitFields(
     Column {
         Text(stringResource(R.string.paid_by_label), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = paidByUid == myUid, onClick = { onPaidByChange(myUid) }, label = { Text(stringResource(R.string.me_label)) })
             FilterChip(selected = paidByUid == partnerUid, onClick = { onPaidByChange(partnerUid) }, label = { Text(partnerName) })
         }

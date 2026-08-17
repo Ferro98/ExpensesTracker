@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -127,7 +129,14 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(currentTitleRes), fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(currentTitleRes),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.primary
@@ -151,7 +160,15 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                             }
                         },
                         icon = { Icon(screen.icon, contentDescription = label) },
-                        label = { Text(label) },
+                        label = {
+                            Text(
+                                label,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
