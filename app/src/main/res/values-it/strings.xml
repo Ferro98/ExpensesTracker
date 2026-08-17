@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Expenses Tracker</string>
+    <string name="app_name">Le Mie Spese</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -48,6 +48,9 @@
 
     <!-- Add expense -->
     <string name="new_expense_title">Nuova spesa</string>
+    <string name="edit_expense_title">Modifica spesa</string>
+    <string name="save_changes">Salva modifiche</string>
+    <string name="cd_edit_expense">Modifica spesa</string>
     <string name="currency_label">Valuta</string>
     <string name="category_label">Categoria</string>
     <string name="shared_with">Condivisa con %1$s</string>
@@ -135,4 +138,15 @@
     <string name="error_group_not_found">Nessun gruppo trovato con questo codice.</string>
     <string name="error_group_full">Questo gruppo ha già due membri.</string>
     <string name="error_group_vanished">Qualcosa è andato storto durante l\'accesso al gruppo. Riprova.</string>
+
+    <!-- Default category names (seeded once per new user; also used to migrate already-seeded English names to the device locale) -->
+    <string name="default_category_food">Cibo e Ristoranti</string>
+    <string name="default_category_transport">Trasporti</string>
+    <string name="default_category_accommodation">Alloggio</string>
+    <string name="default_category_shopping">Shopping</string>
+    <string name="default_category_entertainment">Intrattenimento</string>
+    <string name="default_category_bills">Bollette e Abbonamenti</string>
+    <string name="default_category_health">Salute</string>
+    <string name="default_category_travel">Viaggi</string>
+    <string name="default_category_other">Altro</string>
 </resources>

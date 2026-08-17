@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,7 +67,7 @@ import com.example.expensestracker.util.toColor
 import java.time.LocalDate
 
 @Composable
-fun DashboardScreen(factory: AppViewModelFactory) {
+fun DashboardScreen(factory: AppViewModelFactory, onEditExpense: (Expense) -> Unit) {
     val viewModel: DashboardViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
     var showSettlementDialog by remember { mutableStateOf(false) }
@@ -122,6 +123,7 @@ fun DashboardScreen(factory: AppViewModelFactory) {
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
+                    onEdit = { onEditExpense(expense) },
                     onDelete = { viewModel.deleteExpense(expense.id) }
                 )
             }
@@ -443,7 +445,7 @@ private fun CategorySpendingRow(category: CategorySpending) {
 }
 
 @Composable
-private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onDelete: () -> Unit) {
+private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -478,6 +480,9 @@ private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onD
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit_expense), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }

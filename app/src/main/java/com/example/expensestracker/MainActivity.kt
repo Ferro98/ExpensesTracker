@@ -200,7 +200,15 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
             startDestination = Screen.Dashboard.route,
             modifier = Modifier.padding(padding)
         ) {
-            composable(Screen.Dashboard.route) { DashboardScreen(factory) }
+            composable(Screen.Dashboard.route) {
+                DashboardScreen(
+                    factory,
+                    onEditExpense = { expense ->
+                        addExpenseViewModel.startEdit(expense)
+                        showAddExpense = true
+                    }
+                )
+            }
             composable(Screen.Recurring.route) { RecurringScreen(factory) }
             composable(Screen.Categories.route) { CategoriesScreen(factory) }
             composable(Screen.Settings.route) { SettingsScreen(factory) }

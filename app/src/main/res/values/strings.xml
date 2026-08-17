@@ -48,6 +48,9 @@
 
     <!-- Add expense -->
     <string name="new_expense_title">New expense</string>
+    <string name="edit_expense_title">Edit expense</string>
+    <string name="save_changes">Save changes</string>
+    <string name="cd_edit_expense">Edit expense</string>
     <string name="currency_label">Currency</string>
     <string name="category_label">Category</string>
     <string name="shared_with">Shared with %1$s</string>
@@ -135,4 +138,15 @@
     <string name="error_group_not_found">No group found with that code.</string>
     <string name="error_group_full">This group already has two members.</string>
     <string name="error_group_vanished">Something went wrong joining the group. Try again.</string>
+
+    <!-- Default category names (seeded once per new user; also used to migrate already-seeded English names to the device locale) -->
+    <string name="default_category_food">Food &amp; Dining</string>
+    <string name="default_category_transport">Transport</string>
+    <string name="default_category_accommodation">Accommodation</string>
+    <string name="default_category_shopping">Shopping</string>
+    <string name="default_category_entertainment">Entertainment</string>
+    <string name="default_category_bills">Bills &amp; Subscriptions</string>
+    <string name="default_category_health">Health</string>
+    <string name="default_category_travel">Travel</string>
+    <string name="default_category_other">Other</string>
 </resources>

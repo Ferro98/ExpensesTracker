@@ -62,6 +62,7 @@ import com.example.expensestracker.R
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.ui.AppViewModelFactory
+import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
@@ -286,15 +287,11 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.category_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    uiState.categories.forEach { category ->
-                        FilterChip(
-                            selected = selectedCategoryId == category.id,
-                            onClick = { selectedCategoryId = category.id },
-                            label = { Text("${category.icon} ${category.name}") }
-                        )
-                    }
-                }
+                CategoryPicker(
+                    categories = uiState.categories,
+                    selectedCategoryId = selectedCategoryId,
+                    onSelect = { selectedCategoryId = it }
+                )
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.frequency_label), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))

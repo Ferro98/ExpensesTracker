@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
+import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatShortDate
 import java.time.Instant
@@ -49,17 +50,22 @@ import java.time.ZoneOffset
 @Composable
 fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    // Captured once when the sheet is composed (it's only ever entered fresh - see the
+    // `if (showAddExpense)` gate in ExpensesTrackerRoot) so prefill values don't get clobbered
+    // by recomposition while the user is editing the fields below.
+    val editingExpense = remember { viewModel.editingExpense.value }
+    val isEditing = editingExpense != null
 
-    var amountText by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf<String?>(null) }
-    var selectedCurrency by remember { mutableStateOf("EUR") }
-    var note by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var amountText by remember { mutableStateOf(editingExpense?.amount?.let { formatAmountInput(it) } ?: "") }
+    var selectedCategoryId by remember { mutableStateOf(editingExpense?.categoryId) }
+    var selectedCurrency by remember { mutableStateOf(editingExpense?.currencyCode ?: "EUR") }
+    var note by remember { mutableStateOf(editingExpense?.note ?: "") }
+    var selectedDate by remember { mutableStateOf(editingExpense?.localDate ?: LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isShared by remember { mutableStateOf(true) }
-    var paidByUid by remember { mutableStateOf("") }
-    var customSplitEnabled by remember { mutableStateOf(false) }
-    var payerShare by remember { mutableStateOf(0.5) }
+    var isShared by remember { mutableStateOf(editingExpense?.isShared ?: true) }
+    var paidByUid by remember { mutableStateOf(editingExpense?.paidByUid ?: "") }
+    var customSplitEnabled by remember { mutableStateOf(editingExpense?.let { it.payerShare != 0.5 } ?: false) }
+    var payerShare by remember { mutableStateOf(editingExpense?.payerShare ?: 0.5) }
 
     LaunchedEffect(uiState.categories) {
         if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
@@ -78,8 +84,9 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dismiss = { viewModel.clearEdit(); onDismiss() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = dismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,7 +94,10 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Text(stringResource(R.string.new_expense_title), style = MaterialTheme.typography.titleLarge)
+            Text(
+                stringResource(if (isEditing) R.string.edit_expense_title else R.string.new_expense_title),
+                style = MaterialTheme.typography.titleLarge
+            )
             Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -119,18 +129,11 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
 
             Text(stringResource(R.string.category_label), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(6.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                uiState.categories.forEach { category ->
-                    FilterChip(
-                        selected = selectedCategoryId == category.id,
-                        onClick = { selectedCategoryId = category.id },
-                        label = { Text("${category.icon} ${category.name}") }
-                    )
-                }
-            }
+            CategoryPicker(
+                categories = uiState.categories,
+                selectedCategoryId = selectedCategoryId,
+                onSelect = { selectedCategoryId = it }
+            )
             Spacer(Modifier.height(16.dp))
 
             if (uiState.inGroup) {
@@ -191,14 +194,14 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                             paidByUid = if (isShared) paidByUid else uiState.myUid,
                             isShared = isShared,
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
-                            onSaved = onDismiss
+                            onSaved = dismiss
                         )
                     }
                 },
                 enabled = amount != null && amount > 0 && selectedCategoryId != null,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.save_expense))
+                Text(stringResource(if (isEditing) R.string.save_changes else R.string.save_expense))
             }
         }
     }
@@ -225,3 +228,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
         }
     }
 }
+
+/** Prefill text for the amount field: whole numbers show without decimals, otherwise 2dp. */
+private fun formatAmountInput(amount: Double): String =
+    if (amount == amount.toLong().toDouble()) amount.toLong().toString() else String.format("%.2f", amount)

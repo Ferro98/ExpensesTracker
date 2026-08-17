@@ -69,6 +69,44 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
         return ref.id
     }
 
+    /** Overwrites an existing expense document in place - same id, so callers editing an expense
+     *  that stays in this scope don't disturb anything else that might reference it by id. */
+    suspend fun updateExpense(
+        expenseId: String,
+        categoryId: String,
+        categoryName: String,
+        categoryIcon: String,
+        categoryColorHex: String,
+        amount: Double,
+        currencyCode: String,
+        amountInBaseCurrency: Double,
+        date: LocalDate,
+        note: String?,
+        paidByUid: String,
+        isShared: Boolean,
+        payerShare: Double,
+        createdAt: Timestamp?
+    ) {
+        expensesRef.document(expenseId).set(
+            Expense(
+                id = expenseId,
+                categoryId = categoryId,
+                categoryName = categoryName,
+                categoryIcon = categoryIcon,
+                categoryColorHex = categoryColorHex,
+                amount = amount,
+                currencyCode = currencyCode,
+                amountInBaseCurrency = amountInBaseCurrency,
+                date = date.toString(),
+                note = note,
+                createdAt = createdAt ?: Timestamp.now(),
+                paidByUid = paidByUid,
+                isShared = isShared,
+                payerShare = payerShare
+            )
+        ).await()
+    }
+
     suspend fun deleteExpense(expenseId: String) {
         expensesRef.document(expenseId).delete().await()
     }

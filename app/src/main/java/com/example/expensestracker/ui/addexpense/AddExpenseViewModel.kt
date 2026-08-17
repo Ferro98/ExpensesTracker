@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
+import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.ui.GroupContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -46,6 +49,23 @@ class AddExpenseViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AddExpenseUiState(myUid = myUid))
 
+    // Set when the sheet is opened to edit an existing expense rather than add a new one; the
+    // sheet reads this once to prefill its fields, and saveExpense() branches on it to update
+    // (or move between personal/group scope) instead of creating a fresh document.
+    private val _editingExpense = MutableStateFlow<Expense?>(null)
+    val editingExpense: StateFlow<Expense?> = _editingExpense.asStateFlow()
+
+    fun startEdit(expense: Expense) {
+        _editingExpense.value = expense
+    }
+
+    fun clearEdit() {
+        _editingExpense.value = null
+    }
+
+    private fun repositoryFor(shared: Boolean): ExpenseRepository =
+        if (shared && groupContext != null) groupContext.expenseRepository else personalExpenseRepository
+
     fun saveExpense(
         categoryId: String,
         amount: Double,
@@ -61,21 +81,62 @@ class AddExpenseViewModel(
             val category = uiState.value.categories.firstOrNull { it.id == categoryId } ?: return@launch
             val amountInBaseCurrency = personalDataRepository.convertToBase(amount, currencyCode)
             val shared = isShared && groupContext != null
-            val repository = if (shared) groupContext.expenseRepository else personalExpenseRepository
-            repository.addExpense(
-                categoryId = categoryId,
-                categoryName = category.name,
-                categoryIcon = category.icon,
-                categoryColorHex = category.colorHex,
-                amount = amount,
-                currencyCode = currencyCode,
-                amountInBaseCurrency = amountInBaseCurrency,
-                date = date,
-                note = note?.takeIf { it.isNotBlank() },
-                paidByUid = paidByUid,
-                isShared = shared,
-                payerShare = payerShare
-            )
+            val editing = _editingExpense.value
+
+            when {
+                editing == null -> repositoryFor(shared).addExpense(
+                    categoryId = categoryId,
+                    categoryName = category.name,
+                    categoryIcon = category.icon,
+                    categoryColorHex = category.colorHex,
+                    amount = amount,
+                    currencyCode = currencyCode,
+                    amountInBaseCurrency = amountInBaseCurrency,
+                    date = date,
+                    note = note?.takeIf { it.isNotBlank() },
+                    paidByUid = paidByUid,
+                    isShared = shared,
+                    payerShare = payerShare
+                )
+                // Same scope as before editing - overwrite the existing document in place.
+                editing.isShared == shared -> repositoryFor(shared).updateExpense(
+                    expenseId = editing.id,
+                    categoryId = categoryId,
+                    categoryName = category.name,
+                    categoryIcon = category.icon,
+                    categoryColorHex = category.colorHex,
+                    amount = amount,
+                    currencyCode = currencyCode,
+                    amountInBaseCurrency = amountInBaseCurrency,
+                    date = date,
+                    note = note?.takeIf { it.isNotBlank() },
+                    paidByUid = paidByUid,
+                    isShared = shared,
+                    payerShare = payerShare,
+                    createdAt = editing.createdAt
+                )
+                // Shared flag flipped - personal and group expenses live in different Firestore
+                // collections, so "editing" here means deleting the old document and creating a
+                // fresh one in the new scope.
+                else -> {
+                    repositoryFor(editing.isShared).deleteExpense(editing.id)
+                    repositoryFor(shared).addExpense(
+                        categoryId = categoryId,
+                        categoryName = category.name,
+                        categoryIcon = category.icon,
+                        categoryColorHex = category.colorHex,
+                        amount = amount,
+                        currencyCode = currencyCode,
+                        amountInBaseCurrency = amountInBaseCurrency,
+                        date = date,
+                        note = note?.takeIf { it.isNotBlank() },
+                        paidByUid = paidByUid,
+                        isShared = shared,
+                        payerShare = payerShare
+                    )
+                }
+            }
+            _editingExpense.value = null
             onSaved()
         }
     }

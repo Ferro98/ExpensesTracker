@@ -22,7 +22,7 @@ class ExpensesTrackerApp : Application() {
 
     // Cheap to construct (no connection handle to manage) - a fresh instance per call is fine.
     fun personalDataRepositoryFor(uid: String): PersonalDataRepository =
-        PersonalDataRepository(firestore, uid, CurrencyRateService())
+        PersonalDataRepository(this, firestore, uid, CurrencyRateService())
 
     fun personalExpenseRepositoryFor(uid: String): ExpenseRepository =
         ExpenseRepository(firestore.collection("users").document(uid))

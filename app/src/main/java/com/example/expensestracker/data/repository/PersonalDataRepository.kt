@@ -1,5 +1,6 @@
 package com.example.expensestracker.data.repository
 
+import android.content.Context
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.DefaultUserData
@@ -15,6 +16,7 @@ import kotlinx.coroutines.tasks.await
  * conversion, since rates are personal even when the expense being converted is group-scoped.
  */
 class PersonalDataRepository(
+    private val context: Context,
     private val firestore: FirebaseFirestore,
     private val uid: String,
     private val currencyRateService: CurrencyRateService
@@ -78,12 +80,38 @@ class PersonalDataRepository(
         return amount * rate
     }
 
-    /** Runs once per uid on first-ever sign-in; a no-op if categories already exist. */
+    /** Runs once per uid on first-ever sign-in; seeds already-localized category names for a brand-new user. */
     suspend fun seedDefaultsIfNeeded() {
-        if (getCategories().isNotEmpty()) return
+        val existing = getCategories()
+        if (existing.isNotEmpty()) {
+            migrateDefaultCategoryNames(existing)
+            return
+        }
         val batch = firestore.batch()
-        DefaultUserData.categories.forEach { batch.set(categoriesRef.document(), it) }
+        DefaultUserData.categories(context).forEach { batch.set(categoriesRef.document(), it) }
         DefaultUserData.currencyRates.forEach { batch.set(currencyRatesRef.document(it.code), it) }
         batch.commit().await()
+    }
+
+    /**
+     * Category names are plain stored text, not string resources - they don't follow the device
+     * locale just by translating the app. This renames any category that still holds one of the
+     * literal default names from an earlier seeding (in any language this app has shipped) to
+     * match the current locale, in place - same document id, so existing expenses/budgets
+     * referencing it by categoryId are unaffected. Categories the user renamed themselves (name
+     * no longer matches any known default) are left untouched.
+     */
+    private suspend fun migrateDefaultCategoryNames(existing: List<Category>) {
+        val batch = firestore.batch()
+        var changed = false
+        existing.forEach { category ->
+            val labelRes = DefaultUserData.knownDefaultNameVariants[category.name] ?: return@forEach
+            val localizedName = context.getString(labelRes)
+            if (category.name != localizedName) {
+                batch.update(categoriesRef.document(category.id), "name", localizedName)
+                changed = true
+            }
+        }
+        if (changed) batch.commit().await()
     }
 }
