@@ -82,7 +82,8 @@ class RecurringViewModel(
         startDate: LocalDate,
         paidByUid: String,
         isShared: Boolean,
-        payerShare: Double
+        payerShare: Double,
+        reminderDaysBefore: Int?
     ) {
         viewModelScope.launch {
             val category = uiState.value.categories.firstOrNull { it.id == categoryId } ?: return@launch
@@ -105,7 +106,8 @@ class RecurringViewModel(
                 lastGeneratedDate = editing?.lastGeneratedDate,
                 paidByUid = paidByUid,
                 isShared = shared,
-                payerShare = payerShare
+                payerShare = payerShare,
+                reminderDaysBefore = reminderDaysBefore
             )
 
             when {

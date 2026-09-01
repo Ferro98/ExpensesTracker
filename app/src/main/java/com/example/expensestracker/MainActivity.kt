@@ -1,9 +1,15 @@
 package com.example.expensestracker
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,6 +80,20 @@ class MainActivity : ComponentActivity() {
                 val uid = app.authRepository.ensureSignedIn()
                 app.personalDataRepositoryFor(uid).seedDefaultsIfNeeded()
                 myUid = uid
+            }
+
+            // Needed on Android 13+ for the recurring-expense reminders (see ReminderWorker) to
+            // actually show up; requested once up front rather than gating it behind the
+            // reminder toggle so a reminder set today isn't silently dropped tomorrow.
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) {}
+            LaunchedEffect(Unit) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
             val groupId by app.settingsRepository.groupId.collectAsState(initial = null)
 

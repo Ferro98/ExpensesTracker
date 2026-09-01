@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -74,6 +75,8 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
+
+private val reminderDayOptions = listOf(1, 2, 3, 5, 7)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,8 +204,12 @@ private fun RecurringRow(
                 Text(categoryName, fontWeight = FontWeight.SemiBold)
                 val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
+                val reminderLabel = item.reminderDaysBefore?.let {
+                    pluralStringResource(R.plurals.reminder_summary, it, it)
+                }
                 Text(
-                    text = "${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)} · $sharedLabel",
+                    text = listOfNotNull("${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)} · $sharedLabel", reminderLabel)
+                        .joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -250,6 +257,8 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     var paidByUid by remember { mutableStateOf(editing?.paidByUid ?: "") }
     var customSplitEnabled by remember { mutableStateOf(editing?.let { it.payerShare != 0.5 } ?: false) }
     var payerShare by remember { mutableStateOf(editing?.payerShare ?: 0.5) }
+    var reminderEnabled by remember { mutableStateOf(editing?.reminderDaysBefore != null) }
+    var reminderDays by remember { mutableStateOf(editing?.reminderDaysBefore ?: 3) }
 
     LaunchedEffect(uiState.categories) {
         if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
@@ -349,6 +358,31 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                 }
                 Spacer(Modifier.height(16.dp))
 
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.reminder_label), style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            stringResource(R.string.reminder_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
+                }
+                if (reminderEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        reminderDayOptions.forEach { days ->
+                            FilterChip(
+                                selected = reminderDays == days,
+                                onClick = { reminderDays = days },
+                                label = { Text(pluralStringResource(R.plurals.reminder_days_chip, days, days)) }
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+
                 if (uiState.inGroup) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.shared_with, uiState.partnerName), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
@@ -396,7 +430,8 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                             startDate = startDate,
                             paidByUid = if (isShared) paidByUid else uiState.myUid,
                             isShared = isShared,
-                            payerShare = if (customSplitEnabled) payerShare else 0.5
+                            payerShare = if (customSplitEnabled) payerShare else 0.5,
+                            reminderDaysBefore = if (reminderEnabled) reminderDays else null
                         )
                         onDismiss()
                     }

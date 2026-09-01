@@ -93,6 +93,12 @@
     <string name="frequency_weekly">Weekly</string>
     <string name="day_of_month_label">Day of month (1-31)</string>
     <string name="start_prefix">Start: %1$s</string>
+    <string name="reminder_label">Reminder</string>
+    <string name="reminder_subtitle">Get a notification before it\'s due</string>
+    <string name="reminder_channel_name">Recurring expense reminders</string>
+    <string name="reminder_channel_description">Notifies you ahead of a recurring expense\'s due date</string>
+    <string name="reminder_notification_title">Upcoming: %1$s</string>
+    <string name="reminder_notification_body_today">%1$s is due today</string>
 
     <!-- Settings -->
     <string name="group_label">Group</string>
@@ -152,4 +158,17 @@
     <string name="default_category_health">Health</string>
     <string name="default_category_travel">Travel</string>
     <string name="default_category_other">Other</string>
+
+    <plurals name="reminder_days_chip">
+        <item quantity="one">%d day before</item>
+        <item quantity="other">%d days before</item>
+    </plurals>
+    <plurals name="reminder_summary">
+        <item quantity="one">🔔 %d day before</item>
+        <item quantity="other">🔔 %d days before</item>
+    </plurals>
+    <plurals name="reminder_notification_body_days">
+        <item quantity="one">%2$s due in %1$d day</item>
+        <item quantity="other">%2$s due in %1$d days</item>
+    </plurals>
 </resources>

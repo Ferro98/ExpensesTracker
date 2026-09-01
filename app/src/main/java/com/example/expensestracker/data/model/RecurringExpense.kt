@@ -23,7 +23,9 @@ data class RecurringExpense(
     // See Expense.isShared for why this needs a pinned Firestore field name.
     @get:PropertyName("isShared") @set:PropertyName("isShared")
     var isShared: Boolean = false,
-    val payerShare: Double = 0.5
+    val payerShare: Double = 0.5,
+    // How many days before the next due date to notify the user; null means no reminder.
+    val reminderDaysBefore: Int? = null
 ) {
     val localStartDate: LocalDate get() = LocalDate.parse(startDate)
     val localLastGeneratedDate: LocalDate? get() = lastGeneratedDate?.let { LocalDate.parse(it) }
