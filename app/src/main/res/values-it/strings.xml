@@ -13,11 +13,18 @@
     <string name="cd_add_expense">Aggiungi spesa</string>
     <string name="cd_edit">Modifica</string>
     <string name="cd_delete">Elimina</string>
+    <string name="cd_more_options">Altre opzioni</string>
+    <string name="cd_previous_month">Mese precedente</string>
+    <string name="cd_next_month">Mese successivo</string>
+    <string name="cd_move_category_up">Sposta su</string>
+    <string name="cd_move_category_down">Sposta giù</string>
 
     <!-- Common -->
     <string name="action_save">Salva</string>
     <string name="action_cancel">Annulla</string>
     <string name="action_ok">OK</string>
+    <string name="action_discard">Scarta</string>
+    <string name="action_keep_editing">Continua a modificare</string>
     <string name="label_amount">Importo</string>
     <string name="label_note_optional">Nota (opzionale)</string>
     <string name="label_name">Nome</string>
@@ -58,6 +65,8 @@
     <string name="shared_counts_own_budget">Conta solo sul tuo budget personale</string>
     <string name="date_prefix">Data: %1$s</string>
     <string name="save_expense">Salva spesa</string>
+    <string name="discard_expense_title">Scartare questa spesa?</string>
+    <string name="discard_expense_text">Ci sono modifiche non salvate che andranno perse.</string>
 
     <!-- Paid by / split -->
     <string name="paid_by_label">Pagato da</string>
@@ -93,6 +102,8 @@
     <string name="frequency_weekly">Settimanale</string>
     <string name="day_of_month_label">Giorno del mese (1-31)</string>
     <string name="start_prefix">Inizio: %1$s</string>
+    <string name="next_occurrence_prefix">Prossima: %1$s</string>
+    <string name="fixed_monthly_total_label">Spese fisse mensili</string>
     <string name="reminder_label">Promemoria</string>
     <string name="reminder_subtitle">Ricevi una notifica prima della scadenza</string>
     <string name="reminder_channel_name">Promemoria spese ricorrenti</string>
@@ -101,6 +112,20 @@
     <string name="reminder_notification_body_today">%1$s scade oggi</string>
 
     <!-- Settings -->
+    <string name="account_label">Account</string>
+    <string name="account_protected">Account protetto</string>
+    <string name="account_not_protected">Nessun backup</string>
+    <string name="account_not_protected_desc">Accedi con Google per non perdere i dati se disinstalli l\'app o cambi telefono.</string>
+    <string name="sign_in_with_google">Accedi con Google</string>
+    <string name="account_linked_success">Account collegato. I tuoi dati sono ora al sicuro.</string>
+    <string name="account_link_failed">Impossibile collegare l\'account. Riprova.</string>
+    <string name="preferences_label">Preferenze</string>
+    <string name="pref_default_currency">Valuta predefinita</string>
+    <string name="pref_default_currency_desc">Valuta preselezionata per nuove spese, spese ricorrenti, budget e saldi.</string>
+    <string name="pref_default_shared_expense">Condivisa di default (spese)</string>
+    <string name="pref_default_shared_expense_desc">Precompila \"condivisa\" quando aggiungi una nuova spesa.</string>
+    <string name="pref_default_shared_recurring">Condivisa di default (ricorrenti)</string>
+    <string name="pref_default_shared_recurring_desc">Precompila \"condivisa\" quando aggiungi una nuova spesa ricorrente.</string>
     <string name="group_label">Gruppo</string>
     <string name="group_intro">Condividi le spese del viaggio con un\'altra persona: dividete i costi, vedete il saldo aggiornato e saldate i conti.</string>
     <string name="create_a_group">Crea un gruppo</string>

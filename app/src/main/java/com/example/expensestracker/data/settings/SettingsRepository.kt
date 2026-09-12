@@ -3,10 +3,12 @@ package com.example.expensestracker.data.settings
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.expensestracker.data.model.DefaultUserData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
@@ -24,6 +26,9 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val GROUP_ID = stringPreferencesKey("group_id")
         val MY_DISPLAY_NAME = stringPreferencesKey("my_display_name")
+        val DEFAULT_SHARED_EXPENSE = booleanPreferencesKey("default_shared_expense")
+        val DEFAULT_SHARED_RECURRING = booleanPreferencesKey("default_shared_recurring")
+        val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -56,6 +61,25 @@ class SettingsRepository(private val context: Context) {
 
     val groupId: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.GROUP_ID] }
     val myDisplayName: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_DISPLAY_NAME] }
+
+    /** Prefilled state of the "shared" switch when starting a brand new expense/recurring template - editing an existing one always keeps its own stored value instead. */
+    val defaultSharedForExpense: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[Keys.DEFAULT_SHARED_EXPENSE] ?: false }
+    val defaultSharedForRecurring: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[Keys.DEFAULT_SHARED_RECURRING] ?: false }
+
+    suspend fun setDefaultSharedForExpense(value: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_SHARED_EXPENSE] = value }
+    }
+
+    suspend fun setDefaultSharedForRecurring(value: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_SHARED_RECURRING] = value }
+    }
+
+    /** Prefilled currency for every amount-entry screen (expense, recurring, budgets, settlements) - falls back to the base currency. */
+    val defaultCurrency: Flow<String> = context.dataStore.data.map { prefs -> prefs[Keys.DEFAULT_CURRENCY] ?: DefaultUserData.BASE_CURRENCY }
+
+    suspend fun setDefaultCurrency(code: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_CURRENCY] = code }
+    }
 
     suspend fun saveGroup(groupId: String, displayName: String) {
         context.dataStore.edit { prefs ->

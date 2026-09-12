@@ -7,6 +7,7 @@ import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,20 +25,25 @@ data class AddExpenseUiState(
     val myUid: String = "",
     val partnerUid: String? = null,
     val partnerName: String = "Partner",
-    val inGroup: Boolean = false
+    val inGroup: Boolean = false,
+    val defaultShared: Boolean = false,
+    val defaultCurrency: String = "EUR"
 )
 
 class AddExpenseViewModel(
     private val personalExpenseRepository: ExpenseRepository,
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
+    private val settingsRepository: SettingsRepository,
     private val myUid: String
 ) : ViewModel() {
     val uiState: StateFlow<AddExpenseUiState> = combine(
         personalDataRepository.observeCategories(),
         personalDataRepository.observeCurrencyRates(),
-        groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null)
-    ) { categories, currencyRates, group ->
+        groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
+        settingsRepository.defaultSharedForExpense,
+        settingsRepository.defaultCurrency
+    ) { categories, currencyRates, group, defaultShared, defaultCurrency ->
         val partnerUid = group?.otherMemberUid(myUid)
         AddExpenseUiState(
             categories = categories,
@@ -45,7 +51,9 @@ class AddExpenseViewModel(
             myUid = myUid,
             partnerUid = partnerUid,
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
-            inGroup = groupContext != null
+            inGroup = groupContext != null,
+            defaultShared = defaultShared,
+            defaultCurrency = defaultCurrency
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AddExpenseUiState(myUid = myUid))
 

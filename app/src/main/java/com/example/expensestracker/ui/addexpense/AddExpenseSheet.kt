@@ -13,14 +13,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import com.example.expensestracker.R
 import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
@@ -56,13 +62,15 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     val editingExpense = remember { viewModel.editingExpense.value }
     val isEditing = editingExpense != null
 
-    var amountText by remember { mutableStateOf(editingExpense?.amount?.let { formatAmountInput(it) } ?: "") }
+    val initialAmountText = remember { editingExpense?.amount?.let { formatAmountInput(it) } ?: "" }
+    val initialNote = remember { editingExpense?.note ?: "" }
+    var amountText by remember { mutableStateOf(initialAmountText) }
     var selectedCategoryId by remember { mutableStateOf(editingExpense?.categoryId) }
-    var selectedCurrency by remember { mutableStateOf(editingExpense?.currencyCode ?: "EUR") }
-    var note by remember { mutableStateOf(editingExpense?.note ?: "") }
+    var selectedCurrency by remember { mutableStateOf(editingExpense?.currencyCode ?: uiState.defaultCurrency) }
+    var note by remember { mutableStateOf(initialNote) }
     var selectedDate by remember { mutableStateOf(editingExpense?.localDate ?: LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isShared by remember { mutableStateOf(editingExpense?.isShared ?: true) }
+    var isShared by remember { mutableStateOf(editingExpense?.isShared ?: uiState.defaultShared) }
     var paidByUid by remember { mutableStateOf(editingExpense?.paidByUid ?: "") }
     var customSplitEnabled by remember { mutableStateOf(editingExpense?.let { it.payerShare != 0.5 } ?: false) }
     var payerShare by remember { mutableStateOf(editingExpense?.payerShare ?: 0.5) }
@@ -77,16 +85,41 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             selectedCurrency = uiState.currencyRates.first().code
         }
     }
+    LaunchedEffect(uiState.defaultCurrency) {
+        if (!isEditing) selectedCurrency = uiState.defaultCurrency
+    }
     LaunchedEffect(uiState.myUid) {
         if (paidByUid.isEmpty() && uiState.myUid.isNotEmpty()) {
             paidByUid = uiState.myUid
         }
     }
+    // The initial `isShared` read above may have raced the real stored preference (its StateFlow
+    // starts at a hardcoded false before Settings' DataStore value resolves) - correct it once,
+    // but only for a brand new expense; an edit always keeps the expense's own stored value.
+    LaunchedEffect(uiState.defaultShared) {
+        if (!isEditing) isShared = uiState.defaultShared
+    }
 
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val dismiss = { viewModel.clearEdit(); onDismiss() }
 
-    ModalBottomSheet(onDismissRequest = dismiss, sheetState = sheetState) {
+    // Guards against losing typed data to an accidental swipe-down or scrim tap: a hide is only
+    // allowed through untouched, everything else routes through the discard-confirmation dialog.
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val hasUnsavedChanges = remember {
+        { amountText != initialAmountText || note != initialNote }
+    }
+    val confirmValueChange = remember {
+        { target: SheetValue ->
+            if (target == SheetValue.Hidden && hasUnsavedChanges()) {
+                showDiscardDialog = true
+                false
+            } else true
+        }
+    }
+    val requestDismiss = { if (hasUnsavedChanges()) showDiscardDialog = true else dismiss() }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = confirmValueChange)
+
+    ModalBottomSheet(onDismissRequest = requestDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -94,10 +127,16 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            Text(
-                stringResource(if (isEditing) R.string.edit_expense_title else R.string.new_expense_title),
-                style = MaterialTheme.typography.titleLarge
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(if (isEditing) R.string.edit_expense_title else R.string.new_expense_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = requestDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
+                }
+            }
             Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -226,6 +265,24 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text(stringResource(R.string.discard_expense_title)) },
+            text = { Text(stringResource(R.string.discard_expense_text)) },
+            confirmButton = {
+                TextButton(onClick = { showDiscardDialog = false; dismiss() }) {
+                    Text(stringResource(R.string.action_discard))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text(stringResource(R.string.action_keep_editing))
+                }
+            }
+        )
     }
 }
 

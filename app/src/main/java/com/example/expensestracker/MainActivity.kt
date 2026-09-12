@@ -75,12 +75,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
 
-            var myUid by remember { mutableStateOf<String?>(null) }
-            LaunchedEffect(Unit) {
-                val uid = app.authRepository.ensureSignedIn()
-                app.personalDataRepositoryFor(uid).seedDefaultsIfNeeded()
-                myUid = uid
+            // Reactive (not a one-shot uid capture) so linking/restoring a Google account from
+            // Settings - which can switch the signed-in Firebase user entirely, see
+            // AuthRepository.linkWithGoogle's collision-fallback path - is picked up here and
+            // rebuilds the whole tree against the (possibly different, possibly restored) uid.
+            val authState by remember { app.authRepository.observeAuthState() }.collectAsState(initial = null)
+            LaunchedEffect(Unit) { app.authRepository.ensureSignedIn() }
+            LaunchedEffect(authState?.uid) {
+                authState?.uid?.let { app.personalDataRepositoryFor(it).seedDefaultsIfNeeded() }
             }
+            val myUid = authState?.uid
 
             // Needed on Android 13+ for the recurring-expense reminders (see ReminderWorker) to
             // actually show up; requested once up front rather than gating it behind the

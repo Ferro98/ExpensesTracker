@@ -16,7 +16,8 @@ data class CategoriesUiState(
     val categories: List<Category> = emptyList(),
     val monthlyBudget: Double? = null,
     val categoryBudgets: Map<String, Double> = emptyMap(),
-    val currencyRates: List<CurrencyRate> = emptyList()
+    val currencyRates: List<CurrencyRate> = emptyList(),
+    val defaultCurrency: String = "EUR"
 )
 
 class CategoriesViewModel(
@@ -27,9 +28,10 @@ class CategoriesViewModel(
         repository.observeCategories(),
         settingsRepository.myMonthlyBudget,
         settingsRepository.myCategoryBudgets,
-        repository.observeCurrencyRates()
-    ) { categories, budget, categoryBudgets, rates ->
-        CategoriesUiState(categories, budget, categoryBudgets, rates)
+        repository.observeCurrencyRates(),
+        settingsRepository.defaultCurrency
+    ) { categories, budget, categoryBudgets, rates, defaultCurrency ->
+        CategoriesUiState(categories, budget, categoryBudgets, rates, defaultCurrency)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoriesUiState())
 
     /** Converts an amount entered in [currencyCode] to the base currency (EUR). */
@@ -64,6 +66,21 @@ class CategoriesViewModel(
         viewModelScope.launch {
             repository.deleteCategory(category.id)
             settingsRepository.setCategoryBudget(category.id, null)
+        }
+    }
+
+    /** Swaps [category] with its neighbor in [direction] (-1 = up, +1 = down) and persists the new order. */
+    fun moveCategory(category: Category, direction: Int) {
+        val categories = uiState.value.categories
+        val index = categories.indexOfFirst { it.id == category.id }
+        val targetIndex = index + direction
+        if (index < 0 || targetIndex < 0 || targetIndex >= categories.size) return
+
+        val reordered = categories.toMutableList()
+        val moved = reordered.removeAt(index)
+        reordered.add(targetIndex, moved)
+        viewModelScope.launch {
+            repository.reorderCategories(reordered.map { it.id })
         }
     }
 }

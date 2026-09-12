@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.data.model.Group
+import com.example.expensestracker.data.model.Settlement
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.settings.SettingsRepository
@@ -12,13 +14,14 @@ import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.domain.BalanceCalculator
 import com.example.expensestracker.domain.RecurringExpenseGenerator
 import com.example.expensestracker.ui.GroupContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -31,13 +34,14 @@ data class DashboardUiState(
     val totalSpent: Double = 0.0,
     val monthlyBudget: Double? = null,
     val categorySpending: List<CategorySpending> = emptyList(),
-    val recentExpenses: List<Expense> = emptyList(),
+    val monthExpenses: List<Expense> = emptyList(),
     val balance: Balance = Balance(0.0, null, null),
     val inGroup: Boolean = false,
     val myUid: String = "",
     val partnerUid: String? = null,
     val partnerName: String = "Partner",
-    val currencyRates: List<CurrencyRate> = emptyList()
+    val currencyRates: List<CurrencyRate> = emptyList(),
+    val defaultCurrency: String = "EUR"
 ) {
     /** Sum of the personal per-category budgets that have been set. */
     val categoryBudgetTotal: Double
@@ -52,12 +56,11 @@ class DashboardViewModel(
     private val sharedCategoryLabel: String,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
-    private val today = LocalDate.now()
-    private val monthStart = today.withDayOfMonth(1)
-    private val monthEnd = today.withDayOfMonth(today.lengthOfMonth())
+    val currentMonth: YearMonth = YearMonth.now()
 
     init {
         viewModelScope.launch {
+            val today = LocalDate.now()
             RecurringExpenseGenerator(personalExpenseRepository, personalDataRepository).generateDueExpenses(today)
             groupContext?.let {
                 RecurringExpenseGenerator(it.expenseRepository, personalDataRepository).generateDueExpenses(today)
@@ -65,25 +68,60 @@ class DashboardViewModel(
         }
     }
 
+    // Shared, single-subscription sources: kept hot so browsing between months (each of which
+    // combines over these) doesn't register a new Firestore listener per visible month.
     private val allExpenses = combine(
         personalExpenseRepository.observeAllExpenses(),
         groupContext?.expenseRepository?.observeAllExpenses() ?: flowOf(emptyList())
     ) { personal, group -> personal + group }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val expensesAndCategories = combine(allExpenses, personalDataRepository.observeCategories()) { expenses, categories ->
-        expenses to categories
-    }
+    private val categories = personalDataRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val settlementsAndGroup = combine(
         groupContext?.settlementRepository?.observeSettlements() ?: flowOf(emptyList()),
         groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null)
     ) { settlements, group -> settlements to group }
-    private val budgets = combine(settingsRepository.myMonthlyBudget, settingsRepository.myCategoryBudgets) { budget, categoryBudgets ->
-        budget to categoryBudgets
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<Settlement>() to null)
+
+    // Combine already sits at the 5-flow overload limit below, so this bundles the two budget
+    // prefs with the currency default rather than pulling in a 6th flow.
+    private val budgets = combine(
+        settingsRepository.myMonthlyBudget,
+        settingsRepository.myCategoryBudgets,
+        settingsRepository.defaultCurrency
+    ) { budget, categoryBudgets, defaultCurrency ->
+        Triple(budget, categoryBudgets, defaultCurrency)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(null, emptyMap(), "EUR"))
+
+    private val currencyRates = personalDataRepository.observeCurrencyRates()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Reactive dashboard state scoped to [yearMonth], recomputed as its underlying data changes. */
+    fun uiStateFor(yearMonth: YearMonth): Flow<DashboardUiState> {
+        val monthStart = yearMonth.atDay(1)
+        val monthEnd = yearMonth.atEndOfMonth()
+        return combine(allExpenses, categories, settlementsAndGroup, budgets, currencyRates) {
+            expenses, cats, settlementsAndGroupPair, budgetsTriple, rates ->
+            val (settlements, group) = settlementsAndGroupPair
+            val (monthlyBudget, categoryBudgets, defaultCurrency) = budgetsTriple
+            buildUiState(expenses, cats, settlements, group, monthlyBudget, categoryBudgets, rates, defaultCurrency, monthStart, monthEnd)
+        }
     }
 
-    val uiState: StateFlow<DashboardUiState> = combine(
-        expensesAndCategories, settlementsAndGroup, budgets, personalDataRepository.observeCurrencyRates()
-    ) { (expenses, categories), (settlements, group), (monthlyBudget, categoryBudgets), currencyRates ->
+    private fun buildUiState(
+        expenses: List<Expense>,
+        categories: List<com.example.expensestracker.data.model.Category>,
+        settlements: List<Settlement>,
+        group: Group?,
+        monthlyBudget: Double?,
+        categoryBudgets: Map<String, Double>,
+        currencyRates: List<CurrencyRate>,
+        defaultCurrency: String,
+        monthStart: LocalDate,
+        monthEnd: LocalDate
+    ): DashboardUiState {
         val monthExpenses = expenses.filter { !it.localDate.isBefore(monthStart) && !it.localDate.isAfter(monthEnd) }
         val myMonthSpend = monthExpenses.sumOf { it.shareFor(myUid) }
 
@@ -111,16 +149,15 @@ class DashboardViewModel(
             )
         } else categorySpending
 
-        val recentExpenses = expenses
+        val sortedMonthExpenses = monthExpenses
             .sortedWith(compareByDescending<Expense> { it.localDate }.thenByDescending { it.createdAt?.seconds ?: 0 })
-            .take(20)
 
         val sharedExpenses = expenses.filter { it.isShared }
         val balance = group?.let { BalanceCalculator.compute(sharedExpenses, settlements, it.memberUids) } ?: Balance(0.0, null, null)
         val partnerUid = group?.otherMemberUid(myUid)
         val partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner"
 
-        DashboardUiState(
+        return DashboardUiState(
             monthLabel = monthStart.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
                 .replaceFirstChar { it.uppercase() } + " " + monthStart.year,
             monthStart = monthStart,
@@ -128,19 +165,16 @@ class DashboardViewModel(
             totalSpent = myMonthSpend,
             monthlyBudget = monthlyBudget,
             categorySpending = categorySpendingWithFallback,
-            recentExpenses = recentExpenses,
+            monthExpenses = sortedMonthExpenses,
             balance = balance,
             inGroup = groupContext != null,
             myUid = myUid,
             partnerUid = partnerUid,
             partnerName = partnerName,
-            currencyRates = currencyRates
+            currencyRates = currencyRates,
+            defaultCurrency = defaultCurrency
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardUiState(monthStart = monthStart, monthEnd = monthEnd, inGroup = groupContext != null, myUid = myUid)
-    )
+    }
 
     /**
      * Deletes from both scopes rather than trusting [Expense.isShared] to route to the right one.

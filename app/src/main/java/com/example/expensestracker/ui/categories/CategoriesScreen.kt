@@ -20,13 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -78,7 +80,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
     var budgetText by remember(uiState.monthlyBudget) {
         mutableStateOf(uiState.monthlyBudget?.let { String.format("%.2f", it) } ?: "")
     }
-    var budgetCurrency by remember { mutableStateOf("EUR") }
+    var budgetCurrency by remember(uiState.defaultCurrency) { mutableStateOf(uiState.defaultCurrency) }
 
     Scaffold(
         floatingActionButton = {
@@ -152,10 +154,14 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
                 )
             }
 
-            items(uiState.categories, key = { it.id }) { category ->
+            itemsIndexed(uiState.categories, key = { _, category -> category.id }) { index, category ->
                 CategoryRow(
                     category = category,
                     budget = uiState.categoryBudgets[category.id],
+                    canMoveUp = index > 0,
+                    canMoveDown = index < uiState.categories.lastIndex,
+                    onMoveUp = { viewModel.moveCategory(category, -1) },
+                    onMoveDown = { viewModel.moveCategory(category, 1) },
                     onEdit = { editingCategory = category },
                     onDelete = { viewModel.deleteCategory(category) }
                 )
@@ -170,6 +176,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             initial = null,
             initialBudget = null,
             currencyRates = uiState.currencyRates,
+            defaultCurrency = uiState.defaultCurrency,
             monthlyBudget = uiState.monthlyBudget,
             otherCategoryBudgetsTotal = uiState.categoryBudgets.values.sum(),
             onDismiss = { showAddDialog = false },
@@ -185,6 +192,7 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             initial = category,
             initialBudget = uiState.categoryBudgets[category.id],
             currencyRates = uiState.currencyRates,
+            defaultCurrency = uiState.defaultCurrency,
             monthlyBudget = uiState.monthlyBudget,
             otherCategoryBudgetsTotal = uiState.categoryBudgets.filterKeys { it != category.id }.values.sum(),
             onDismiss = { editingCategory = null },
@@ -197,7 +205,16 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
 }
 
 @Composable
-private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun CategoryRow(
+    category: Category,
+    budget: Double?,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -206,9 +223,26 @@ private fun CategoryRow(category: Category, budget: Double?, onEdit: () -> Unit,
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Column {
+                IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = stringResource(R.string.cd_move_category_up),
+                        tint = if (canMoveUp) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
+                IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = stringResource(R.string.cd_move_category_down),
+                        tint = if (canMoveDown) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -243,6 +277,7 @@ private fun CategoryEditDialog(
     initial: Category?,
     initialBudget: Double?,
     currencyRates: List<CurrencyRate>,
+    defaultCurrency: String,
     monthlyBudget: Double?,
     otherCategoryBudgetsTotal: Double,
     onDismiss: () -> Unit,
@@ -252,7 +287,7 @@ private fun CategoryEditDialog(
     var icon by remember { mutableStateOf(initial?.icon ?: presetIcons.first()) }
     var color by remember { mutableStateOf(initial?.colorHex ?: presetColors.first()) }
     var budgetText by remember { mutableStateOf(initialBudget?.let { String.format("%.2f", it) } ?: "") }
-    var budgetCurrency by remember { mutableStateOf("EUR") }
+    var budgetCurrency by remember { mutableStateOf(defaultCurrency) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

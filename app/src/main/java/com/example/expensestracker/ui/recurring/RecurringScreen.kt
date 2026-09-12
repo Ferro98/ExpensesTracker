@@ -25,11 +25,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -52,17 +55,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
+import com.example.expensestracker.domain.nextOccurrence
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
@@ -115,6 +121,10 @@ fun RecurringScreen(factory: AppViewModelFactory) {
                 )
             }
 
+            if (uiState.monthlyTotal > 0) {
+                item { FixedMonthlyTotalCard(uiState.monthlyTotal) }
+            }
+
             if (uiState.items.isEmpty()) {
                 item {
                     Card(
@@ -144,9 +154,6 @@ fun RecurringScreen(factory: AppViewModelFactory) {
             items(uiState.items, key = { it.id }) { item ->
                 RecurringRow(
                     item = item,
-                    categoryName = item.categoryName,
-                    categoryIcon = item.categoryIcon,
-                    categoryColor = item.categoryColorHex,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
                     onToggle = { viewModel.toggleActive(item) },
@@ -168,17 +175,40 @@ fun RecurringScreen(factory: AppViewModelFactory) {
 }
 
 @Composable
+private fun FixedMonthlyTotalCard(monthlyTotal: Double) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.fixed_monthly_total_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                formatMoney(monthlyTotal),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
 private fun RecurringRow(
     item: RecurringExpense,
-    categoryName: String,
-    categoryIcon: String,
-    categoryColor: String,
     myUid: String,
     partnerName: String,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -187,39 +217,68 @@ private fun RecurringRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                // Dims the whole row when the template is paused, so a glance at the list shows
+                // which ones are actually still generating expenses without reading every switch.
+                .alpha(if (item.active) 1f else 0.5f)
+                .padding(start = 14.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(categoryColor.toColor().copy(alpha = 0.18f)),
+                    .background(item.categoryColorHex.toColor().copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(categoryIcon)
+                Text(item.categoryIcon)
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(categoryName, fontWeight = FontWeight.SemiBold)
+                Text(
+                    item.categoryName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
                 val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-                val reminderLabel = item.reminderDaysBefore?.let {
-                    pluralStringResource(R.plurals.reminder_summary, it, it)
-                }
+                val nextDueLabel = stringResource(R.string.next_occurrence_prefix, formatShortDate(item.nextOccurrence()))
+                val reminderLabel = item.reminderDaysBefore?.let { pluralStringResource(R.plurals.reminder_summary, it, it) }
+                val subtitle = listOfNotNull("${frequencyLabel(item)} · $nextDueLabel", sharedLabel, reminderLabel)
+                    .joinToString(" · ")
                 Text(
-                    text = listOfNotNull("${formatMoney(item.amount, item.currencyCode)} · ${frequencyLabel(item)} · $sharedLabel", reminderLabel)
-                        .joinToString(" · "),
+                    subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                formatMoney(item.amount, item.currencyCode),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
             Switch(checked = item.active, onCheckedChange = { onToggle() })
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit))
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.cd_edit)) },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = { menuExpanded = false; onEdit() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.cd_delete)) },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = { menuExpanded = false; onDelete() }
+                    )
+                }
             }
         }
     }
@@ -244,7 +303,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
 
     var amountText by remember { mutableStateOf(editing?.amount?.let { formatAmountInput(it) } ?: "") }
     var selectedCategoryId by remember { mutableStateOf(editing?.categoryId) }
-    var selectedCurrency by remember { mutableStateOf(editing?.currencyCode ?: "EUR") }
+    var selectedCurrency by remember { mutableStateOf(editing?.currencyCode ?: uiState.defaultCurrency) }
     var frequency by remember { mutableStateOf(editing?.frequency ?: RecurrenceFrequency.MONTHLY) }
     var dayOfMonthText by remember { mutableStateOf(if (editing?.frequency == RecurrenceFrequency.MONTHLY) editing.dayOfPeriod.toString() else "1") }
     var selectedWeekday by remember {
@@ -253,7 +312,7 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     var note by remember { mutableStateOf(editing?.note ?: "") }
     var startDate by remember { mutableStateOf(editing?.localStartDate ?: LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isShared by remember { mutableStateOf(editing?.isShared ?: true) }
+    var isShared by remember { mutableStateOf(editing?.isShared ?: uiState.defaultShared) }
     var paidByUid by remember { mutableStateOf(editing?.paidByUid ?: "") }
     var customSplitEnabled by remember { mutableStateOf(editing?.let { it.payerShare != 0.5 } ?: false) }
     var payerShare by remember { mutableStateOf(editing?.payerShare ?: 0.5) }
@@ -270,10 +329,16 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
             selectedCurrency = uiState.currencyRates.first().code
         }
     }
+    LaunchedEffect(uiState.defaultCurrency) {
+        if (!isEditing) selectedCurrency = uiState.defaultCurrency
+    }
     LaunchedEffect(uiState.myUid) {
         if (paidByUid.isEmpty() && uiState.myUid.isNotEmpty()) {
             paidByUid = uiState.myUid
         }
+    }
+    LaunchedEffect(uiState.defaultShared) {
+        if (!isEditing) isShared = uiState.defaultShared
     }
 
     val amount = amountText.replace(',', '.').toDoubleOrNull()

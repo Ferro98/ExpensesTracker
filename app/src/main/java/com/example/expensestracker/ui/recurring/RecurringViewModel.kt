@@ -8,6 +8,8 @@ import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.settings.SettingsRepository
+import com.example.expensestracker.domain.nextOccurrence
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,13 +28,21 @@ data class RecurringUiState(
     val myUid: String = "",
     val partnerUid: String? = null,
     val partnerName: String = "Partner",
-    val inGroup: Boolean = false
+    val inGroup: Boolean = false,
+    /** Active items' cost normalized to a monthly figure (weekly ones scaled by ~4.33 weeks/month), in the base currency. */
+    val monthlyTotal: Double = 0.0,
+    val defaultShared: Boolean = false,
+    val defaultCurrency: String = "EUR"
 )
+
+/** Average weeks per month (52 weeks / 12 months) - used to project a weekly recurring cost onto a monthly total. */
+private const val WEEKS_PER_MONTH = 52.0 / 12.0
 
 class RecurringViewModel(
     private val personalExpenseRepository: ExpenseRepository,
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
+    private val settingsRepository: SettingsRepository,
     private val myUid: String
 ) : ViewModel() {
     private val allItems = combine(
@@ -40,21 +50,43 @@ class RecurringViewModel(
         groupContext?.expenseRepository?.observeRecurring() ?: flowOf(emptyList())
     ) { personal, group -> personal + group }
 
+    // Combine already sits at the 5-flow overload limit, so the two independent settings flows
+    // share one slot rather than pulling in a 6th.
+    private val defaultPrefs = combine(
+        settingsRepository.defaultSharedForRecurring,
+        settingsRepository.defaultCurrency
+    ) { defaultShared, defaultCurrency -> defaultShared to defaultCurrency }
+
     val uiState: StateFlow<RecurringUiState> = combine(
         allItems,
         personalDataRepository.observeCategories(),
         personalDataRepository.observeCurrencyRates(),
-        groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null)
-    ) { items, categories, currencyRates, group ->
+        groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
+        defaultPrefs
+    ) { items, categories, currencyRates, group, (defaultShared, defaultCurrency) ->
         val partnerUid = group?.otherMemberUid(myUid)
+        val today = LocalDate.now()
+        val monthlyTotal = items.filter { it.active }.sumOf { item ->
+            val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
+            val amountInBase = item.amount * rate
+            when (item.frequency) {
+                RecurrenceFrequency.MONTHLY -> amountInBase
+                RecurrenceFrequency.WEEKLY -> amountInBase * WEEKS_PER_MONTH
+            }
+        }
         RecurringUiState(
-            items = items.sortedWith(compareByDescending<RecurringExpense> { it.active }.thenBy { it.dayOfPeriod }),
+            // Active items float to the top, then soonest-due first - dayOfPeriod alone mixed
+            // day-of-month (1-31) and day-of-week (1-7) semantics and didn't reflect real due order.
+            items = items.sortedWith(compareByDescending<RecurringExpense> { it.active }.thenBy { it.nextOccurrence(today) }),
             categories = categories,
             currencyRates = currencyRates,
             myUid = myUid,
             partnerUid = partnerUid,
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
-            inGroup = groupContext != null
+            inGroup = groupContext != null,
+            monthlyTotal = monthlyTotal,
+            defaultShared = defaultShared,
+            defaultCurrency = defaultCurrency
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), RecurringUiState(myUid = myUid, inGroup = groupContext != null))
 

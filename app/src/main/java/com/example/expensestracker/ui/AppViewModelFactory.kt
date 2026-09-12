@@ -33,16 +33,16 @@ class AppViewModelFactory(
                 ) as T
 
             modelClass.isAssignableFrom(AddExpenseViewModel::class.java) ->
-                AddExpenseViewModel(personalExpenseRepository, personalDataRepository, groupContext, myUid) as T
+                AddExpenseViewModel(personalExpenseRepository, personalDataRepository, groupContext, app.settingsRepository, myUid) as T
 
             modelClass.isAssignableFrom(CategoriesViewModel::class.java) ->
                 CategoriesViewModel(personalDataRepository, app.settingsRepository) as T
 
             modelClass.isAssignableFrom(RecurringViewModel::class.java) ->
-                RecurringViewModel(personalExpenseRepository, personalDataRepository, groupContext, myUid) as T
+                RecurringViewModel(personalExpenseRepository, personalDataRepository, groupContext, app.settingsRepository, myUid) as T
 
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(app, personalDataRepository, groupContext, app.settingsRepository, myUid) as T
+                SettingsViewModel(app, personalDataRepository, groupContext, app.settingsRepository, app.authRepository, myUid) as T
 
             modelClass.isAssignableFrom(OnboardingViewModel::class.java) ->
                 OnboardingViewModel(app, app.groupRepository, app.settingsRepository, myUid) as T

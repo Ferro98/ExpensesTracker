@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
+import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.Group
+import com.example.expensestracker.data.repository.AuthRepository
+import com.example.expensestracker.data.repository.AuthState
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.data.settings.ThemeMode
@@ -22,10 +25,38 @@ class SettingsViewModel(
     private val repository: PersonalDataRepository,
     private val groupContext: GroupContext?,
     private val settingsRepository: SettingsRepository,
+    private val authRepository: AuthRepository,
     private val myUid: String
 ) : ViewModel() {
     val currencyRates: StateFlow<List<CurrencyRate>> = repository.observeCurrencyRates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val authState: StateFlow<AuthState?> = authRepository.observeAuthState()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val defaultSharedForExpense: StateFlow<Boolean> = settingsRepository.defaultSharedForExpense
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val defaultSharedForRecurring: StateFlow<Boolean> = settingsRepository.defaultSharedForRecurring
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setDefaultSharedForExpense(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setDefaultSharedForExpense(value) }
+    }
+
+    fun setDefaultSharedForRecurring(value: Boolean) {
+        viewModelScope.launch { settingsRepository.setDefaultSharedForRecurring(value) }
+    }
+
+    val defaultCurrency: StateFlow<String> = settingsRepository.defaultCurrency
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultUserData.BASE_CURRENCY)
+
+    fun setDefaultCurrency(code: String) {
+        viewModelScope.launch { settingsRepository.setDefaultCurrency(code) }
+    }
+
+    private val _isLinkingAccount = MutableStateFlow(false)
+    val isLinkingAccount: StateFlow<Boolean> = _isLinkingAccount
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
@@ -92,5 +123,16 @@ class SettingsViewModel(
 
     fun clearStatus() {
         _statusMessage.value = null
+    }
+
+    fun linkGoogleAccount(idToken: String) {
+        viewModelScope.launch {
+            _isLinkingAccount.value = true
+            authRepository.linkWithGoogle(idToken).fold(
+                onSuccess = { _statusMessage.value = androidContext.getString(R.string.account_linked_success) },
+                onFailure = { _statusMessage.value = androidContext.getString(R.string.account_link_failed) }
+            )
+            _isLinkingAccount.value = false
+        }
     }
 }

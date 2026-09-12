@@ -26,8 +26,9 @@ class PersonalDataRepository(
     private val currencyRatesRef get() = userRef.collection("currencyRates")
 
     // Categories
-    fun observeCategories(): Flow<List<Category>> = categoriesRef.observeAsFlow()
-    suspend fun getCategories(): List<Category> = categoriesRef.get().await().toObjects(Category::class.java)
+    fun observeCategories(): Flow<List<Category>> = categoriesRef.orderBy("sortOrder").observeAsFlow()
+    suspend fun getCategories(): List<Category> =
+        categoriesRef.orderBy("sortOrder").get().await().toObjects(Category::class.java)
 
     suspend fun addCategory(category: Category): String {
         val ref = categoriesRef.document()
@@ -41,6 +42,15 @@ class PersonalDataRepository(
 
     suspend fun deleteCategory(categoryId: String) {
         categoriesRef.document(categoryId).delete().await()
+    }
+
+    /** Rewrites sortOrder for every category to match [orderedIds]'s position (0-based), fixing any gaps left by deletions. */
+    suspend fun reorderCategories(orderedIds: List<String>) {
+        val batch = firestore.batch()
+        orderedIds.forEachIndexed { index, id ->
+            batch.update(categoriesRef.document(id), "sortOrder", index)
+        }
+        batch.commit().await()
     }
 
     // Currency rates

@@ -1,5 +1,7 @@
 package com.example.expensestracker.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LightMode
@@ -40,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -62,9 +68,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.DefaultUserData
+import com.example.expensestracker.data.repository.AuthState
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.onboarding.GroupSetupSection
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -76,7 +86,30 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
     val group by viewModel.group.collectAsState()
+    val authState by viewModel.authState.collectAsState()
+    val isLinkingAccount by viewModel.isLinkingAccount.collectAsState()
+    val defaultSharedForExpense by viewModel.defaultSharedForExpense.collectAsState()
+    val defaultSharedForRecurring by viewModel.defaultSharedForRecurring.collectAsState()
+    val defaultCurrency by viewModel.defaultCurrency.collectAsState()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val idToken = task.getResult(ApiException::class.java)?.idToken
+            if (idToken != null) viewModel.linkGoogleAccount(idToken)
+        } catch (e: ApiException) {
+            // User cancelled or Play Services hiccup - nothing to report, they can just retry.
+        }
+    }
+    val startGoogleSignIn = {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInLauncher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -101,6 +134,14 @@ fun SettingsScreen(factory: AppViewModelFactory) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                AccountCard(
+                    authState = authState,
+                    isLinking = isLinkingAccount,
+                    onSignIn = startGoogleSignIn
+                )
+            }
+
             item {
                 Text(
                     stringResource(R.string.group_label),
@@ -148,6 +189,19 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                         }
                     }
                 }
+            }
+
+            item {
+                PreferencesCard(
+                    currencyRates = currencyRates,
+                    defaultCurrency = defaultCurrency,
+                    onDefaultCurrencyChange = viewModel::setDefaultCurrency,
+                    showSharedDefaults = viewModel.inGroup,
+                    defaultSharedForExpense = defaultSharedForExpense,
+                    onDefaultSharedForExpenseChange = viewModel::setDefaultSharedForExpense,
+                    defaultSharedForRecurring = defaultSharedForRecurring,
+                    onDefaultSharedForRecurringChange = viewModel::setDefaultSharedForRecurring
+                )
             }
 
             item {
@@ -295,6 +349,151 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                 TextButton(onClick = { showLeaveConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
+    }
+}
+
+@Composable
+private fun PreferencesCard(
+    currencyRates: List<CurrencyRate>,
+    defaultCurrency: String,
+    onDefaultCurrencyChange: (String) -> Unit,
+    showSharedDefaults: Boolean,
+    defaultSharedForExpense: Boolean,
+    onDefaultSharedForExpenseChange: (Boolean) -> Unit,
+    defaultSharedForRecurring: Boolean,
+    onDefaultSharedForRecurringChange: (Boolean) -> Unit
+) {
+    Column {
+        Text(
+            stringResource(R.string.preferences_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(8.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(stringResource(R.string.pref_default_currency), fontWeight = FontWeight.Medium)
+                    Text(
+                        stringResource(R.string.pref_default_currency_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        currencyRates.forEach { rate ->
+                            FilterChip(
+                                selected = defaultCurrency == rate.code,
+                                onClick = { onDefaultCurrencyChange(rate.code) },
+                                label = { Text(rate.code) }
+                            )
+                        }
+                    }
+                }
+                if (showSharedDefaults) {
+                    PreferenceSwitchRow(
+                        title = stringResource(R.string.pref_default_shared_expense),
+                        subtitle = stringResource(R.string.pref_default_shared_expense_desc),
+                        checked = defaultSharedForExpense,
+                        onCheckedChange = onDefaultSharedForExpenseChange
+                    )
+                    PreferenceSwitchRow(
+                        title = stringResource(R.string.pref_default_shared_recurring),
+                        subtitle = stringResource(R.string.pref_default_shared_recurring_desc),
+                        checked = defaultSharedForRecurring,
+                        onCheckedChange = onDefaultSharedForRecurringChange
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreferenceSwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun AccountCard(authState: AuthState?, isLinking: Boolean, onSignIn: () -> Unit) {
+    val isProtected = authState != null && !authState.isAnonymous
+    Column {
+        Text(
+            stringResource(R.string.account_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(8.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isProtected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (isProtected) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                    contentDescription = null,
+                    tint = if (isProtected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    if (isProtected) {
+                        Text(
+                            stringResource(R.string.account_protected),
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        authState.email?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                    } else {
+                        Text(
+                            stringResource(R.string.account_not_protected),
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            stringResource(R.string.account_not_protected_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+            if (!isProtected) {
+                Button(
+                    onClick = onSignIn,
+                    enabled = !isLinking,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                ) {
+                    if (isLinking) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(stringResource(R.string.sign_in_with_google))
+                }
+            }
+        }
     }
 }
 
