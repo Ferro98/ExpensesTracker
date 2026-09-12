@@ -25,8 +25,6 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-private const val SHARED_BUCKET_ID = "__shared__"
-
 data class DashboardUiState(
     val monthLabel: String = "",
     val monthStart: LocalDate = LocalDate.now().withDayOfMonth(1),
@@ -41,7 +39,10 @@ data class DashboardUiState(
     val partnerUid: String? = null,
     val partnerName: String = "Partner",
     val currencyRates: List<CurrencyRate> = emptyList(),
-    val defaultCurrency: String = "EUR"
+    val defaultCurrency: String = "EUR",
+    /** Ids of this device's own categories - lets the UI replicate the "unmatched shared spend
+     *  falls into the Condivise bucket" rule below when a viewer taps that bucket for details. */
+    val categoryIds: Set<String> = emptySet()
 ) {
     /** Sum of the personal per-category budgets that have been set. */
     val categoryBudgetTotal: Double
@@ -56,6 +57,10 @@ class DashboardViewModel(
     private val sharedCategoryLabel: String,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
+    companion object {
+        const val SHARED_BUCKET_ID = "__shared__"
+    }
+
     val currentMonth: YearMonth = YearMonth.now()
 
     init {
@@ -172,7 +177,8 @@ class DashboardViewModel(
             partnerUid = partnerUid,
             partnerName = partnerName,
             currencyRates = currencyRates,
-            defaultCurrency = defaultCurrency
+            defaultCurrency = defaultCurrency,
+            categoryIds = categoryIds
         )
     }
 

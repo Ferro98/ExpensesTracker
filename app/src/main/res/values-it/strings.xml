@@ -37,6 +37,7 @@
     <string name="balance_you_owe">Devi %2$s a %1$s</string>
     <string name="balance_owes_you">%1$s ti deve %2$s</string>
     <string name="record_settlement">Registra un saldo</string>
+    <string name="balance_lifetime_note">Totale complessivo di sempre, non limitato al mese che stai visualizzando.</string>
     <string name="settlement_i_paid">Ho pagato io a %1$s</string>
     <string name="settlement_partner_paid_me">%1$s ha pagato me</string>
     <string name="spent_this_month">Speso questo mese</string>
@@ -67,6 +68,8 @@
     <string name="save_expense">Salva spesa</string>
     <string name="discard_expense_title">Scartare questa spesa?</string>
     <string name="discard_expense_text">Ci sono modifiche non salvate che andranno perse.</string>
+    <string name="error_category_not_found">Scegli una categoria dall\'elenco prima di salvare.</string>
+    <string name="error_save_failed">Impossibile salvare: controlla la connessione e riprova.</string>
 
     <!-- Paid by / split -->
     <string name="paid_by_label">Pagato da</string>
@@ -78,6 +81,7 @@
     <string name="fab_category">Categoria</string>
     <string name="total_monthly_budget">Budget mensile totale</string>
     <string name="categories_label">Categorie</string>
+    <string name="categories_reorder_hint">Usa le frecce per riordinarle: lo stesso ordine appare quando inserisci una spesa.</string>
     <string name="budget_prefix">Budget: %1$s</string>
     <string name="no_budget">Nessun budget</string>
     <string name="new_category_title">Nuova categoria</string>
@@ -104,6 +108,9 @@
     <string name="start_prefix">Inizio: %1$s</string>
     <string name="next_occurrence_prefix">Prossima: %1$s</string>
     <string name="fixed_monthly_total_label">Spese fisse mensili</string>
+    <string name="label_next_due">Prossima scadenza</string>
+    <string name="label_start_date">Data di inizio</string>
+    <string name="label_status">Stato</string>
     <string name="reminder_label">Promemoria</string>
     <string name="reminder_subtitle">Ricevi una notifica prima della scadenza</string>
     <string name="reminder_channel_name">Promemoria spese ricorrenti</string>

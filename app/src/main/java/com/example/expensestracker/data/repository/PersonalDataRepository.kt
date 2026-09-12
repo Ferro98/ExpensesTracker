@@ -8,6 +8,7 @@ import com.example.expensestracker.data.remote.CurrencyRateService
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -26,9 +27,14 @@ class PersonalDataRepository(
     private val currencyRatesRef get() = userRef.collection("currencyRates")
 
     // Categories
-    fun observeCategories(): Flow<List<Category>> = categoriesRef.orderBy("sortOrder").observeAsFlow()
+    // Sorted client-side rather than via Firestore's orderBy("sortOrder"): that operator silently
+    // drops any document missing the field entirely, and categories created before sortOrder
+    // existed (or never re-saved since) have no such field in Firestore - orderBy would make them
+    // vanish from every screen, including the picker an in-progress edit's categoryId resolves
+    // against, which broke saving edits for exactly those categories.
+    fun observeCategories(): Flow<List<Category>> = categoriesRef.observeAsFlow<Category>().map { it.sortedBy { c -> c.sortOrder } }
     suspend fun getCategories(): List<Category> =
-        categoriesRef.orderBy("sortOrder").get().await().toObjects(Category::class.java)
+        categoriesRef.get().await().toObjects(Category::class.java).sortedBy { it.sortOrder }
 
     suspend fun addCategory(category: Category): String {
         val ref = categoriesRef.document()

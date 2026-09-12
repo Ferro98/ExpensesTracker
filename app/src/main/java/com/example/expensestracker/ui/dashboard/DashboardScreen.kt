@@ -3,6 +3,7 @@ package com.example.expensestracker.ui.dashboard
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,13 +30,11 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -74,6 +74,7 @@ import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
+import com.example.expensestracker.util.localizedCategoryName
 import com.example.expensestracker.util.toColor
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -81,11 +82,16 @@ import java.time.LocalDate
 private const val MONTH_PAGE_COUNT = 1201
 private const val MONTH_INITIAL_PAGE = MONTH_PAGE_COUNT / 2
 
+/** Snapshot taken at the moment a category (or the synthetic "Condivise" bucket) is tapped, so the detail sheet doesn't need to re-derive it reactively. */
+private data class CategoryDetailData(val name: String, val icon: String, val colorHex: String, val expenses: List<Expense>)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(factory: AppViewModelFactory, onEditExpense: (Expense) -> Unit) {
     val viewModel: DashboardViewModel = viewModel(factory = factory)
     var showSettlementDialog by remember { mutableStateOf(false) }
+    var expenseDetail by remember { mutableStateOf<Expense?>(null) }
+    var categoryDetail by remember { mutableStateOf<CategoryDetailData?>(null) }
 
     val pagerState = rememberPagerState(initialPage = MONTH_INITIAL_PAGE) { MONTH_PAGE_COUNT }
     val coroutineScope = rememberCoroutineScope()
@@ -136,8 +142,15 @@ fun DashboardScreen(factory: AppViewModelFactory, onEditExpense: (Expense) -> Un
 
             MonthContent(
                 uiState = uiState,
-                onEditExpense = onEditExpense,
-                onDeleteExpense = { viewModel.deleteExpense(it) },
+                onOpenExpenseDetail = { expenseDetail = it },
+                onOpenCategoryDetail = { category ->
+                    val expenses = if (category.categoryId == DashboardViewModel.SHARED_BUCKET_ID) {
+                        uiState.monthExpenses.filter { it.isShared && it.categoryId !in uiState.categoryIds }
+                    } else {
+                        uiState.monthExpenses.filter { it.categoryId == category.categoryId }
+                    }
+                    categoryDetail = CategoryDetailData(category.name, category.icon, category.colorHex, expenses)
+                },
                 onRecordSettlement = { showSettlementDialog = true }
             )
         }
@@ -160,13 +173,34 @@ fun DashboardScreen(factory: AppViewModelFactory, onEditExpense: (Expense) -> Un
             )
         }
     }
+
+    expenseDetail?.let { expense ->
+        ExpenseDetailSheet(
+            expense = expense,
+            myUid = currentUiState.myUid,
+            partnerName = currentUiState.partnerName,
+            onDismiss = { expenseDetail = null },
+            onEdit = { onEditExpense(expense); expenseDetail = null },
+            onDelete = { viewModel.deleteExpense(expense.id); expenseDetail = null }
+        )
+    }
+
+    categoryDetail?.let { detail ->
+        CategoryDetailSheet(
+            detail = detail,
+            myUid = currentUiState.myUid,
+            partnerName = currentUiState.partnerName,
+            onDismiss = { categoryDetail = null },
+            onOpenExpense = { expenseDetail = it }
+        )
+    }
 }
 
 @Composable
 private fun MonthContent(
     uiState: DashboardUiState,
-    onEditExpense: (Expense) -> Unit,
-    onDeleteExpense: (String) -> Unit,
+    onOpenExpenseDetail: (Expense) -> Unit,
+    onOpenCategoryDetail: (CategorySpending) -> Unit,
     onRecordSettlement: () -> Unit
 ) {
     LazyColumn(
@@ -181,7 +215,7 @@ private fun MonthContent(
                 SectionHeader(stringResource(R.string.by_category), topPadding = 10.dp)
             }
             items(uiState.categorySpending.filter { it.spent > 0 || it.monthlyBudget != null }) { category ->
-                CategorySpendingRow(category)
+                CategorySpendingRow(category, onClick = { onOpenCategoryDetail(category) })
             }
         }
 
@@ -208,8 +242,7 @@ private fun MonthContent(
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
-                    onEdit = { onEditExpense(expense) },
-                    onDelete = { onDeleteExpense(expense.id) }
+                    onClick = { onOpenExpenseDetail(expense) }
                 )
             }
         }
@@ -291,6 +324,16 @@ private fun BalanceCard(balance: Balance, myUid: String, partnerName: String, on
                 else -> stringResource(R.string.balance_owes_you, partnerName, formatMoney(balance.netAmount))
             }
             Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = onContainerColor)
+            if (!settled) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    // This is a running lifetime total across every shared expense and settlement,
+                    // not scoped to the month being viewed - unlike the numbers above it.
+                    stringResource(R.string.balance_lifetime_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onContainerColor.copy(alpha = 0.75f)
+                )
+            }
             Spacer(Modifier.height(16.dp))
             OutlinedButton(
                 onClick = onRecordSettlement,
@@ -465,9 +508,11 @@ private fun BudgetOverviewCard(totalSpent: Double, monthlyBudget: Double?, categ
 }
 
 @Composable
-private fun CategorySpendingRow(category: CategorySpending) {
+private fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -514,18 +559,18 @@ private fun CategorySpendingRow(category: CategorySpending) {
 }
 
 @Composable
-private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onEdit: () -> Unit, onDelete: () -> Unit) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
+private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 14.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -541,7 +586,8 @@ private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onE
             Column(modifier = Modifier.weight(1f)) {
                 // The note is what the user actually cares about at a glance - the category (already
                 // shown as the icon) rides along as a small subtitle instead of pushing the note out.
-                val primaryText = expense.note?.takeIf { it.isNotBlank() } ?: expense.categoryName
+                val categoryName = localizedCategoryName(expense.categoryName)
+                val primaryText = expense.note?.takeIf { it.isNotBlank() } ?: categoryName
                 Text(
                     primaryText,
                     style = MaterialTheme.typography.bodyMedium,
@@ -552,7 +598,7 @@ private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onE
                 Spacer(Modifier.height(2.dp))
                 val payerLabel = if (expense.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (expense.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-                val subtitle = "${expense.categoryIcon} ${expense.categoryName} · ${formatShortDate(expense.localDate)} · $sharedLabel"
+                val subtitle = "${expense.categoryIcon} $categoryName · ${formatShortDate(expense.localDate)} · $sharedLabel"
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -578,23 +624,155 @@ private fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onE
                     )
                 }
             }
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpenseDetailSheet(
+    expense: Expense,
+    myUid: String,
+    partnerName: String,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(expense.categoryColorHex.toColor().copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(expense.categoryIcon, style = MaterialTheme.typography.titleLarge)
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cd_edit)) },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = { menuExpanded = false; onEdit() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cd_delete)) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = { menuExpanded = false; onDelete() }
-                    )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(localizedCategoryName(expense.categoryName), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(formatShortDate(expense.localDate), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                formatMoney(expense.amountInBaseCurrency, DefaultUserData.BASE_CURRENCY),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold
+            )
+            if (expense.currencyCode != DefaultUserData.BASE_CURRENCY) {
+                Text(
+                    formatMoney(expense.amount, expense.currencyCode),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            expense.note?.takeIf { it.isNotBlank() }?.let {
+                DetailRow(stringResource(R.string.label_note_optional), it)
+            }
+            val payerLabel = if (expense.paidByUid == myUid) stringResource(R.string.you) else partnerName
+            val sharedLabel = if (expense.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
+            DetailRow(stringResource(R.string.label_status), sharedLabel)
+            if (expense.isShared && expense.payerShare != 0.5) {
+                val myPercent = (if (expense.paidByUid == myUid) expense.payerShare else 1 - expense.payerShare) * 100
+                DetailRow(stringResource(R.string.custom_split_label), "${myPercent.toInt()}% / ${100 - myPercent.toInt()}%")
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.cd_delete))
+                }
+                Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Edit, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.cd_edit))
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryDetailSheet(
+    detail: CategoryDetailData,
+    myUid: String,
+    partnerName: String,
+    onDismiss: () -> Unit,
+    onOpenExpense: (Expense) -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(detail.colorHex.toColor().copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(detail.icon, style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(detail.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        formatMoney(detail.expenses.sumOf { it.shareFor(myUid) }),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
+            if (detail.expenses.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_expenses_yet),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    detail.expenses.sortedByDescending { it.localDate }.forEach { expense ->
+                        ExpenseRow(
+                            expense = expense,
+                            myUid = myUid,
+                            partnerName = partnerName,
+                            onClick = { onOpenExpense(expense) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Column(modifier = Modifier.padding(bottom = 14.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }

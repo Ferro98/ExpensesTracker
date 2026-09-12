@@ -35,6 +35,12 @@ data class RecurringUiState(
     val defaultCurrency: String = "EUR"
 )
 
+/** Kept UI-string-free (resolved to text in the Composable) so the ViewModel doesn't need a Context. */
+enum class RecurringError {
+    CATEGORY_NOT_FOUND,
+    SAVE_FAILED
+}
+
 /** Average weeks per month (52 weeks / 12 months) - used to project a weekly recurring cost onto a monthly total. */
 private const val WEEKS_PER_MONTH = 52.0 / 12.0
 
@@ -102,7 +108,11 @@ class RecurringViewModel(
 
     fun clearEdit() {
         _editingRecurring.value = null
+        _errorMessage.value = null
     }
+
+    private val _errorMessage = MutableStateFlow<RecurringError?>(null)
+    val errorMessage: StateFlow<RecurringError?> = _errorMessage.asStateFlow()
 
     fun saveRecurring(
         categoryId: String,
@@ -115,45 +125,58 @@ class RecurringViewModel(
         paidByUid: String,
         isShared: Boolean,
         payerShare: Double,
-        reminderDaysBefore: Int?
+        reminderDaysBefore: Int?,
+        onSaved: () -> Unit
     ) {
         viewModelScope.launch {
-            val category = uiState.value.categories.firstOrNull { it.id == categoryId } ?: return@launch
-            val shared = isShared && groupContext != null
-            val editing = _editingRecurring.value
-
-            val updated = RecurringExpense(
-                id = editing?.id ?: "",
-                categoryId = categoryId,
-                categoryName = category.name,
-                categoryIcon = category.icon,
-                categoryColorHex = category.colorHex,
-                amount = amount,
-                currencyCode = currencyCode,
-                note = note?.takeIf { it.isNotBlank() },
-                frequency = frequency,
-                dayOfPeriod = dayOfPeriod,
-                startDate = startDate.toString(),
-                active = editing?.active ?: true,
-                lastGeneratedDate = editing?.lastGeneratedDate,
-                paidByUid = paidByUid,
-                isShared = shared,
-                payerShare = payerShare,
-                reminderDaysBefore = reminderDaysBefore
-            )
-
-            when {
-                editing == null -> repositoryFor(updated).addRecurring(updated)
-                editing.isShared == shared -> repositoryFor(updated).updateRecurring(updated)
-                // Shared flag flipped - personal and group recurring templates live in different
-                // Firestore collections, so "editing" here means deleting the old document and
-                // creating a fresh one in the new scope.
-                else -> {
-                    repositoryFor(editing).deleteRecurring(editing.id)
-                    repositoryFor(updated).addRecurring(updated)
-                }
+            _errorMessage.value = null
+            // See AddExpenseViewModel.saveExpense - categoryId is self-corrected client-side the
+            // moment it doesn't match this list, so a mismatch here should only ever be transient.
+            val category = uiState.value.categories.firstOrNull { it.id == categoryId }
+            if (category == null) {
+                _errorMessage.value = RecurringError.CATEGORY_NOT_FOUND
+                return@launch
             }
-            _editingRecurring.value = null
+            try {
+                val shared = isShared && groupContext != null
+                val editing = _editingRecurring.value
+
+                val updated = RecurringExpense(
+                    id = editing?.id ?: "",
+                    categoryId = categoryId,
+                    categoryName = category.name,
+                    categoryIcon = category.icon,
+                    categoryColorHex = category.colorHex,
+                    amount = amount,
+                    currencyCode = currencyCode,
+                    note = note?.takeIf { it.isNotBlank() },
+                    frequency = frequency,
+                    dayOfPeriod = dayOfPeriod,
+                    startDate = startDate.toString(),
+                    active = editing?.active ?: true,
+                    lastGeneratedDate = editing?.lastGeneratedDate,
+                    paidByUid = paidByUid,
+                    isShared = shared,
+                    payerShare = payerShare,
+                    reminderDaysBefore = reminderDaysBefore
+                )
+
+                when {
+                    editing == null -> repositoryFor(updated).addRecurring(updated)
+                    editing.isShared == shared -> repositoryFor(updated).updateRecurring(updated)
+                    // Shared flag flipped - personal and group recurring templates live in different
+                    // Firestore collections, so "editing" here means deleting the old document and
+                    // creating a fresh one in the new scope.
+                    else -> {
+                        repositoryFor(editing).deleteRecurring(editing.id)
+                        repositoryFor(updated).addRecurring(updated)
+                    }
+                }
+                _editingRecurring.value = null
+                onSaved()
+            } catch (e: Exception) {
+                _errorMessage.value = RecurringError.SAVE_FAILED
+            }
         }
     }
 

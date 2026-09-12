@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -133,6 +134,8 @@ private fun SplashScreen() {
 fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     val navController = rememberNavController()
     var showAddExpense by remember { mutableStateOf(false) }
+    var showAddCategory by remember { mutableStateOf(false) }
+    var showAddRecurring by remember { mutableStateOf(false) }
     // Unlike the per-screen ViewModels (each scoped to its own NavBackStackEntry, which gets
     // recreated whenever the NavHost itself is rebuilt below), this ViewModel is requested
     // directly here - outside any nav route - so it resolves to the Activity's own, long-lived
@@ -205,10 +208,12 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
             }
         },
         floatingActionButton = {
-            // Categories and Recurring manage their own FAB for adding an item;
-            // showing this one too would stack two FABs in the same corner.
-            if (currentRoute == Screen.Dashboard.route) {
-                FloatingActionButton(
+            // Hosted here (rather than each screen owning its own Scaffold+FAB) so every screen's
+            // FAB is positioned against the same, single set of bottom-bar insets - a FAB inside a
+            // Scaffold nested in this one double-counted insets and could float over list content
+            // instead of clearing it.
+            when (currentRoute) {
+                Screen.Dashboard.route -> FloatingActionButton(
                     onClick = { showAddExpense = true },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
@@ -216,6 +221,16 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_expense))
                 }
+                Screen.Categories.route -> ExtendedFloatingActionButton(
+                    onClick = { showAddCategory = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.fab_category)) }
+                )
+                Screen.Recurring.route -> ExtendedFloatingActionButton(
+                    onClick = { showAddRecurring = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.fab_recurring_expense)) }
+                )
             }
         }
     ) { padding ->
@@ -233,8 +248,20 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                     }
                 )
             }
-            composable(Screen.Recurring.route) { RecurringScreen(factory) }
-            composable(Screen.Categories.route) { CategoriesScreen(factory) }
+            composable(Screen.Recurring.route) {
+                RecurringScreen(
+                    factory,
+                    showAddDialog = showAddRecurring,
+                    onShowAddDialogChange = { showAddRecurring = it }
+                )
+            }
+            composable(Screen.Categories.route) {
+                CategoriesScreen(
+                    factory,
+                    showAddDialog = showAddCategory,
+                    onDismissAddDialog = { showAddCategory = false }
+                )
+            }
             composable(Screen.Settings.route) { SettingsScreen(factory) }
         }
     }

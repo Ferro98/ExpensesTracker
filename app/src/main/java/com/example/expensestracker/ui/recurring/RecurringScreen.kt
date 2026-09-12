@@ -21,27 +21,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,6 +63,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.R
+import com.example.expensestracker.data.model.CurrencyRate
+import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.domain.nextOccurrence
@@ -74,6 +73,7 @@ import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
+import com.example.expensestracker.util.localizedCategoryName
 import com.example.expensestracker.util.toColor
 import java.time.DayOfWeek
 import java.time.Instant
@@ -86,90 +86,101 @@ private val reminderDayOptions = listOf(1, 2, 3, 5, 7)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecurringScreen(factory: AppViewModelFactory) {
+fun RecurringScreen(
+    factory: AppViewModelFactory,
+    showAddDialog: Boolean,
+    onShowAddDialogChange: (Boolean) -> Unit
+) {
     val viewModel: RecurringViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    val dismissDialog = { viewModel.clearEdit(); showAddDialog = false }
+    var detailItem by remember { mutableStateOf<RecurringExpense?>(null) }
+    val dismissDialog = { viewModel.clearEdit(); onShowAddDialogChange(false) }
 
-    Scaffold(
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.fab_recurring_expense)) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                stringResource(R.string.fixed_recurring_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                stringResource(R.string.fixed_recurring_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+
+        if (uiState.monthlyTotal > 0) {
+            item { FixedMonthlyTotalCard(uiState.monthlyTotal) }
+        }
+
+        if (uiState.items.isEmpty()) {
             item {
-                Text(
-                    stringResource(R.string.fixed_recurring_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    stringResource(R.string.fixed_recurring_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (uiState.monthlyTotal > 0) {
-                item { FixedMonthlyTotalCard(uiState.monthlyTotal) }
-            }
-
-            if (uiState.items.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp, horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 32.dp, horizontal = 16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("🔁", style = MaterialTheme.typography.headlineLarge)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                stringResource(R.string.no_recurring_yet),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        Text("🔁", style = MaterialTheme.typography.headlineLarge)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.no_recurring_yet),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
-
-            items(uiState.items, key = { it.id }) { item ->
-                RecurringRow(
-                    item = item,
-                    myUid = uiState.myUid,
-                    partnerName = uiState.partnerName,
-                    onToggle = { viewModel.toggleActive(item) },
-                    onEdit = { viewModel.startEdit(item); showAddDialog = true },
-                    onDelete = { viewModel.deleteRecurring(item) }
-                )
-            }
-
-            item { Spacer(modifier = Modifier.height(72.dp)) }
         }
+
+        items(uiState.items, key = { it.id }) { item ->
+            RecurringRow(
+                item = item,
+                myUid = uiState.myUid,
+                partnerName = uiState.partnerName,
+                currencyRates = uiState.currencyRates,
+                onToggle = { viewModel.toggleActive(item) },
+                onOpenDetail = { detailItem = item }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(72.dp)) }
     }
 
     if (showAddDialog) {
         AddRecurringDialog(
             viewModel = viewModel,
             onDismiss = dismissDialog
+        )
+    }
+
+    detailItem?.let { item ->
+        RecurringDetailSheet(
+            item = item,
+            myUid = uiState.myUid,
+            partnerName = uiState.partnerName,
+            currencyRates = uiState.currencyRates,
+            onDismiss = { detailItem = null },
+            onEdit = {
+                viewModel.startEdit(item)
+                detailItem = null
+                onShowAddDialogChange(true)
+            },
+            onDelete = {
+                viewModel.deleteRecurring(item)
+                detailItem = null
+            }
         )
     }
 }
@@ -203,14 +214,14 @@ private fun RecurringRow(
     item: RecurringExpense,
     myUid: String,
     partnerName: String,
+    currencyRates: List<CurrencyRate>,
     onToggle: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onOpenDetail: () -> Unit
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDetail),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -220,7 +231,7 @@ private fun RecurringRow(
                 // Dims the whole row when the template is paused, so a glance at the list shows
                 // which ones are actually still generating expenses without reading every switch.
                 .alpha(if (item.active) 1f else 0.5f)
-                .padding(start = 14.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
+                .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -234,22 +245,30 @@ private fun RecurringRow(
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
+                // The note is the actual "what is this" at a glance; the category name (already
+                // shown as the icon) falls back to a subtitle instead of pushing the note out.
+                val primaryText = item.note?.takeIf { it.isNotBlank() } ?: localizedCategoryName(item.categoryName)
                 Text(
-                    item.categoryName,
+                    primaryText,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
+                val nextDueLabel = stringResource(R.string.next_occurrence_prefix, formatShortDate(item.nextOccurrence()))
+                Text(
+                    "${localizedCategoryName(item.categoryName)} · ${frequencyLabel(item)} · $nextDueLabel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-                val nextDueLabel = stringResource(R.string.next_occurrence_prefix, formatShortDate(item.nextOccurrence()))
                 val reminderLabel = item.reminderDaysBefore?.let { pluralStringResource(R.plurals.reminder_summary, it, it) }
-                val subtitle = listOfNotNull("${frequencyLabel(item)} · $nextDueLabel", sharedLabel, reminderLabel)
-                    .joinToString(" · ")
                 Text(
-                    subtitle,
+                    listOfNotNull(sharedLabel, reminderLabel).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -257,30 +276,120 @@ private fun RecurringRow(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Text(
-                formatMoney(item.amount, item.currencyCode),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Switch(checked = item.active, onCheckedChange = { onToggle() })
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cd_edit)) },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = { menuExpanded = false; onEdit() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cd_delete)) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = { menuExpanded = false; onDelete() }
+            Column(horizontalAlignment = Alignment.End) {
+                val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
+                Text(
+                    formatMoney(item.amount * rate, DefaultUserData.BASE_CURRENCY),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                // Only shown when the template's own currency differs from the base one, so an
+                // amount already entered in EUR doesn't get a redundant identical second line.
+                if (item.currencyCode != DefaultUserData.BASE_CURRENCY) {
+                    Text(
+                        formatMoney(item.amount, item.currencyCode),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+            Spacer(Modifier.width(4.dp))
+            Switch(checked = item.active, onCheckedChange = { onToggle() })
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecurringDetailSheet(
+    item: RecurringExpense,
+    myUid: String,
+    partnerName: String,
+    currencyRates: List<CurrencyRate>,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(item.categoryColorHex.toColor().copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(item.categoryIcon, style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(localizedCategoryName(item.categoryName), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(frequencyLabel(item), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+
+            val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
+            Text(
+                formatMoney(item.amount * rate, DefaultUserData.BASE_CURRENCY),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold
+            )
+            if (item.currencyCode != DefaultUserData.BASE_CURRENCY) {
+                Text(
+                    formatMoney(item.amount, item.currencyCode),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            item.note?.takeIf { it.isNotBlank() }?.let {
+                DetailRow(stringResource(R.string.label_note_optional), it)
+            }
+            DetailRow(stringResource(R.string.label_next_due), formatShortDate(item.nextOccurrence()))
+            DetailRow(stringResource(R.string.label_start_date), formatShortDate(item.localStartDate))
+            item.reminderDaysBefore?.let {
+                DetailRow(stringResource(R.string.reminder_label), pluralStringResource(R.plurals.reminder_days_chip, it, it))
+            }
+            val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
+            val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
+            DetailRow(stringResource(R.string.label_status), sharedLabel)
+            if (item.isShared && item.payerShare != 0.5) {
+                val myPercent = (if (item.paidByUid == myUid) item.payerShare else 1 - item.payerShare) * 100
+                DetailRow(stringResource(R.string.custom_split_label), "${myPercent.toInt()}% / ${100 - myPercent.toInt()}%")
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.cd_delete))
+                }
+                Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Edit, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.cd_edit))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Column(modifier = Modifier.padding(bottom = 14.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -298,6 +407,7 @@ private fun frequencyLabel(item: RecurringExpense): String = when (item.frequenc
 @Composable
 private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    val error by viewModel.errorMessage.collectAsState()
     val editing = remember { viewModel.editingRecurring.value }
     val isEditing = editing != null
 
@@ -319,8 +429,12 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
     var reminderEnabled by remember { mutableStateOf(editing?.reminderDaysBefore != null) }
     var reminderDays by remember { mutableStateOf(editing?.reminderDaysBefore ?: 3) }
 
+    // Self-corrects a categoryId that isn't in this list at all - see the identical LaunchedEffect
+    // in AddExpenseSheet for why (a shared item the other group member created).
     LaunchedEffect(uiState.categories) {
-        if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
+        if (uiState.categories.isEmpty()) return@LaunchedEffect
+        val currentId = selectedCategoryId
+        if (currentId == null || uiState.categories.none { it.id == currentId }) {
             selectedCategoryId = uiState.categories.first().id
         }
     }
@@ -477,6 +591,19 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (error != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(
+                            when (error) {
+                                RecurringError.CATEGORY_NOT_FOUND -> R.string.error_category_not_found
+                                else -> R.string.error_save_failed
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         confirmButton = {
@@ -496,9 +623,9 @@ private fun AddRecurringDialog(viewModel: RecurringViewModel, onDismiss: () -> U
                             paidByUid = if (isShared) paidByUid else uiState.myUid,
                             isShared = isShared,
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
-                            reminderDaysBefore = if (reminderEnabled) reminderDays else null
+                            reminderDaysBefore = if (reminderEnabled) reminderDays else null,
+                            onSaved = onDismiss
                         )
-                        onDismiss()
                     }
                 },
                 enabled = amount != null && amount > 0 && selectedCategoryId != null && (frequency == RecurrenceFrequency.WEEKLY || dayOfMonth != null)

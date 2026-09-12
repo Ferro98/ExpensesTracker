@@ -37,6 +37,7 @@
     <string name="balance_you_owe">You owe %1$s %2$s</string>
     <string name="balance_owes_you">%1$s owes you %2$s</string>
     <string name="record_settlement">Record a settlement</string>
+    <string name="balance_lifetime_note">Lifetime total - not limited to the month you\'re viewing.</string>
     <string name="settlement_i_paid">I paid %1$s</string>
     <string name="settlement_partner_paid_me">%1$s paid me</string>
     <string name="spent_this_month">Spent this month</string>
@@ -67,6 +68,8 @@
     <string name="save_expense">Save expense</string>
     <string name="discard_expense_title">Discard this expense?</string>
     <string name="discard_expense_text">You have unsaved changes that will be lost.</string>
+    <string name="error_category_not_found">Pick a category from the list before saving.</string>
+    <string name="error_save_failed">Couldn\'t save - check your connection and try again.</string>
 
     <!-- Paid by / split -->
     <string name="paid_by_label">Paid by</string>
@@ -78,6 +81,7 @@
     <string name="fab_category">Category</string>
     <string name="total_monthly_budget">Total monthly budget</string>
     <string name="categories_label">Categories</string>
+    <string name="categories_reorder_hint">Use the arrows to reorder - the same order shows up when adding an expense.</string>
     <string name="budget_prefix">Budget: %1$s</string>
     <string name="no_budget">No budget</string>
     <string name="new_category_title">New category</string>
@@ -104,6 +108,9 @@
     <string name="start_prefix">Start: %1$s</string>
     <string name="next_occurrence_prefix">Next: %1$s</string>
     <string name="fixed_monthly_total_label">Fixed monthly cost</string>
+    <string name="label_next_due">Next due</string>
+    <string name="label_start_date">Start date</string>
+    <string name="label_status">Status</string>
     <string name="reminder_label">Reminder</string>
     <string name="reminder_subtitle">Get a notification before it\'s due</string>
     <string name="reminder_channel_name">Recurring expense reminders</string>

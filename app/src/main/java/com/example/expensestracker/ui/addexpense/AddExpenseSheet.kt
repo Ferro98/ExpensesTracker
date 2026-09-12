@@ -56,6 +56,7 @@ import java.time.ZoneOffset
 @Composable
 fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    val error by viewModel.errorMessage.collectAsState()
     // Captured once when the sheet is composed (it's only ever entered fresh - see the
     // `if (showAddExpense)` gate in ExpensesTrackerRoot) so prefill values don't get clobbered
     // by recomposition while the user is editing the fields below.
@@ -75,8 +76,15 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     var customSplitEnabled by remember { mutableStateOf(editingExpense?.let { it.payerShare != 0.5 } ?: false) }
     var payerShare by remember { mutableStateOf(editingExpense?.payerShare ?: 0.5) }
 
+    // Also self-corrects a categoryId that isn't in this list at all: happens when editing a
+    // shared expense the OTHER group member created, since categories are private per-user and
+    // that id only ever existed in their own list - saving with it would silently fail to resolve
+    // a category. Only fires when the currently selected id truly doesn't match anything, so it
+    // never overrides a category the user has since (validly) picked themselves.
     LaunchedEffect(uiState.categories) {
-        if (selectedCategoryId == null && uiState.categories.isNotEmpty()) {
+        if (uiState.categories.isEmpty()) return@LaunchedEffect
+        val currentId = selectedCategoryId
+        if (currentId == null || uiState.categories.none { it.id == currentId }) {
             selectedCategoryId = uiState.categories.first().id
         }
     }
@@ -217,6 +225,19 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (error != null) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(
+                        when (error) {
+                            AddExpenseError.CATEGORY_NOT_FOUND -> R.string.error_category_not_found
+                            else -> R.string.error_save_failed
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             val amount = amountText.replace(',', '.').toDoubleOrNull()

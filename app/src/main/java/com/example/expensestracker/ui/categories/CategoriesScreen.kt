@@ -22,24 +22,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -71,104 +73,127 @@ private val presetColors = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun CategoriesScreen(factory: AppViewModelFactory) {
+fun CategoriesScreen(
+    factory: AppViewModelFactory,
+    showAddDialog: Boolean,
+    onDismissAddDialog: () -> Unit
+) {
     val viewModel: CategoriesViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
 
-    var showAddDialog by remember { mutableStateOf(false) }
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     var budgetText by remember(uiState.monthlyBudget) {
         mutableStateOf(uiState.monthlyBudget?.let { String.format("%.2f", it) } ?: "")
     }
     var budgetCurrency by remember(uiState.defaultCurrency) { mutableStateOf(uiState.defaultCurrency) }
 
-    Scaffold(
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.fab_category)) }
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            stringResource(R.string.total_monthly_budget),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        stringResource(R.string.total_monthly_budget),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = budgetText,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.matches(Regex("^\\d{0,7}([.,]\\d{0,2})?$"))) {
+                                    budgetText = input
+                                }
+                            },
+                            label = { Text(stringResource(R.string.label_amount)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = budgetText,
-                                onValueChange = { input ->
-                                    if (input.isEmpty() || input.matches(Regex("^\\d{0,7}([.,]\\d{0,2})?$"))) {
-                                        budgetText = input
-                                    }
-                                },
-                                label = { Text(stringResource(R.string.label_amount)) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f)
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(onClick = {
+                            val value = budgetText.replace(',', '.').toDoubleOrNull()
+                            viewModel.setMonthlyBudget(value, budgetCurrency)
+                        }) { Text(stringResource(R.string.action_save)) }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.currencyRates.forEach { rate ->
+                            FilterChip(
+                                selected = budgetCurrency == rate.code,
+                                onClick = { budgetCurrency = rate.code },
+                                label = { Text(rate.code) }
                             )
-                            Spacer(Modifier.width(8.dp))
-                            TextButton(onClick = {
-                                val value = budgetText.replace(',', '.').toDoubleOrNull()
-                                viewModel.setMonthlyBudget(value, budgetCurrency)
-                            }) { Text(stringResource(R.string.action_save)) }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            uiState.currencyRates.forEach { rate ->
-                                FilterChip(
-                                    selected = budgetCurrency == rate.code,
-                                    onClick = { budgetCurrency = rate.code },
-                                    label = { Text(rate.code) }
-                                )
-                            }
-                        }
+                    }
+                    val allocated = uiState.categoryBudgets.values.sum()
+                    val monthlyBudget = uiState.monthlyBudget
+                    if (monthlyBudget != null && monthlyBudget > 0 && allocated > 0) {
+                        Spacer(Modifier.height(14.dp))
+                        val overAllocated = allocated > monthlyBudget
+                        val progress = (allocated / monthlyBudget).toFloat().coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
+                            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        val unallocated = monthlyBudget - allocated
+                        Text(
+                            text = if (unallocated >= 0)
+                                stringResource(R.string.allocated_unallocated, formatMoney(allocated), formatMoney(unallocated))
+                            else
+                                stringResource(R.string.allocated_over_by, formatMoney(allocated), formatMoney(-unallocated)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
                     }
                 }
             }
+        }
 
-            item {
+        item {
+            Column(modifier = Modifier.padding(top = 4.dp)) {
                 Text(
                     stringResource(R.string.categories_label),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 4.dp)
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    stringResource(R.string.categories_reorder_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            itemsIndexed(uiState.categories, key = { _, category -> category.id }) { index, category ->
-                CategoryRow(
-                    category = category,
-                    budget = uiState.categoryBudgets[category.id],
-                    canMoveUp = index > 0,
-                    canMoveDown = index < uiState.categories.lastIndex,
-                    onMoveUp = { viewModel.moveCategory(category, -1) },
-                    onMoveDown = { viewModel.moveCategory(category, 1) },
-                    onEdit = { editingCategory = category },
-                    onDelete = { viewModel.deleteCategory(category) }
-                )
-            }
-
-            item { Spacer(modifier = Modifier.height(72.dp)) }
         }
+
+        itemsIndexed(uiState.categories, key = { _, category -> category.id }) { index, category ->
+            CategoryRow(
+                category = category,
+                budget = uiState.categoryBudgets[category.id],
+                canMoveUp = index > 0,
+                canMoveDown = index < uiState.categories.lastIndex,
+                onMoveUp = { viewModel.moveCategory(category, -1) },
+                onMoveDown = { viewModel.moveCategory(category, 1) },
+                onEdit = { editingCategory = category },
+                onDelete = { viewModel.deleteCategory(category) }
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(72.dp)) }
     }
 
     if (showAddDialog) {
@@ -179,10 +204,10 @@ fun CategoriesScreen(factory: AppViewModelFactory) {
             defaultCurrency = uiState.defaultCurrency,
             monthlyBudget = uiState.monthlyBudget,
             otherCategoryBudgetsTotal = uiState.categoryBudgets.values.sum(),
-            onDismiss = { showAddDialog = false },
+            onDismiss = onDismissAddDialog,
             onSave = { name, icon, color, budget, budgetCcy ->
                 viewModel.addCategory(name, icon, color, budget, budgetCcy)
-                showAddDialog = false
+                onDismissAddDialog()
             }
         )
     }
@@ -215,6 +240,8 @@ private fun CategoryRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -223,7 +250,7 @@ private fun CategoryRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
@@ -242,7 +269,7 @@ private fun CategoryRow(
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -261,11 +288,22 @@ private fun CategoryRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit))
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.cd_edit)) },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = { menuExpanded = false; onEdit() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.cd_delete)) },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = { menuExpanded = false; onDelete() }
+                    )
+                }
             }
         }
     }

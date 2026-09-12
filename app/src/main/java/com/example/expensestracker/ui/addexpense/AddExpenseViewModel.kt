@@ -30,6 +30,12 @@ data class AddExpenseUiState(
     val defaultCurrency: String = "EUR"
 )
 
+/** Kept UI-string-free (resolved to text in the Composable) so the ViewModel doesn't need a Context. */
+enum class AddExpenseError {
+    CATEGORY_NOT_FOUND,
+    SAVE_FAILED
+}
+
 class AddExpenseViewModel(
     private val personalExpenseRepository: ExpenseRepository,
     private val personalDataRepository: PersonalDataRepository,
@@ -69,6 +75,14 @@ class AddExpenseViewModel(
 
     fun clearEdit() {
         _editingExpense.value = null
+        _errorMessage.value = null
+    }
+
+    private val _errorMessage = MutableStateFlow<AddExpenseError?>(null)
+    val errorMessage: StateFlow<AddExpenseError?> = _errorMessage.asStateFlow()
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     private fun repositoryFor(shared: Boolean): ExpenseRepository =
@@ -86,49 +100,23 @@ class AddExpenseViewModel(
         onSaved: () -> Unit
     ) {
         viewModelScope.launch {
-            val category = uiState.value.categories.firstOrNull { it.id == categoryId } ?: return@launch
-            val amountInBaseCurrency = personalDataRepository.convertToBase(amount, currencyCode)
-            val shared = isShared && groupContext != null
-            val editing = _editingExpense.value
+            _errorMessage.value = null
+            // categoryId always comes from the currently-selected chip in uiState.categories (the
+            // sheet self-corrects to one of those the moment it notices a mismatch - see the
+            // LaunchedEffect in AddExpenseSheet), so this should always resolve; the fallback
+            // error only fires if that self-correction hasn't run yet, e.g. a very fast double-tap.
+            val category = uiState.value.categories.firstOrNull { it.id == categoryId }
+            if (category == null) {
+                _errorMessage.value = AddExpenseError.CATEGORY_NOT_FOUND
+                return@launch
+            }
+            try {
+                val amountInBaseCurrency = personalDataRepository.convertToBase(amount, currencyCode)
+                val shared = isShared && groupContext != null
+                val editing = _editingExpense.value
 
-            when {
-                editing == null -> repositoryFor(shared).addExpense(
-                    categoryId = categoryId,
-                    categoryName = category.name,
-                    categoryIcon = category.icon,
-                    categoryColorHex = category.colorHex,
-                    amount = amount,
-                    currencyCode = currencyCode,
-                    amountInBaseCurrency = amountInBaseCurrency,
-                    date = date,
-                    note = note?.takeIf { it.isNotBlank() },
-                    paidByUid = paidByUid,
-                    isShared = shared,
-                    payerShare = payerShare
-                )
-                // Same scope as before editing - overwrite the existing document in place.
-                editing.isShared == shared -> repositoryFor(shared).updateExpense(
-                    expenseId = editing.id,
-                    categoryId = categoryId,
-                    categoryName = category.name,
-                    categoryIcon = category.icon,
-                    categoryColorHex = category.colorHex,
-                    amount = amount,
-                    currencyCode = currencyCode,
-                    amountInBaseCurrency = amountInBaseCurrency,
-                    date = date,
-                    note = note?.takeIf { it.isNotBlank() },
-                    paidByUid = paidByUid,
-                    isShared = shared,
-                    payerShare = payerShare,
-                    createdAt = editing.createdAt
-                )
-                // Shared flag flipped - personal and group expenses live in different Firestore
-                // collections, so "editing" here means deleting the old document and creating a
-                // fresh one in the new scope.
-                else -> {
-                    repositoryFor(editing.isShared).deleteExpense(editing.id)
-                    repositoryFor(shared).addExpense(
+                when {
+                    editing == null -> repositoryFor(shared).addExpense(
                         categoryId = categoryId,
                         categoryName = category.name,
                         categoryIcon = category.icon,
@@ -142,10 +130,49 @@ class AddExpenseViewModel(
                         isShared = shared,
                         payerShare = payerShare
                     )
+                    // Same scope as before editing - overwrite the existing document in place.
+                    editing.isShared == shared -> repositoryFor(shared).updateExpense(
+                        expenseId = editing.id,
+                        categoryId = categoryId,
+                        categoryName = category.name,
+                        categoryIcon = category.icon,
+                        categoryColorHex = category.colorHex,
+                        amount = amount,
+                        currencyCode = currencyCode,
+                        amountInBaseCurrency = amountInBaseCurrency,
+                        date = date,
+                        note = note?.takeIf { it.isNotBlank() },
+                        paidByUid = paidByUid,
+                        isShared = shared,
+                        payerShare = payerShare,
+                        createdAt = editing.createdAt
+                    )
+                    // Shared flag flipped - personal and group expenses live in different Firestore
+                    // collections, so "editing" here means deleting the old document and creating a
+                    // fresh one in the new scope.
+                    else -> {
+                        repositoryFor(editing.isShared).deleteExpense(editing.id)
+                        repositoryFor(shared).addExpense(
+                            categoryId = categoryId,
+                            categoryName = category.name,
+                            categoryIcon = category.icon,
+                            categoryColorHex = category.colorHex,
+                            amount = amount,
+                            currencyCode = currencyCode,
+                            amountInBaseCurrency = amountInBaseCurrency,
+                            date = date,
+                            note = note?.takeIf { it.isNotBlank() },
+                            paidByUid = paidByUid,
+                            isShared = shared,
+                            payerShare = payerShare
+                        )
+                    }
                 }
+                _editingExpense.value = null
+                onSaved()
+            } catch (e: Exception) {
+                _errorMessage.value = AddExpenseError.SAVE_FAILED
             }
-            _editingExpense.value = null
-            onSaved()
         }
     }
 }
