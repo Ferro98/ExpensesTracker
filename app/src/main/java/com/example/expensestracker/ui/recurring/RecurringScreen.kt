@@ -22,21 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -58,19 +51,22 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
-import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.RecurrenceFrequency
 import com.example.expensestracker.data.model.RecurringExpense
 import com.example.expensestracker.domain.nextOccurrence
 import com.example.expensestracker.ui.AppViewModelFactory
+import com.example.expensestracker.ui.components.AmountText
 import com.example.expensestracker.ui.components.CategoryPicker
+import com.example.expensestracker.ui.components.DetailRow
+import com.example.expensestracker.ui.components.DetailSheet
+import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
+import com.example.expensestracker.ui.theme.MoneyStyle
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
 import com.example.expensestracker.util.localizedCategoryName
@@ -119,29 +115,7 @@ fun RecurringScreen(
         }
 
         if (uiState.items.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp, horizontal = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("🔁", style = MaterialTheme.typography.headlineLarge)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            stringResource(R.string.no_recurring_yet),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
+            item { EmptyState(icon = "🔁", title = stringResource(R.string.no_recurring_yet)) }
         }
 
         items(uiState.items, key = { it.id }) { item ->
@@ -276,30 +250,18 @@ private fun RecurringRow(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
-                Text(
-                    formatMoney(item.amount * rate, DefaultUserData.BASE_CURRENCY),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                // Only shown when the template's own currency differs from the base one, so an
-                // amount already entered in EUR doesn't get a redundant identical second line.
-                if (item.currencyCode != DefaultUserData.BASE_CURRENCY) {
-                    Text(
-                        formatMoney(item.amount, item.currencyCode),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
+            AmountText(
+                amountInBase = item.amount * rate,
+                originalAmount = item.amount,
+                originalCurrencyCode = item.currencyCode
+            )
             Spacer(Modifier.width(4.dp))
             Switch(checked = item.active, onCheckedChange = { onToggle() })
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecurringDetailSheet(
     item: RecurringExpense,
@@ -310,86 +272,41 @@ private fun RecurringDetailSheet(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(item.categoryColorHex.toColor().copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(item.categoryIcon, style = MaterialTheme.typography.titleLarge)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(localizedCategoryName(item.categoryName), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(frequencyLabel(item), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Spacer(Modifier.height(20.dp))
-
-            val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
-            Text(
-                formatMoney(item.amount * rate, DefaultUserData.BASE_CURRENCY),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold
+    val rate = currencyRates.firstOrNull { it.code == item.currencyCode }?.rateToBase ?: 1.0
+    DetailSheet(
+        onDismiss = onDismiss,
+        icon = item.categoryIcon,
+        iconTint = item.categoryColorHex.toColor(),
+        title = localizedCategoryName(item.categoryName),
+        subtitle = frequencyLabel(item),
+        onEdit = onEdit,
+        onDelete = onDelete,
+        amount = {
+            AmountText(
+                amountInBase = item.amount * rate,
+                originalAmount = item.amount,
+                originalCurrencyCode = item.currencyCode,
+                style = MoneyStyle.Large,
+                secondaryStyle = MoneyStyle.Medium,
+                horizontalAlignment = Alignment.Start
             )
-            if (item.currencyCode != DefaultUserData.BASE_CURRENCY) {
-                Text(
-                    formatMoney(item.amount, item.currencyCode),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
-
-            item.note?.takeIf { it.isNotBlank() }?.let {
-                DetailRow(stringResource(R.string.label_note_optional), it)
-            }
-            DetailRow(stringResource(R.string.label_next_due), formatShortDate(item.nextOccurrence()))
-            DetailRow(stringResource(R.string.label_start_date), formatShortDate(item.localStartDate))
-            item.reminderDaysBefore?.let {
-                DetailRow(stringResource(R.string.reminder_label), pluralStringResource(R.plurals.reminder_days_chip, it, it))
-            }
-            val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
-            val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-            DetailRow(stringResource(R.string.label_status), sharedLabel)
-            if (item.isShared && item.payerShare != 0.5) {
-                val myPercent = (if (item.paidByUid == myUid) item.payerShare else 1 - item.payerShare) * 100
-                DetailRow(stringResource(R.string.custom_split_label), "${myPercent.toInt()}% / ${100 - myPercent.toInt()}%")
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.cd_delete))
-                }
-                Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Edit, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.cd_edit))
-                }
-            }
         }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Column(modifier = Modifier.padding(bottom = 14.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyLarge)
+    ) {
+        item.note?.takeIf { it.isNotBlank() }?.let {
+            DetailRow(stringResource(R.string.label_note_optional), it)
+        }
+        DetailRow(stringResource(R.string.label_next_due), formatShortDate(item.nextOccurrence()))
+        DetailRow(stringResource(R.string.label_start_date), formatShortDate(item.localStartDate))
+        item.reminderDaysBefore?.let {
+            DetailRow(stringResource(R.string.reminder_label), pluralStringResource(R.plurals.reminder_days_chip, it, it))
+        }
+        val payerLabel = if (item.paidByUid == myUid) stringResource(R.string.you) else partnerName
+        val sharedLabel = if (item.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
+        DetailRow(stringResource(R.string.label_status), sharedLabel)
+        if (item.isShared && item.payerShare != 0.5) {
+            val myPercent = (if (item.paidByUid == myUid) item.payerShare else 1 - item.payerShare) * 100
+            DetailRow(stringResource(R.string.custom_split_label), "${myPercent.toInt()}% / ${100 - myPercent.toInt()}%")
+        }
     }
 }
 

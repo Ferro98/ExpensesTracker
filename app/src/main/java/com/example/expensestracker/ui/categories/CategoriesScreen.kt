@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -39,7 +38,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -62,6 +60,7 @@ import com.example.expensestracker.R
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.ui.AppViewModelFactory
+import com.example.expensestracker.ui.components.BudgetProgressBar
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
 
@@ -141,12 +140,8 @@ fun CategoriesScreen(
                         Spacer(Modifier.height(14.dp))
                         val overAllocated = allocated > monthlyBudget
                         val progress = (allocated / monthlyBudget).toFloat().coerceIn(0f, 1f)
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                        BudgetProgressBar(
+                            progress = progress,
                             color = if (overAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
                             trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
                         )

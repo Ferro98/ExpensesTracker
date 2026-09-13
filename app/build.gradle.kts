@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.play.services.auth)
+    // Unused for now - wired in for the Phase 4 month-over-month/category charts (see docs/UX_REDESIGN_PLAN.md).
+    implementation(libs.vico.compose.m3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
