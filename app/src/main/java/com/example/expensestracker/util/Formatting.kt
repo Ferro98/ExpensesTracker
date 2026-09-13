@@ -2,6 +2,7 @@ package com.example.expensestracker.util
 
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Currency
@@ -27,5 +28,16 @@ fun formatShortDate(date: LocalDate): String =
 
 fun formatWeekdayShort(date: LocalDate): String =
     date.dayOfWeek.getDisplayName(TextStyle.SHORT, appLocale).replaceFirstChar { it.uppercase() }
+
+/** "Settembre 2026" - the month-picker header. */
+fun formatMonthLabel(yearMonth: YearMonth): String =
+    yearMonth.month.getDisplayName(TextStyle.FULL, appLocale).replaceFirstChar { it.uppercase() } + " " + yearMonth.year
+
+/**
+ * Just the month name, cased the way the locale writes it mid-sentence ("settembre", "September"),
+ * for slotting into "Speso a %1$s" / "Spent in %1$s".
+ */
+fun formatMonthName(yearMonth: YearMonth): String =
+    yearMonth.month.getDisplayName(TextStyle.FULL, appLocale)
 
 fun String.toColor(): Color = Color(android.graphics.Color.parseColor(this))

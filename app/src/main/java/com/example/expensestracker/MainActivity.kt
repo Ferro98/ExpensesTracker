@@ -14,14 +14,18 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
@@ -48,19 +52,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.addexpense.AddExpenseSheet
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesScreen
-import com.example.expensestracker.ui.dashboard.DashboardScreen
+import com.example.expensestracker.ui.history.HistoryScreen
+import com.example.expensestracker.ui.home.HomeScreen
+import com.example.expensestracker.ui.month.MonthViewModel
+import com.example.expensestracker.ui.more.MoreScreen
 import com.example.expensestracker.ui.navigation.Screen
 import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
+import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
 
 class MainActivity : ComponentActivity() {
@@ -137,20 +147,22 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
     // Unlike the per-screen ViewModels (each scoped to its own NavBackStackEntry, which gets
-    // recreated whenever the NavHost itself is rebuilt below), this ViewModel is requested
-    // directly here - outside any nav route - so it resolves to the Activity's own, long-lived
-    // ViewModelStore. Without an explicit key tied to group identity, it would keep returning
+    // recreated whenever the NavHost itself is rebuilt below), these ViewModels are requested
+    // directly here - outside any nav route - so they resolve to the Activity's own, long-lived
+    // ViewModelStore. Without an explicit key tied to group identity, they would keep returning
     // the instance built with whatever groupContext was active the first time this screen ever
-    // ran, silently going stale after joining/leaving a group.
-    val addExpenseViewModel: AddExpenseViewModel = viewModel(factory = factory, key = vmKey)
+    // ran, silently going stale after joining/leaving a group. The keys must also differ *from
+    // each other*, since an explicit key replaces the per-class default one.
+    val addExpenseViewModel: AddExpenseViewModel = viewModel(factory = factory, key = "addExpense:$vmKey")
+    // Home, History and Stats are three views over the same month data: one shared instance means
+    // one set of Firestore listeners instead of three.
+    val monthViewModel: MonthViewModel = viewModel(factory = factory, key = "month:$vmKey")
 
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route ?: Screen.Dashboard.route
-    val currentTitleRes = when (currentRoute) {
-        Screen.Recurring.route -> R.string.title_recurring
-        Screen.Categories.route -> R.string.title_categories
-        Screen.Settings.route -> R.string.title_settings
-        else -> R.string.title_dashboard
+    val currentScreen = Screen.fromRoute(backStackEntry?.destination?.route)
+    val onEditExpense: (Expense) -> Unit = { expense ->
+        addExpenseViewModel.startEdit(expense)
+        showAddExpense = true
     }
 
     Scaffold(
@@ -158,11 +170,20 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
             TopAppBar(
                 title = {
                     Text(
-                        stringResource(currentTitleRes),
+                        stringResource(currentScreen.titleRes),
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                },
+                navigationIcon = {
+                    // Screens under "More" are pushed on top of it rather than being tabs, so they
+                    // need a way back that isn't the system gesture.
+                    if (!currentScreen.isTab) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -171,81 +192,71 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = NavigationBarDefaults.Elevation
-            ) {
-                Screen.bottomBarItems.forEach { screen ->
-                    val label = stringResource(screen.labelRes)
-                    NavigationBarItem(
-                        selected = currentRoute == screen.route,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(screen.icon, contentDescription = label) },
-                        label = {
-                            Text(
-                                label,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                softWrap = false
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
+            if (currentScreen.isTab) {
+                BottomBar(navController, currentScreen)
             }
         },
+        // Hosted here (rather than each screen owning its own Scaffold+FAB) so every screen's
+        // FAB is positioned against the same, single set of bottom-bar insets - a FAB inside a
+        // Scaffold nested in this one double-counted insets and could float over list content
+        // instead of clearing it.
         floatingActionButton = {
-            // Hosted here (rather than each screen owning its own Scaffold+FAB) so every screen's
-            // FAB is positioned against the same, single set of bottom-bar insets - a FAB inside a
-            // Scaffold nested in this one double-counted insets and could float over list content
-            // instead of clearing it.
-            when (currentRoute) {
-                Screen.Dashboard.route -> FloatingActionButton(
+            when (currentScreen) {
+                Screen.Home, Screen.History, Screen.Stats -> FloatingActionButton(
                     onClick = { showAddExpense = true },
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_expense))
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.cd_add_expense),
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
-                Screen.Categories.route -> ExtendedFloatingActionButton(
+                Screen.Categories -> ExtendedFloatingActionButton(
                     onClick = { showAddCategory = true },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.fab_category)) }
                 )
-                Screen.Recurring.route -> ExtendedFloatingActionButton(
+                Screen.Recurring -> ExtendedFloatingActionButton(
                     onClick = { showAddRecurring = true },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.fab_recurring_expense)) }
                 )
+                else -> Unit
             }
-        }
+        },
+        // "Add" belongs to the three money views equally, so it sits in the middle of the bar
+        // rather than being pinned to one corner; the management screens keep a corner FAB
+        // because theirs is a labelled, screen-specific action.
+        floatingActionButtonPosition = if (currentScreen.isTab) FabPosition.Center else FabPosition.End
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Dashboard.route,
+            startDestination = Screen.Home.route,
             modifier = Modifier.padding(padding)
         ) {
-            composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    factory,
-                    onEditExpense = { expense ->
-                        addExpenseViewModel.startEdit(expense)
-                        showAddExpense = true
-                    }
+            composable(Screen.Home.route) {
+                HomeScreen(
+                    viewModel = monthViewModel,
+                    onEditExpense = onEditExpense,
+                    onAddExpense = { showAddExpense = true },
+                    onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
+                    onSeeAllExpenses = { navController.navigateToTab(Screen.History) }
+                )
+            }
+            composable(Screen.History.route) {
+                HistoryScreen(viewModel = monthViewModel, onEditExpense = onEditExpense)
+            }
+            composable(Screen.Stats.route) {
+                StatsScreen(viewModel = monthViewModel, onEditExpense = onEditExpense)
+            }
+            composable(Screen.More.route) {
+                MoreScreen(
+                    onOpenRecurring = { navController.navigate(Screen.Recurring.route) },
+                    onOpenCategories = { navController.navigate(Screen.Categories.route) },
+                    onOpenSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
             composable(Screen.Recurring.route) {
@@ -268,5 +279,47 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
 
     if (showAddExpense) {
         AddExpenseSheet(viewModel = addExpenseViewModel, onDismiss = { showAddExpense = false })
+    }
+}
+
+@Composable
+private fun BottomBar(navController: NavHostController, currentScreen: Screen) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = NavigationBarDefaults.Elevation
+    ) {
+        Screen.bottomTabs.forEach { tab ->
+            val label = stringResource(tab.labelRes)
+            NavigationBarItem(
+                selected = currentScreen == tab.screen,
+                onClick = { navController.navigateToTab(tab.screen) },
+                icon = { Icon(tab.icon, contentDescription = label) },
+                label = {
+                    Text(
+                        label,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        softWrap = false
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        }
+    }
+}
+
+/** Switching tabs never stacks: it returns to the graph's start and restores that tab's own state. */
+private fun NavHostController.navigateToTab(screen: Screen) {
+    navigate(screen.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

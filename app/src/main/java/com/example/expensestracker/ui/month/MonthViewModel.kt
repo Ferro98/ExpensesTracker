@@ -1,7 +1,8 @@
-package com.example.expensestracker.ui.dashboard
+package com.example.expensestracker.ui.month
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
@@ -12,6 +13,7 @@ import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.domain.BalanceCalculator
+import com.example.expensestracker.domain.CategoryResolver
 import com.example.expensestracker.domain.RecurringExpenseGenerator
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.Flow
@@ -22,11 +24,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.TextStyle
-import java.util.Locale
 
-data class DashboardUiState(
-    val monthLabel: String = "",
+data class MonthUiState(
     val monthStart: LocalDate = LocalDate.now().withDayOfMonth(1),
     val monthEnd: LocalDate = LocalDate.now(),
     val totalSpent: Double = 0.0,
@@ -40,16 +39,24 @@ data class DashboardUiState(
     val partnerName: String = "Partner",
     val currencyRates: List<CurrencyRate> = emptyList(),
     val defaultCurrency: String = "EUR",
-    /** Ids of this device's own categories - lets the UI replicate the "unmatched shared spend
-     *  falls into the Condivise bucket" rule below when a viewer taps that bucket for details. */
-    val categoryIds: Set<String> = emptySet()
+    /** This month's expenses keyed by the viewer's category id they count toward (see [CategoryResolver]). */
+    val categoryExpenses: Map<String, List<Expense>> = emptyMap()
 ) {
     /** Sum of the personal per-category budgets that have been set. */
     val categoryBudgetTotal: Double
         get() = categorySpending.sumOf { it.monthlyBudget ?: 0.0 }
+
+    /** Categories with something to show, biggest spender first - the order every breakdown uses. */
+    val categorySpendingByAmount: List<CategorySpending>
+        get() = categorySpending.filter { it.spent > 0 || it.monthlyBudget != null }.sortedByDescending { it.spent }
 }
 
-class DashboardViewModel(
+/**
+ * One month's worth of derived data, shared by Home, History and Stats - they are three views over
+ * the same underlying expenses, so they share a single instance (created in ExpensesTrackerRoot)
+ * rather than each registering its own Firestore listeners.
+ */
+class MonthViewModel(
     private val personalExpenseRepository: ExpenseRepository,
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
@@ -103,8 +110,8 @@ class DashboardViewModel(
     private val currencyRates = personalDataRepository.observeCurrencyRates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Reactive dashboard state scoped to [yearMonth], recomputed as its underlying data changes. */
-    fun uiStateFor(yearMonth: YearMonth): Flow<DashboardUiState> {
+    /** Reactive state scoped to [yearMonth], recomputed as its underlying data changes. */
+    fun uiStateFor(yearMonth: YearMonth): Flow<MonthUiState> {
         val monthStart = yearMonth.atDay(1)
         val monthEnd = yearMonth.atEndOfMonth()
         return combine(allExpenses, categories, settlementsAndGroup, budgets, currencyRates) {
@@ -115,9 +122,18 @@ class DashboardViewModel(
         }
     }
 
+    /** The empty shell a page shows while its real state is still loading. */
+    fun emptyStateFor(yearMonth: YearMonth): MonthUiState =
+        MonthUiState(
+            monthStart = yearMonth.atDay(1),
+            monthEnd = yearMonth.atEndOfMonth(),
+            inGroup = groupContext != null,
+            myUid = myUid
+        )
+
     private fun buildUiState(
         expenses: List<Expense>,
-        categories: List<com.example.expensestracker.data.model.Category>,
+        categories: List<Category>,
         settlements: List<Settlement>,
         group: Group?,
         monthlyBudget: Double?,
@@ -126,11 +142,15 @@ class DashboardViewModel(
         defaultCurrency: String,
         monthStart: LocalDate,
         monthEnd: LocalDate
-    ): DashboardUiState {
+    ): MonthUiState {
         val monthExpenses = expenses.filter { !it.localDate.isBefore(monthStart) && !it.localDate.isAfter(monthEnd) }
         val myMonthSpend = monthExpenses.sumOf { it.shareFor(myUid) }
 
-        val categoryIds = categories.map { it.id }.toSet()
+        // Each expense counts toward one of the viewer's own categories, matched by id or - for
+        // a shared expense the partner filed under one of *their* private categories - by name,
+        // falling back to "Other". Only when the viewer has no "Other" category at all does
+        // anything land in the synthetic bucket, so that spend never silently disappears.
+        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories)?.id ?: SHARED_BUCKET_ID }
         val categorySpending = categories.map { category ->
             CategorySpending(
                 categoryId = category.id,
@@ -138,19 +158,14 @@ class DashboardViewModel(
                 icon = category.icon,
                 colorHex = category.colorHex,
                 monthlyBudget = categoryBudgets[category.id],
-                spent = monthExpenses.filter { it.categoryId == category.id }.sumOf { it.shareFor(myUid) }
+                spent = categoryExpenses[category.id].orEmpty().sumOf { it.shareFor(myUid) }
             )
         }
-        // Shared expenses categorized by the *other* member reference a category id from
-        // their own private list, which we can never resolve here - fold those into one
-        // visible "Shared" bucket instead of letting that spend silently disappear.
-        val unmatchedSharedSpend = monthExpenses
-            .filter { it.isShared && it.categoryId !in categoryIds }
-            .sumOf { it.shareFor(myUid) }
-        val categorySpendingWithFallback = if (unmatchedSharedSpend > 0) {
+        val unresolvedSpend = categoryExpenses[SHARED_BUCKET_ID].orEmpty().sumOf { it.shareFor(myUid) }
+        val categorySpendingWithFallback = if (unresolvedSpend > 0) {
             categorySpending + CategorySpending(
                 categoryId = SHARED_BUCKET_ID, name = sharedCategoryLabel, icon = "🤝", colorHex = "#8D6E63",
-                monthlyBudget = null, spent = unmatchedSharedSpend
+                monthlyBudget = null, spent = unresolvedSpend
             )
         } else categorySpending
 
@@ -162,9 +177,7 @@ class DashboardViewModel(
         val partnerUid = group?.otherMemberUid(myUid)
         val partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner"
 
-        return DashboardUiState(
-            monthLabel = monthStart.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
-                .replaceFirstChar { it.uppercase() } + " " + monthStart.year,
+        return MonthUiState(
             monthStart = monthStart,
             monthEnd = monthEnd,
             totalSpent = myMonthSpend,
@@ -178,7 +191,7 @@ class DashboardViewModel(
             partnerName = partnerName,
             currencyRates = currencyRates,
             defaultCurrency = defaultCurrency,
-            categoryIds = categoryIds
+            categoryExpenses = categoryExpenses
         )
     }
 

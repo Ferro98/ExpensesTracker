@@ -6,7 +6,7 @@ import com.example.expensestracker.ExpensesTrackerApp
 import com.example.expensestracker.R
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesViewModel
-import com.example.expensestracker.ui.dashboard.DashboardViewModel
+import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.onboarding.OnboardingViewModel
 import com.example.expensestracker.ui.recurring.RecurringViewModel
 import com.example.expensestracker.ui.settings.SettingsViewModel
@@ -26,8 +26,8 @@ class AppViewModelFactory(
         }
 
         return when {
-            modelClass.isAssignableFrom(DashboardViewModel::class.java) ->
-                DashboardViewModel(
+            modelClass.isAssignableFrom(MonthViewModel::class.java) ->
+                MonthViewModel(
                     personalExpenseRepository, personalDataRepository, groupContext, myUid,
                     app.getString(R.string.dashboard_shared_category), app.settingsRepository
                 ) as T

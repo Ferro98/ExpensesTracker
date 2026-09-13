@@ -3,10 +3,13 @@
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
-    <string name="nav_recurring">Ricorrenti</string>
-    <string name="nav_categories">Categorie</string>
-    <string name="nav_settings">Impostazioni</string>
+    <string name="nav_history">Storico</string>
+    <string name="nav_stats">Statistiche</string>
+    <string name="nav_more">Altro</string>
     <string name="title_dashboard">Le mie spese</string>
+    <string name="title_history">Storico</string>
+    <string name="title_stats">Statistiche</string>
+    <string name="title_more">Altro</string>
     <string name="title_recurring">Spese ricorrenti</string>
     <string name="title_categories">Categorie e budget</string>
     <string name="title_settings">Impostazioni</string>
@@ -30,6 +33,9 @@
     <string name="label_name">Nome</string>
     <string name="you">Tu</string>
     <string name="loading_ellipsis">Caricamento…</string>
+    <string name="see_all">Vedi tutte</string>
+    <string name="day_today">Oggi</string>
+    <string name="day_yesterday">Ieri</string>
 
     <!-- Dashboard -->
     <string name="balance_label">Saldo</string>
@@ -41,18 +47,28 @@
     <string name="settlement_i_paid">Ho pagato io a %1$s</string>
     <string name="settlement_partner_paid_me">%1$s ha pagato me</string>
     <string name="spent_this_month">Speso questo mese</string>
+    <string name="spent_in_month">Speso a %1$s</string>
     <string name="no_personal_budget">Nessun budget personale impostato. Impostane uno in Categorie.</string>
     <string name="budget_left">Budget: %1$s · %2$s rimasti</string>
     <string name="budget_over_by">Budget: %1$s · Superato di %2$s</string>
+    <string name="budget_daily_pace">Sono %1$s al giorno da qui a fine mese</string>
     <string name="category_budgets_label">Budget per categoria</string>
     <string name="allocated_unallocated">%1$s allocato · %2$s non allocato</string>
     <string name="allocated_over_by">%1$s allocato · superato di %2$s</string>
     <string name="by_category">Per categoria</string>
     <string name="recent_expenses">Spese recenti</string>
     <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
+    <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
     <string name="paid_by_partner">Pagato da %1$s</string>
     <string name="personal_label">Personale</string>
     <string name="dashboard_shared_category">Condivise</string>
+
+    <!-- Altro -->
+    <string name="more_manage">Gestione</string>
+    <string name="more_app">App</string>
+    <string name="more_recurring_desc">Abbonamenti e spese fisse aggiunti in automatico</string>
+    <string name="more_categories_desc">Ordine, icone e budget mensili</string>
+    <string name="more_settings_desc">Account, gruppo, valute e tema</string>
 
     <!-- Add expense -->
     <string name="new_expense_title">Nuova spesa</string>
