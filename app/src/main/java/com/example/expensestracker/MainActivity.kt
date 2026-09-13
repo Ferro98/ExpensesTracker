@@ -12,7 +12,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -67,6 +71,7 @@ import com.example.expensestracker.ui.history.HistoryScreen
 import com.example.expensestracker.ui.home.HomeScreen
 import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.more.MoreScreen
+import com.example.expensestracker.ui.navigation.BottomTab
 import com.example.expensestracker.ui.navigation.Screen
 import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
@@ -197,27 +202,26 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
         },
         bottomBar = {
             if (currentScreen.isTab) {
-                BottomBar(navController, currentScreen)
+                // The "+" is drawn as part of the bar itself (docked, overlapping its top edge)
+                // rather than through Scaffold's own floatingActionButton slot: that slot places a
+                // FabPosition.Center FAB a fixed 16dp *above* the bottom bar, which read as a
+                // separate floating circle hovering over the bar instead of a raised button
+                // belonging to it.
+                BottomBar(
+                    navController = navController,
+                    currentScreen = currentScreen,
+                    showAddFab = currentScreen != Screen.More,
+                    onAddExpense = { showAddExpense = true }
+                )
             }
         },
         // Hosted here (rather than each screen owning its own Scaffold+FAB) so every screen's
         // FAB is positioned against the same, single set of bottom-bar insets - a FAB inside a
         // Scaffold nested in this one double-counted insets and could float over list content
-        // instead of clearing it.
+        // instead of clearing it. Only the management screens' labelled, corner FAB goes through
+        // this slot now; the tab screens' "+" is docked into BottomBar above.
         floatingActionButton = {
             when (currentScreen) {
-                Screen.Home, Screen.History, Screen.Stats -> FloatingActionButton(
-                    onClick = { showAddExpense = true },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = stringResource(R.string.cd_add_expense),
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
                 Screen.Categories -> ExtendedFloatingActionButton(
                     onClick = { showAddCategory = true },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -231,10 +235,7 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 else -> Unit
             }
         },
-        // "Add" belongs to the three money views equally, so it sits in the middle of the bar
-        // rather than being pinned to one corner; the management screens keep a corner FAB
-        // because theirs is a labelled, screen-specific action.
-        floatingActionButtonPosition = if (currentScreen.isTab) FabPosition.Center else FabPosition.End
+        floatingActionButtonPosition = FabPosition.End
     ) { padding ->
         NavHost(
             navController = navController,
@@ -295,37 +296,76 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     }
 }
 
+// Half the standard 56dp FAB - offsetting by this much straddles it across the bar's top edge
+// instead of leaving daylight between the two, so the button reads as part of the bar.
+private val FabCradleOffset = 28.dp
+
 @Composable
-private fun BottomBar(navController: NavHostController, currentScreen: Screen) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = NavigationBarDefaults.Elevation
-    ) {
-        Screen.bottomTabs.forEach { tab ->
-            val label = stringResource(tab.labelRes)
-            NavigationBarItem(
-                selected = currentScreen == tab.screen,
-                onClick = { navController.navigateToTab(tab.screen) },
-                icon = { Icon(tab.icon, contentDescription = label) },
-                label = {
-                    Text(
-                        label,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        softWrap = false
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+private fun BottomBar(
+    navController: NavHostController,
+    currentScreen: Screen,
+    showAddFab: Boolean,
+    onAddExpense: () -> Unit
+) {
+    val tabs = Screen.bottomTabs
+    Box(modifier = Modifier.fillMaxWidth()) {
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = NavigationBarDefaults.Elevation
+        ) {
+            NavBarTab(navController, currentScreen, tabs[0])
+            NavBarTab(navController, currentScreen, tabs[1])
+            // Reserved for the docked FAB above - kept even on "More" (where showAddFab is false)
+            // so all four items stay in the same place instead of re-spacing across tabs.
+            Spacer(modifier = Modifier.weight(1f))
+            NavBarTab(navController, currentScreen, tabs[2])
+            NavBarTab(navController, currentScreen, tabs[3])
+        }
+
+        if (showAddFab) {
+            FloatingActionButton(
+                onClick = onAddExpense,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = -FabCradleOffset),
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.cd_add_expense),
+                    modifier = Modifier.size(28.dp)
                 )
-            )
+            }
         }
     }
+}
+
+@Composable
+private fun RowScope.NavBarTab(navController: NavHostController, currentScreen: Screen, tab: BottomTab) {
+    val label = stringResource(tab.labelRes)
+    NavigationBarItem(
+        selected = currentScreen == tab.screen,
+        onClick = { navController.navigateToTab(tab.screen) },
+        icon = { Icon(tab.icon, contentDescription = label) },
+        label = {
+            Text(
+                label,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                softWrap = false
+            )
+        },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    )
 }
 
 /** Switching tabs never stacks: it returns to the graph's start and restores that tab's own state. */

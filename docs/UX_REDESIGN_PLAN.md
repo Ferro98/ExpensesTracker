@@ -104,10 +104,19 @@ Quattro tab + FAB centrale, con gestione spostata sotto "Altro":
 
 Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 2):
 
-- Il FAB "+" è un `FloatingActionButton` centrato (`FabPosition.Center`) che **galleggia sopra**
-  la `NavigationBar`, non incassato in una tacca: un FAB con offset negativo dentro la
-  NavigationBar rischia il clipping e non c'è una `BottomAppBar` qui. Le liste chiudono con
-  uno `Spacer(72.dp)` per lasciarlo libero.
+- Il FAB "+" è agganciato ("cradle") sopra il bordo della `NavigationBar`, non messo nello
+  slot `floatingActionButton` dello Scaffold: quello slot con `FabPosition.Center` lo
+  piazzava 16dp sopra la barra, e visivamente si leggeva come un cerchio staccato che
+  galleggiava sopra, non come parte della barra (feedback utente, 2026-09-14). Ora è un
+  `FloatingActionButton` dentro lo stesso `Box` della `NavigationBar` in `MainActivity.BottomBar`,
+  con `Modifier.offset(y = -28.dp)` (metà del suo diametro standard di 56dp) così è per metà
+  sopra il bordo e per metà sovrapposto alla barra. **Non** incassato in una tacca reale
+  (nessuna forma scallopata sulla `NavigationBar`, niente `BottomAppBar`): il `Box` non
+  ritaglia i figli, quindi il FAB disegnato sopra basta a dare l'effetto senza rischi di
+  clipping. Nella `NavigationBar` la quinta colonna centrale è uno `Spacer(Modifier.weight(1f))`
+  sempre presente (anche in Altro, dove il FAB non c'è) così le quattro voci non si spostano
+  cambiando tab. Le liste chiudono comunque con uno `Spacer(72.dp)` per lasciare aria sotto
+  l'ultimo elemento.
 - Ricorrenti/Categorie/Impostazioni sono rotte "figlie" di Altro: `Screen.isTab` è falso per
   loro, quindi la TopAppBar mostra la freccia indietro e la bottom bar sparisce. I loro FAB
   estesi restano nello Scaffold root, in `FabPosition.End`.
