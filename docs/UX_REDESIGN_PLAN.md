@@ -204,7 +204,7 @@ prima di ripartire dalla Fase 1, perché diverge un po' dalla proposta iniziale)
   layout già visibili) - la normalizzazione 40/48/32 dp resta un'attività della fase che
   introduce le nuove schermate (Storico/quick-add), non di questa.
 
-### 3.3 Quick-add (nuovo inserimento spesa)
+### 3.3 Quick-add (nuovo inserimento spesa) — ✅ Fase 2 completata (2026-09-13)
 
 Sostituisce il sheet attuale mantenendo la stessa `AddExpenseViewModel` e la guardia
 anti-perdita dati.
@@ -222,6 +222,31 @@ split, nota. Se l'utente è in gruppo e il default "condivisa" è on, la riga ri
 mostra già senza aprire il Passo 2.
 
 Extra: nel dettaglio spesa aggiungere "Duplica" (crea una nuova spesa precompilata).
+
+Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 3):
+
+- Il Passo 2 è una **sezione espandibile che prende il posto del tastierino**, non una
+  seconda pagina: l'importo e la categoria restano visibili mentre si cambiano data /
+  condivisione / nota, e l'altezza del sheet non salta. La riga riassunto fa da toggle.
+- Il contenuto **resta dentro un `verticalScroll`**: a conti fatti sta in ~660 dp e su un
+  telefono da 6" non scorre, ma la rete di sicurezza serve per schermi corti, landscape e
+  font scale grandi. Non è la stessa cosa di "modulo da scorrere": in uso normale non
+  scorre.
+- Il separatore decimale del tastierino viene dal locale (`util/decimalSeparator()`), non è
+  una stringa tradotta: deve coincidere con quello che `String.format` produce nel prefill,
+  altrimenti l'importo precompilato non è più modificabile con i tasti.
+- `ExpensePrefill(source, isEdit)` sostituisce `editingExpense`: modifica e duplica
+  riempiono il form allo stesso modo ma al salvataggio fanno cose opposte, e un booleano
+  esplicito è più leggibile di un id vuoto come sentinella. Il duplicato è **datato oggi**,
+  non alla data dell'originale.
+- La categoria precompilata passa da `CategoryResolver` (prima: primo della lista). Una
+  spesa del partner porta un `categoryId` che qui non esiste, ma il nome sì: ora
+  modificandola si apre già sulla categoria giusta invece che sulla prima.
+- `lastUsedCategoryId` si scrive **solo dopo il salvataggio di una spesa nuova**: modificando
+  una spesa vecchia si corregge il passato, non si dichiara cosa si comprerà dopo.
+- `AmountKeypad` sta in `ui/components/` con `appendAmountKey` come funzione pura accanto
+  (max 7 cifre + 2 decimali, rifiuta il tasto invece di mostrare errori) - è il pezzo da
+  riusare se in futuro anche le ricorrenti passano al tastierino.
 
 ### 3.4 Storico
 
@@ -282,7 +307,7 @@ Non mischiare fasi in un solo commit.
 |---|---|---|---|
 | 0 | ✅ Fatta (2026-09-13). Design system + componenti condivisi (3.2), deduplica `ExpenseRow`/sheet, aggiunta Vico. Vedi 3.2 per cosa è cambiato rispetto alla proposta. | `ui/theme`, `ui/components`, Dashboard/Recurring/Categories per usare i componenti | **Sonnet** |
 | 1 | ✅ Fatta (2026-09-13). Nuova navigazione (3.1): tab Home/Storico/Statistiche/Altro + FAB centrale; Home ridotta; Storico con raggruppamento per giorno (senza filtri); Ricorrenti/Categorie sotto Altro. Vedi 3.1 per cosa è cambiato rispetto alla proposta. | `MainActivity`, `navigation/Screen.kt`, nuovi `ui/home`, `ui/history`, `ui/stats`, `ui/more`, `ui/month` (ex `ui/dashboard`, rimossa) | **Opus** (trasversale, richiede giudizio) |
-| 2 | Quick-add (3.3) + `lastUsedCategoryId` + "Duplica". | `ui/addexpense`, `SettingsRepository` | **Opus** se il budget lo consente, altrimenti Sonnet con questo doc |
+| 2 | ✅ Fatta (2026-09-13). Quick-add (3.3) + `lastUsedCategoryId` + "Duplica". Vedi 3.3 per cosa è cambiato rispetto alla proposta. | `ui/addexpense`, `SettingsRepository`, nuovo `ui/components/AmountKeypad`, `DetailSheet` | **Opus** se il budget lo consente, altrimenti Sonnet con questo doc |
 | 3 | Storico: ricerca e filtri (3.4). | `ui/history` | **Sonnet** |
 | 4 | Statistiche (3.5). | nuovo `ui/stats`, Vico | **Sonnet** |
 | 5 | Coppia/Gruppo (3.6). | nuovo `ui/group`, `BalanceCalculator` (solo lettura) | **Sonnet** |

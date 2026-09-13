@@ -18,7 +18,8 @@ fun ExpenseDetailSheet(
     partnerName: String,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDuplicate: () -> Unit
 ) {
     DetailSheet(
         onDismiss = onDismiss,
@@ -28,6 +29,7 @@ fun ExpenseDetailSheet(
         subtitle = formatShortDate(expense.localDate),
         onEdit = onEdit,
         onDelete = onDelete,
+        onDuplicate = onDuplicate,
         amount = {
             AmountText(
                 amountInBase = expense.amountInBaseCurrency,

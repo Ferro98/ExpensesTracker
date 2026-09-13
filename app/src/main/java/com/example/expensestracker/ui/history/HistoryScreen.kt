@@ -29,7 +29,11 @@ import com.example.expensestracker.ui.month.rememberMonthPagerState
  * Search and filters land in Phase 3 (see docs/UX_REDESIGN_PLAN.md 3.4).
  */
 @Composable
-fun HistoryScreen(viewModel: MonthViewModel, onEditExpense: (Expense) -> Unit) {
+fun HistoryScreen(
+    viewModel: MonthViewModel,
+    onEditExpense: (Expense) -> Unit,
+    onDuplicateExpense: (Expense) -> Unit
+) {
     val pagerState = rememberMonthPagerState()
     val detailState = rememberMonthDetailState()
     val currentState = currentMonthState(viewModel, pagerState)
@@ -42,6 +46,7 @@ fun HistoryScreen(viewModel: MonthViewModel, onEditExpense: (Expense) -> Unit) {
         state = detailState,
         uiState = currentState,
         onEditExpense = onEditExpense,
+        onDuplicateExpense = onDuplicateExpense,
         onDeleteExpense = viewModel::deleteExpense
     )
 }

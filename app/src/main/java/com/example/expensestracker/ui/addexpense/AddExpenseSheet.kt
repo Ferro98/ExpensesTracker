@@ -1,5 +1,6 @@
 package com.example.expensestracker.ui.addexpense
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,10 +11,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,19 +46,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import com.example.expensestracker.R
+import com.example.expensestracker.domain.CategoryResolver
+import com.example.expensestracker.ui.components.AmountKeypad
 import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.PaidByAndSplitFields
+import com.example.expensestracker.ui.components.appendAmountKey
+import com.example.expensestracker.ui.theme.MoneyStyle
+import com.example.expensestracker.util.currencySymbol
+import com.example.expensestracker.util.decimalSeparator
 import com.example.expensestracker.util.formatShortDate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/**
+ * Amount-first entry: the three things every expense needs (how much, what for, save) are all on
+ * screen at once with no scrolling, and everything else - date, sharing, note - hides behind the
+ * one-line summary until you actually want to change it. See docs/UX_REDESIGN_PLAN.md 3.3.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,55 +75,61 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
     // Captured once when the sheet is composed (it's only ever entered fresh - see the
     // `if (showAddExpense)` gate in ExpensesTrackerRoot) so prefill values don't get clobbered
     // by recomposition while the user is editing the fields below.
-    val editingExpense = remember { viewModel.editingExpense.value }
-    val isEditing = editingExpense != null
+    val prefill = remember { viewModel.prefill.value }
+    val source = prefill?.source
+    val isEditing = prefill?.isEdit == true
+    val separator = decimalSeparator()
 
-    val initialAmountText = remember { editingExpense?.amount?.let { formatAmountInput(it) } ?: "" }
-    val initialNote = remember { editingExpense?.note ?: "" }
+    val initialAmountText = remember { source?.amount?.let { formatAmountInput(it) } ?: "" }
+    val initialNote = remember { source?.note ?: "" }
     var amountText by remember { mutableStateOf(initialAmountText) }
-    var selectedCategoryId by remember { mutableStateOf(editingExpense?.categoryId) }
-    var selectedCurrency by remember { mutableStateOf(editingExpense?.currencyCode ?: uiState.defaultCurrency) }
+    var selectedCategoryId by remember { mutableStateOf(source?.categoryId) }
+    var userPickedCategory by remember { mutableStateOf(false) }
+    var selectedCurrency by remember { mutableStateOf(source?.currencyCode ?: uiState.defaultCurrency) }
     var note by remember { mutableStateOf(initialNote) }
-    var selectedDate by remember { mutableStateOf(editingExpense?.localDate ?: LocalDate.now()) }
+    // An edit keeps the expense's own date; a duplicate is a thing you're buying again now.
+    var selectedDate by remember { mutableStateOf(if (isEditing) source!!.localDate else LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var isShared by remember { mutableStateOf(editingExpense?.isShared ?: uiState.defaultShared) }
-    var paidByUid by remember { mutableStateOf(editingExpense?.paidByUid ?: "") }
-    var customSplitEnabled by remember { mutableStateOf(editingExpense?.let { it.payerShare != 0.5 } ?: false) }
-    var payerShare by remember { mutableStateOf(editingExpense?.payerShare ?: 0.5) }
+    var isShared by remember { mutableStateOf(source?.isShared ?: uiState.defaultShared) }
+    var paidByUid by remember { mutableStateOf(source?.paidByUid ?: "") }
+    var customSplitEnabled by remember { mutableStateOf(source?.let { it.payerShare != 0.5 } ?: false) }
+    var payerShare by remember { mutableStateOf(source?.payerShare ?: 0.5) }
+    var showDetails by remember { mutableStateOf(false) }
 
-    // Also self-corrects a categoryId that isn't in this list at all: happens when editing a
-    // shared expense the OTHER group member created, since categories are private per-user and
-    // that id only ever existed in their own list - saving with it would silently fail to resolve
-    // a category. Only fires when the currently selected id truly doesn't match anything, so it
-    // never overrides a category the user has since (validly) picked themselves.
-    LaunchedEffect(uiState.categories) {
-        if (uiState.categories.isEmpty()) return@LaunchedEffect
-        val currentId = selectedCategoryId
-        if (currentId == null || uiState.categories.none { it.id == currentId }) {
-            selectedCategoryId = uiState.categories.first().id
-        }
+    // Keeps re-deciding the category until the user picks one themselves, so a slow DataStore read
+    // still beats the first-in-list guess made a moment earlier. In order of preference:
+    //  - the prefilled expense's own category. CategoryResolver, not a raw id lookup: an expense
+    //    the OTHER group member created carries THEIR category id, which exists in no list here,
+    //    and saving with it would silently fail to resolve a category. It matches by name instead.
+    //  - the category used last, which is usually the one wanted again.
+    //  - the first in the list, when there's nothing better to go on.
+    LaunchedEffect(uiState.categories, uiState.lastUsedCategoryId) {
+        if (uiState.categories.isEmpty() || userPickedCategory) return@LaunchedEffect
+        selectedCategoryId = source?.let { CategoryResolver.resolve(it, uiState.categories)?.id }
+            ?: uiState.lastUsedCategoryId?.takeIf { id -> uiState.categories.any { it.id == id } }
+                    ?: uiState.categories.first().id
     }
     LaunchedEffect(uiState.currencyRates) {
         if (uiState.currencyRates.isNotEmpty() && uiState.currencyRates.none { it.code == selectedCurrency }) {
             selectedCurrency = uiState.currencyRates.first().code
         }
     }
+    // These two initial reads may have raced the real stored preference (the StateFlow starts at
+    // hardcoded defaults before Settings' DataStore values resolve) - correct them once, but only
+    // for a blank sheet: anything opened on top of an existing expense keeps that expense's values.
     LaunchedEffect(uiState.defaultCurrency) {
-        if (!isEditing) selectedCurrency = uiState.defaultCurrency
+        if (prefill == null) selectedCurrency = uiState.defaultCurrency
+    }
+    LaunchedEffect(uiState.defaultShared) {
+        if (prefill == null) isShared = uiState.defaultShared
     }
     LaunchedEffect(uiState.myUid) {
         if (paidByUid.isEmpty() && uiState.myUid.isNotEmpty()) {
             paidByUid = uiState.myUid
         }
     }
-    // The initial `isShared` read above may have raced the real stored preference (its StateFlow
-    // starts at a hardcoded false before Settings' DataStore value resolves) - correct it once,
-    // but only for a brand new expense; an edit always keeps the expense's own stored value.
-    LaunchedEffect(uiState.defaultShared) {
-        if (!isEditing) isShared = uiState.defaultShared
-    }
 
-    val dismiss = { viewModel.clearEdit(); onDismiss() }
+    val dismiss = { viewModel.clearPrefill(); onDismiss() }
 
     // Guards against losing typed data to an accidental swipe-down or scrim tap: a hide is only
     // allowed through untouched, everything else routes through the discard-confirmation dialog.
@@ -131,9 +152,11 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Everything is meant to fit without scrolling; this is only the safety net for
+                // short screens, landscape, and large font scales.
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 24.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -145,86 +168,93 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
                 }
             }
-            Spacer(Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^\\d{0,7}([.,]\\d{0,2})?$"))) {
-                        amountText = input
-                    }
-                },
-                label = { Text(stringResource(R.string.label_amount)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
+            Text(
+                text = "${currencySymbol(selectedCurrency)} ${amountText.ifEmpty { "0" }}",
+                style = MoneyStyle.Large,
+                color = if (amountText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(vertical = 8.dp)
             )
-            Spacer(Modifier.height(16.dp))
 
-            Text(stringResource(R.string.currency_label), style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(6.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                uiState.currencyRates.forEach { rate ->
-                    FilterChip(
-                        selected = selectedCurrency == rate.code,
-                        onClick = { selectedCurrency = rate.code },
-                        label = { Text(rate.code) }
-                    )
-                }
+            // One currency means nothing to choose - the chip row would just be a label.
+            if (uiState.currencyRates.size > 1) {
+                CurrencyChips(
+                    codes = uiState.currencyRates.map { it.code },
+                    selected = selectedCurrency,
+                    onSelect = { selectedCurrency = it }
+                )
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(16.dp))
 
-            Text(stringResource(R.string.category_label), style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(6.dp))
             CategoryPicker(
                 categories = uiState.categories,
                 selectedCategoryId = selectedCategoryId,
-                onSelect = { selectedCategoryId = it }
+                onSelect = { selectedCategoryId = it; userPickedCategory = true }
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
-            if (uiState.inGroup) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.shared_with, uiState.partnerName), style = MaterialTheme.typography.labelLarge)
-                        Text(
-                            stringResource(if (isShared) R.string.shared_splits_balance else R.string.shared_counts_own_budget),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+            DetailsSummaryRow(
+                date = selectedDate,
+                isShared = isShared,
+                inGroup = uiState.inGroup,
+                partnerName = uiState.partnerName,
+                note = note,
+                expanded = showDetails,
+                onToggle = { showDetails = !showDetails }
+            )
+            Spacer(Modifier.height(14.dp))
+
+            if (showDetails) {
+                OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.date_prefix, formatShortDate(selectedDate)))
+                }
+                Spacer(Modifier.height(12.dp))
+
+                if (uiState.inGroup) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.shared_with, uiState.partnerName), style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                stringResource(if (isShared) R.string.shared_splits_balance else R.string.shared_counts_own_budget),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = isShared, onCheckedChange = { isShared = it })
+                    }
+
+                    if (isShared && uiState.partnerUid != null) {
+                        Spacer(Modifier.height(12.dp))
+                        PaidByAndSplitFields(
+                            myUid = uiState.myUid,
+                            partnerUid = uiState.partnerUid!!,
+                            partnerName = uiState.partnerName,
+                            paidByUid = paidByUid,
+                            onPaidByChange = { paidByUid = it },
+                            customSplitEnabled = customSplitEnabled,
+                            onCustomSplitToggle = { customSplitEnabled = it },
+                            payerShare = payerShare,
+                            onPayerShareChange = { payerShare = it }
                         )
                     }
-                    Switch(checked = isShared, onCheckedChange = { isShared = it })
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                if (isShared && uiState.partnerUid != null) {
-                    Spacer(Modifier.height(16.dp))
-                    PaidByAndSplitFields(
-                        myUid = uiState.myUid,
-                        partnerUid = uiState.partnerUid!!,
-                        partnerName = uiState.partnerName,
-                        paidByUid = paidByUid,
-                        onPaidByChange = { paidByUid = it },
-                        customSplitEnabled = customSplitEnabled,
-                        onCustomSplitToggle = { customSplitEnabled = it },
-                        payerShare = payerShare,
-                        onPayerShareChange = { payerShare = it }
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text(stringResource(R.string.label_note_optional)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                AmountKeypad(
+                    onKey = { key -> amountText = appendAmountKey(amountText, key, separator) },
+                    onBackspace = { amountText = amountText.dropLast(1) }
+                )
             }
 
-            OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.date_prefix, formatShortDate(selectedDate)))
-            }
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text(stringResource(R.string.label_note_optional)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
             if (error != null) {
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -238,7 +268,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
             val amount = amountText.replace(',', '.').toDoubleOrNull()
             Button(
@@ -304,6 +334,77 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CurrencyChips(codes: List<String>, selected: String, onSelect: (String) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        codes.forEach { code ->
+            FilterChip(
+                selected = selected == code,
+                onClick = { onSelect(code) },
+                label = { Text(code) }
+            )
+        }
+    }
+}
+
+/**
+ * "Today · Personal · Add a note" - shows the state of everything the quick path decides for you,
+ * so the defaults are visible rather than implied, and opens the fields that change them.
+ */
+@Composable
+private fun DetailsSummaryRow(
+    date: LocalDate,
+    isShared: Boolean,
+    inGroup: Boolean,
+    partnerName: String,
+    note: String,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val today = LocalDate.now()
+    val dateLabel = when (date) {
+        today -> stringResource(R.string.day_today)
+        today.minusDays(1) -> stringResource(R.string.day_yesterday)
+        else -> formatShortDate(date)
+    }
+    val sharedLabel = if (isShared) stringResource(R.string.shared_with, partnerName) else stringResource(R.string.personal_label)
+    val noteLabel = note.takeIf { it.isNotBlank() } ?: stringResource(R.string.add_note)
+    val summary = buildList {
+        add(dateLabel)
+        if (inGroup) add(sharedLabel)
+        add(noteLabel)
+    }.joinToString(" · ")
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                summary,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = stringResource(if (expanded) R.string.cd_hide_details else R.string.cd_show_details),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

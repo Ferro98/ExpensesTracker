@@ -29,6 +29,7 @@ class SettingsRepository(private val context: Context) {
         val DEFAULT_SHARED_EXPENSE = booleanPreferencesKey("default_shared_expense")
         val DEFAULT_SHARED_RECURRING = booleanPreferencesKey("default_shared_recurring")
         val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
+        val LAST_USED_CATEGORY = stringPreferencesKey("last_used_category_id")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -79,6 +80,17 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setDefaultCurrency(code: String) {
         context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_CURRENCY] = code }
+    }
+
+    /**
+     * Category a brand new expense starts on: people buy from the same few categories in runs
+     * (a week of groceries, a trip's worth of transport), so the last one used is a better guess
+     * than the first in the list. Only written after a successful save of a *new* expense.
+     */
+    val lastUsedCategoryId: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.LAST_USED_CATEGORY] }
+
+    suspend fun setLastUsedCategoryId(categoryId: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_USED_CATEGORY] = categoryId }
     }
 
     suspend fun saveGroup(groupId: String, displayName: String) {

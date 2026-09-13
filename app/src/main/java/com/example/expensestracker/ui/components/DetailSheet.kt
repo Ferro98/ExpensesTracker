@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +61,7 @@ fun DetailSheet(
     subtitle: String,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onDuplicate: (() -> Unit)? = null,
     amount: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -96,6 +99,16 @@ fun DetailSheet(
             content()
 
             Spacer(Modifier.height(24.dp))
+            // Above the pair rather than beside it: "duplicate" is a shortcut, not a peer of the
+            // two destructive-or-primary actions, and three equal buttons would crowd the row.
+            if (onDuplicate != null) {
+                TextButton(onClick = onDuplicate, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.action_duplicate))
+                }
+                Spacer(Modifier.height(4.dp))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Delete, contentDescription = null)

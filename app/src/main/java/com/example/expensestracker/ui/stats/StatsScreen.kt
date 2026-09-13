@@ -33,7 +33,11 @@ import java.time.LocalDate
  * month-over-month comparison) arrive in Phase 4 - see docs/UX_REDESIGN_PLAN.md 3.5.
  */
 @Composable
-fun StatsScreen(viewModel: MonthViewModel, onEditExpense: (Expense) -> Unit) {
+fun StatsScreen(
+    viewModel: MonthViewModel,
+    onEditExpense: (Expense) -> Unit,
+    onDuplicateExpense: (Expense) -> Unit
+) {
     val pagerState = rememberMonthPagerState()
     val detailState = rememberMonthDetailState()
     val currentState = currentMonthState(viewModel, pagerState)
@@ -46,6 +50,7 @@ fun StatsScreen(viewModel: MonthViewModel, onEditExpense: (Expense) -> Unit) {
         state = detailState,
         uiState = currentState,
         onEditExpense = onEditExpense,
+        onDuplicateExpense = onDuplicateExpense,
         onDeleteExpense = viewModel::deleteExpense
     )
 }

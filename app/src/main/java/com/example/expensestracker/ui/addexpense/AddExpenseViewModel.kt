@@ -27,8 +27,16 @@ data class AddExpenseUiState(
     val partnerName: String = "Partner",
     val inGroup: Boolean = false,
     val defaultShared: Boolean = false,
-    val defaultCurrency: String = "EUR"
+    val defaultCurrency: String = "EUR",
+    val lastUsedCategoryId: String? = null
 )
+
+/**
+ * The expense a freshly opened sheet copies its values from. [isEdit] separates the two things
+ * that look identical while typing but differ entirely on save: an edit overwrites [source],
+ * a duplicate leaves it alone and creates a new expense next to it.
+ */
+data class ExpensePrefill(val source: Expense, val isEdit: Boolean)
 
 /** Kept UI-string-free (resolved to text in the Composable) so the ViewModel doesn't need a Context. */
 enum class AddExpenseError {
@@ -43,13 +51,22 @@ class AddExpenseViewModel(
     private val settingsRepository: SettingsRepository,
     private val myUid: String
 ) : ViewModel() {
+    // combine tops out at 5 typed flows, so the three DataStore preferences travel bundled.
+    private val preferences = combine(
+        settingsRepository.defaultSharedForExpense,
+        settingsRepository.defaultCurrency,
+        settingsRepository.lastUsedCategoryId
+    ) { defaultShared, defaultCurrency, lastUsedCategoryId ->
+        Triple(defaultShared, defaultCurrency, lastUsedCategoryId)
+    }
+
     val uiState: StateFlow<AddExpenseUiState> = combine(
         personalDataRepository.observeCategories(),
         personalDataRepository.observeCurrencyRates(),
         groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
-        settingsRepository.defaultSharedForExpense,
-        settingsRepository.defaultCurrency
-    ) { categories, currencyRates, group, defaultShared, defaultCurrency ->
+        preferences
+    ) { categories, currencyRates, group, prefs ->
+        val (defaultShared, defaultCurrency, lastUsedCategoryId) = prefs
         val partnerUid = group?.otherMemberUid(myUid)
         AddExpenseUiState(
             categories = categories,
@@ -59,22 +76,32 @@ class AddExpenseViewModel(
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
             inGroup = groupContext != null,
             defaultShared = defaultShared,
-            defaultCurrency = defaultCurrency
+            defaultCurrency = defaultCurrency,
+            lastUsedCategoryId = lastUsedCategoryId
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AddExpenseUiState(myUid = myUid))
 
-    // Set when the sheet is opened to edit an existing expense rather than add a new one; the
-    // sheet reads this once to prefill its fields, and saveExpense() branches on it to update
-    // (or move between personal/group scope) instead of creating a fresh document.
-    private val _editingExpense = MutableStateFlow<Expense?>(null)
-    val editingExpense: StateFlow<Expense?> = _editingExpense.asStateFlow()
+    // Set when the sheet is opened on top of an existing expense rather than empty; the sheet
+    // reads this once to prefill its fields, and saveExpense() branches on it to update (or move
+    // between personal/group scope) instead of creating a fresh document.
+    private val _prefill = MutableStateFlow<ExpensePrefill?>(null)
+    val prefill: StateFlow<ExpensePrefill?> = _prefill.asStateFlow()
 
     fun startEdit(expense: Expense) {
-        _editingExpense.value = expense
+        _prefill.value = ExpensePrefill(expense, isEdit = true)
     }
 
-    fun clearEdit() {
-        _editingExpense.value = null
+    /**
+     * Opens the sheet on a copy of [expense] - same amount, category, currency, note and sharing.
+     * The sheet dates it today rather than reusing [expense]'s own date, since duplicating is how
+     * you log the thing you buy again and again.
+     */
+    fun startDuplicate(expense: Expense) {
+        _prefill.value = ExpensePrefill(expense, isEdit = false)
+    }
+
+    fun clearPrefill() {
+        _prefill.value = null
         _errorMessage.value = null
     }
 
@@ -113,7 +140,9 @@ class AddExpenseViewModel(
             try {
                 val amountInBaseCurrency = personalDataRepository.convertToBase(amount, currencyCode)
                 val shared = isShared && groupContext != null
-                val editing = _editingExpense.value
+                // A duplicate carries a prefill too, but saving it must create a new document -
+                // only a real edit overwrites the one it came from.
+                val editing = _prefill.value?.takeIf { it.isEdit }?.source
 
                 when {
                     editing == null -> repositoryFor(shared).addExpense(
@@ -168,7 +197,10 @@ class AddExpenseViewModel(
                         )
                     }
                 }
-                _editingExpense.value = null
+                // Only for a new expense: while editing an old one you're correcting the past, and
+                // that category shouldn't become the default for what you buy next.
+                if (editing == null) settingsRepository.setLastUsedCategoryId(categoryId)
+                _prefill.value = null
                 onSaved()
             } catch (e: Exception) {
                 _errorMessage.value = AddExpenseError.SAVE_FAILED

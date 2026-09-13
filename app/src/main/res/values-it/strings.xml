@@ -21,12 +21,16 @@
     <string name="cd_next_month">Mese successivo</string>
     <string name="cd_move_category_up">Sposta su</string>
     <string name="cd_move_category_down">Sposta giù</string>
+    <string name="cd_backspace">Cancella l\'ultima cifra</string>
+    <string name="cd_show_details">Mostra i dettagli</string>
+    <string name="cd_hide_details">Nascondi i dettagli</string>
 
     <!-- Common -->
     <string name="action_save">Salva</string>
     <string name="action_cancel">Annulla</string>
     <string name="action_ok">OK</string>
     <string name="action_discard">Scarta</string>
+    <string name="action_duplicate">Duplica</string>
     <string name="action_keep_editing">Continua a modificare</string>
     <string name="label_amount">Importo</string>
     <string name="label_note_optional">Nota (opzionale)</string>
@@ -82,6 +86,7 @@
     <string name="shared_counts_own_budget">Conta solo sul tuo budget personale</string>
     <string name="date_prefix">Data: %1$s</string>
     <string name="save_expense">Salva spesa</string>
+    <string name="add_note">Aggiungi una nota</string>
     <string name="discard_expense_title">Scartare questa spesa?</string>
     <string name="discard_expense_text">Ci sono modifiche non salvate che andranno perse.</string>
     <string name="error_category_not_found">Scegli una categoria dall\'elenco prima di salvare.</string>

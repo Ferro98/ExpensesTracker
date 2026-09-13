@@ -69,6 +69,7 @@ private const val HOME_EXPENSE_LIMIT = 5
 fun HomeScreen(
     viewModel: MonthViewModel,
     onEditExpense: (Expense) -> Unit,
+    onDuplicateExpense: (Expense) -> Unit,
     onAddExpense: () -> Unit,
     onSeeAllCategories: () -> Unit,
     onSeeAllExpenses: () -> Unit
@@ -165,6 +166,7 @@ fun HomeScreen(
         state = detailState,
         uiState = uiState,
         onEditExpense = onEditExpense,
+        onDuplicateExpense = onDuplicateExpense,
         onDeleteExpense = viewModel::deleteExpense
     )
 

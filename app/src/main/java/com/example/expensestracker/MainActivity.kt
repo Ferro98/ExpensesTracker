@@ -164,6 +164,10 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
         addExpenseViewModel.startEdit(expense)
         showAddExpense = true
     }
+    val onDuplicateExpense: (Expense) -> Unit = { expense ->
+        addExpenseViewModel.startDuplicate(expense)
+        showAddExpense = true
+    }
 
     Scaffold(
         topBar = {
@@ -241,16 +245,25 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 HomeScreen(
                     viewModel = monthViewModel,
                     onEditExpense = onEditExpense,
+                    onDuplicateExpense = onDuplicateExpense,
                     onAddExpense = { showAddExpense = true },
                     onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
                     onSeeAllExpenses = { navController.navigateToTab(Screen.History) }
                 )
             }
             composable(Screen.History.route) {
-                HistoryScreen(viewModel = monthViewModel, onEditExpense = onEditExpense)
+                HistoryScreen(
+                    viewModel = monthViewModel,
+                    onEditExpense = onEditExpense,
+                    onDuplicateExpense = onDuplicateExpense
+                )
             }
             composable(Screen.Stats.route) {
-                StatsScreen(viewModel = monthViewModel, onEditExpense = onEditExpense)
+                StatsScreen(
+                    viewModel = monthViewModel,
+                    onEditExpense = onEditExpense,
+                    onDuplicateExpense = onDuplicateExpense
+                )
             }
             composable(Screen.More.route) {
                 MoreScreen(
