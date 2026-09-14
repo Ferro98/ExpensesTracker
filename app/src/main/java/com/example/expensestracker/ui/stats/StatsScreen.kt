@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.domain.PaceCalculator
 import com.example.expensestracker.ui.components.CategoryDonutChart
 import com.example.expensestracker.ui.components.CategorySpendingRow
 import com.example.expensestracker.ui.components.EmptyState
@@ -176,13 +177,16 @@ private fun MonthBreakdown(
 
             if (isCurrentMonth && daysElapsed != null && daysElapsed > 0) {
                 item {
-                    val dailyAverage = uiState.totalSpent / daysElapsed
-                    val projectedTotal = dailyAverage * uiState.monthEnd.dayOfMonth
-                    PaceCard(
-                        dailyAverage = dailyAverage,
-                        projectedTotal = projectedTotal,
-                        monthlyBudget = uiState.monthlyBudget
-                    )
+                    val pace = remember(uiState.monthExpenses, uiState.totalSpent, daysElapsed) {
+                        PaceCalculator.compute(
+                            monthExpenses = uiState.monthExpenses,
+                            myUid = uiState.myUid,
+                            totalSpent = uiState.totalSpent,
+                            daysElapsed = daysElapsed,
+                            daysInMonth = uiState.monthEnd.dayOfMonth
+                        )
+                    }
+                    PaceCard(pace = pace, monthlyBudget = uiState.monthlyBudget)
                 }
             }
 

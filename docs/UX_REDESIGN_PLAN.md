@@ -352,6 +352,19 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 5):
   finestra segue il mese visualizzato.
 - Card "Ritmo" **non compare mai su un mese diverso da quello corrente** (nessuna proiezione
   ha senso per un mese passato o futuro) - condizione `yearMonth == YearMonth.now()`.
+- **Correzione post-fase (2026-09-14, feedback utente)**: la media giornaliera e la
+  proiezione grezze (`totalSpent / giorni trascorsi × giorni del mese`) sono ingannevoli
+  quando il mese contiene spese grosse una tantum (alloggio, trasporti di un viaggio, ecc.):
+  proiettarle come se si ripetessero ogni giorno gonfia enormemente la stima. Ora
+  `domain/PaceCalculator` esclude dal *ritmo* (non dal totale già speso, quello resta reale)
+  le spese "fuori scala": più di 3× la spesa mediana del mese, calcolata sulla quota
+  dell'utente (`shareFor(myUid)`), non per categoria (niente elenco di categorie "grosse" da
+  mantenere - si adatta a qualunque mese/utente). Sotto le 3 spese nel mese non si tenta
+  nemmeno il calcolo (una mediana su 1-2 valori non è significativa). La proiezione resta
+  `speso finora (spese fuori scala incluse) + media giornaliera "regolare" × giorni
+  rimanenti` - non riparte da zero, il già speso è reale. La card mostra quante spese sono
+  state escluse e per quanto ("Esclude 1 spesa grande occasionale (350,00 €)") invece di
+  applicare il filtro in silenzio.
 - Colori: aumento di spesa rispetto al mese scorso = `semanticColors.negative` (rosso),
   diminuzione = `.positive` (verde) - **l'opposto** della convenzione del saldo di coppia,
   perché qui "di più" è la direzione indesiderata.

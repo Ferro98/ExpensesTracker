@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
+import com.example.expensestracker.domain.MonthPace
 import com.example.expensestracker.ui.month.CategoryDelta
 import com.example.expensestracker.ui.month.MonthComparison
 import com.example.expensestracker.ui.theme.semanticColors
@@ -122,9 +123,9 @@ private fun MoverRow(mover: CategoryDelta) {
  * no "so far" to project from.
  */
 @Composable
-fun PaceCard(dailyAverage: Double, projectedTotal: Double, monthlyBudget: Double?, modifier: Modifier = Modifier) {
+fun PaceCard(pace: MonthPace, monthlyBudget: Double?, modifier: Modifier = Modifier) {
     val semantic = MaterialTheme.semanticColors
-    val overBudget = monthlyBudget != null && monthlyBudget > 0 && projectedTotal > monthlyBudget
+    val overBudget = monthlyBudget != null && monthlyBudget > 0 && pace.projectedTotal > monthlyBudget
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -139,13 +140,13 @@ fun PaceCard(dailyAverage: Double, projectedTotal: Double, monthlyBudget: Double
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                stringResource(R.string.stats_daily_average, formatMoney(dailyAverage)),
+                stringResource(R.string.stats_daily_average, formatMoney(pace.dailyAverage)),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                stringResource(R.string.stats_projected_total, formatMoney(projectedTotal)),
+                stringResource(R.string.stats_projected_total, formatMoney(pace.projectedTotal)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (overBudget) semantic.negative else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -154,6 +155,19 @@ fun PaceCard(dailyAverage: Double, projectedTotal: Double, monthlyBudget: Double
                     stringResource(R.string.stats_projected_over_budget, formatMoney(monthlyBudget)),
                     style = MaterialTheme.typography.bodySmall,
                     color = semantic.negative
+                )
+            }
+            // Surfaces the exclusion instead of leaving it a silent black box - otherwise "12€/day
+            // on average" next to a month with a 400€ hotel booking just looks wrong.
+            if (pace.excludedCount > 0) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (pace.excludedCount == 1)
+                        stringResource(R.string.stats_pace_excludes_one, formatMoney(pace.excludedTotal))
+                    else
+                        stringResource(R.string.stats_pace_excludes_many, pace.excludedCount, formatMoney(pace.excludedTotal)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

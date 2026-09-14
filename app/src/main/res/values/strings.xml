@@ -69,6 +69,8 @@
     <string name="stats_daily_average">%1$s a day on average</string>
     <string name="stats_projected_total">Projected total: %1$s</string>
     <string name="stats_projected_over_budget">That\'s over your %1$s budget</string>
+    <string name="stats_pace_excludes_one">Excludes 1 large one-off expense (%1$s)</string>
+    <string name="stats_pace_excludes_many">Excludes %1$d large one-off expenses (%2$s)</string>
     <string name="recent_expenses">Recent expenses</string>
     <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
     <string name="no_expenses_this_month">No expenses this month.</string>

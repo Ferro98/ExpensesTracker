@@ -69,6 +69,8 @@
     <string name="stats_daily_average">%1$s al giorno in media</string>
     <string name="stats_projected_total">Proiezione fine mese: %1$s</string>
     <string name="stats_projected_over_budget">Supera il budget di %1$s</string>
+    <string name="stats_pace_excludes_one">Esclude 1 spesa grande occasionale (%1$s)</string>
+    <string name="stats_pace_excludes_many">Esclude %1$d spese grandi occasionali (%2$s)</string>
     <string name="recent_expenses">Spese recenti</string>
     <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
     <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
