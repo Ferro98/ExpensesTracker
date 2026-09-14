@@ -34,7 +34,7 @@ import com.example.expensestracker.ui.AppViewModelFactory
 
 private enum class Mode { LANDING, CREATE, JOIN }
 
-/** Embedded in Settings' "Group" section (not a standalone screen - group membership is optional). */
+/** Embedded in the Group screen when not yet in a group (not a standalone screen - group membership is optional). */
 @Composable
 fun GroupSetupSection(factory: AppViewModelFactory) {
     val viewModel: OnboardingViewModel = viewModel(factory = factory)

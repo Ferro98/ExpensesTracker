@@ -2,7 +2,6 @@ package com.example.expensestracker.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -57,10 +56,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -71,7 +68,6 @@ import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.repository.AuthState
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
-import com.example.expensestracker.ui.onboarding.GroupSetupSection
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -85,13 +81,11 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val themeMode by viewModel.themeMode.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
-    val group by viewModel.group.collectAsState()
     val authState by viewModel.authState.collectAsState()
     val isLinkingAccount by viewModel.isLinkingAccount.collectAsState()
     val defaultSharedForExpense by viewModel.defaultSharedForExpense.collectAsState()
     val defaultSharedForRecurring by viewModel.defaultSharedForRecurring.collectAsState()
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
-    val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
 
     val googleSignInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -115,8 +109,6 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val scope = rememberCoroutineScope()
     var editingRate by remember { mutableStateOf<CurrencyRate?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
-    var showLeaveConfirm by remember { mutableStateOf(false) }
-    val isLeaving by viewModel.isLeaving.collectAsState()
 
     LaunchedEffect(statusMessage) {
         statusMessage?.let {
@@ -140,55 +132,6 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                     isLinking = isLinkingAccount,
                     onSignIn = startGoogleSignIn
                 )
-            }
-
-            item {
-                Text(
-                    stringResource(R.string.group_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(8.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        if (viewModel.inGroup) {
-                            val members = group?.memberNames?.values?.toList().orEmpty()
-                            Text(
-                                if (members.isEmpty()) stringResource(R.string.loading_ellipsis) else members.joinToString(" & "),
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                stringResource(R.string.invite_code_prefix, group?.id ?: "—"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { group?.id?.let { clipboard.setText(AnnotatedString(it)) } },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.4f))
-                            ) { Text(stringResource(R.string.copy_invite_code)) }
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = { showLeaveConfirm = true },
-                                enabled = !isLeaving,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.4f))
-                            ) { Text(stringResource(R.string.leave_group)) }
-                        } else {
-                            GroupSetupSection(factory)
-                        }
-                    }
-                }
             }
 
             item {
@@ -334,22 +277,6 @@ fun SettingsScreen(factory: AppViewModelFactory) {
         )
     }
 
-    if (showLeaveConfirm) {
-        AlertDialog(
-            onDismissRequest = { showLeaveConfirm = false },
-            title = { Text(stringResource(R.string.leave_group_dialog_title)) },
-            text = { Text(stringResource(R.string.leave_group_dialog_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLeaveConfirm = false
-                    viewModel.leaveGroup {}
-                }) { Text(stringResource(R.string.action_leave)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLeaveConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
-            }
-        )
-    }
 }
 
 @Composable

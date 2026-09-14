@@ -369,7 +369,7 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 5):
   diminuzione = `.positive` (verde) - **l'opposto** della convenzione del saldo di coppia,
   perché qui "di più" è la direzione indesiderata.
 
-### 3.6 Gruppo
+### 3.6 Gruppo — ✅ Fase 5 completata (2026-09-14)
 
 Schermata sotto "Altro" (e card riassuntiva in Home). Sostituisce sia la card Saldo di
 Home sia la sezione Gruppo di Impostazioni: **nulla viene tolto**, si unisce in un posto.
@@ -385,6 +385,32 @@ Home sia la sezione Gruppo di Impostazioni: **nulla viene tolto**, si unisce in 
 - Pulsante "Salda" (dialog esistente) precompilato con l'importo del saldo.
 - Una riga di aiuto: "le spese inserite da Marta contano nella tua categoria con lo stesso
   nome (o in Altro); nel tuo budget vale solo la tua quota".
+
+Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 6):
+
+- Nuovo `ui/group/GroupViewModel` (non month-scoped: legge `observeAllExpenses()` +
+  `observeSettlements()` del gruppo per l'intera vita del gruppo, non filtrato per mese -
+  "chi deve a chi" è per definizione una cifra a vita). Registrato in `AppViewModelFactory`.
+  `GroupActivityItem` (sealed interface `ExpenseActivity`/`SettlementActivity`) unisce spese
+  condivise e saldi in un solo feed ordinato per data poi per `createdAt`.
+- `SettlementDialog` **spostato** da `HomeScreen.kt` (copia privata) a
+  `ui/components/SettlementDialog.kt`, condiviso da Home e Gruppo, con due parametri nuovi
+  (`initialAmount`, `initialIPaid`) per la precompilazione richiesta dal piano: aprendolo da
+  un saldo non pari, importo e direzione ("Ho pagato io" / "Mi ha pagato lei") sono già
+  impostati in base a chi deve a chi.
+- **Sezione Gruppo rimossa da Impostazioni**, non solo spostata: `SettingsViewModel` ha
+  perso `group`/`leaveGroup()`/`isLeaving` (restano solo in `GroupViewModel`), ha tenuto
+  `inGroup: Boolean` perché `PreferencesCard` lo usa ancora per mostrare/nascondere i
+  due toggle "condivisa di default". `GroupSetupSection` (crea/unisciti) resta lo stesso
+  componente condiviso, ora montato da `GroupScreen` invece che da `SettingsScreen`.
+  `Gruppo` è una voce propria sotto Altro → Gestione (icona persone), non più raggiungibile
+  da Impostazioni.
+- Home: la card Saldo ha ora due pulsanti invece di uno - "Salda" (come prima) e "Vedi
+  attività" (nuovo, apre `GroupScreen`). Era già previsto nel testo originale della Fase 1
+  (3.1) ma non era mai stato implementato perché la schermata Gruppo non esisteva ancora.
+- Nel feed attività di Gruppo, Elimina e Duplica sulla scheda dettaglio spesa sono
+  collegati per davvero (`GroupViewModel.deleteExpense`, `onDuplicateExpense` passato da
+  `MainActivity` come altrove) - non finte azioni che chiudono solo il foglio.
 
 ### 3.7 Rifiniture trasversali
 
@@ -409,7 +435,7 @@ Non mischiare fasi in un solo commit.
 | 2 | ✅ Fatta (2026-09-13). Quick-add (3.3) + `lastUsedCategoryId` + "Duplica". Vedi 3.3 per cosa è cambiato rispetto alla proposta. | `ui/addexpense`, `SettingsRepository`, nuovo `ui/components/AmountKeypad`, `DetailSheet` | **Opus** se il budget lo consente, altrimenti Sonnet con questo doc |
 | 3 | ✅ Fatta (2026-09-14). Storico: ricerca e filtri (3.4). Vedi 3.4 per cosa è cambiato rispetto alla proposta. | `ui/history` (nuovo `HistoryFilters.kt`) | **Sonnet** |
 | 4 | ✅ Fatta (2026-09-14). Statistiche (3.5). Vedi 3.5 per cosa è cambiato rispetto alla proposta. | `ui/stats` (nuovo), `ui/month/MonthViewModel`, `ui/components/CategoryDonutChart` | **Sonnet** |
-| 5 | Coppia/Gruppo (3.6). | nuovo `ui/group`, `BalanceCalculator` (solo lettura) | **Sonnet** |
+| 5 | ✅ Fatta (2026-09-14). Coppia/Gruppo (3.6). Vedi 3.6 per cosa è cambiato rispetto alla proposta. | nuovo `ui/group`, `Screen.kt`, `MoreScreen`, `HomeScreen`, `SettingsScreen`/`SettingsViewModel` (sezione Gruppo rimossa, spostata) | **Sonnet** |
 | 6 | Rifiniture (3.7). | trasversale | **Sonnet** |
 
 Perché così: la Fase 1 ridisegna l'ossatura e ogni scelta lì condiziona il resto, quindi

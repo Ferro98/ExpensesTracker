@@ -67,6 +67,7 @@ import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.addexpense.AddExpenseSheet
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesScreen
+import com.example.expensestracker.ui.group.GroupScreen
 import com.example.expensestracker.ui.history.HistoryScreen
 import com.example.expensestracker.ui.home.HomeScreen
 import com.example.expensestracker.ui.month.MonthViewModel
@@ -249,7 +250,8 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                     onDuplicateExpense = onDuplicateExpense,
                     onAddExpense = { showAddExpense = true },
                     onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
-                    onSeeAllExpenses = { navController.navigateToTab(Screen.History) }
+                    onSeeAllExpenses = { navController.navigateToTab(Screen.History) },
+                    onOpenGroup = { navController.navigate(Screen.Group.route) }
                 )
             }
             composable(Screen.History.route) {
@@ -270,6 +272,7 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 MoreScreen(
                     onOpenRecurring = { navController.navigate(Screen.Recurring.route) },
                     onOpenCategories = { navController.navigate(Screen.Categories.route) },
+                    onOpenGroup = { navController.navigate(Screen.Group.route) },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
@@ -285,6 +288,13 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                     factory,
                     showAddDialog = showAddCategory,
                     onDismissAddDialog = { showAddCategory = false }
+                )
+            }
+            composable(Screen.Group.route) {
+                GroupScreen(
+                    factory,
+                    onEditExpense = onEditExpense,
+                    onDuplicateExpense = onDuplicateExpense
                 )
             }
             composable(Screen.Settings.route) { SettingsScreen(factory) }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
@@ -41,6 +42,7 @@ import com.example.expensestracker.ui.components.SectionHeader
 fun MoreScreen(
     onOpenRecurring: () -> Unit,
     onOpenCategories: () -> Unit,
+    onOpenGroup: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     LazyColumn(
@@ -63,6 +65,14 @@ fun MoreScreen(
                 title = stringResource(R.string.title_categories),
                 subtitle = stringResource(R.string.more_categories_desc),
                 onClick = onOpenCategories
+            )
+        }
+        item {
+            MoreEntry(
+                icon = Icons.Default.People,
+                title = stringResource(R.string.title_group),
+                subtitle = stringResource(R.string.more_group_desc),
+                onClick = onOpenGroup
             )
         }
 
