@@ -46,4 +46,8 @@ fun formatMonthLabel(yearMonth: YearMonth): String =
 fun formatMonthName(yearMonth: YearMonth): String =
     yearMonth.month.getDisplayName(TextStyle.FULL, appLocale)
 
+/** "set", "Sep" - the trend chart's bar labels, short enough that 6 of them fit one row. */
+fun formatMonthShort(yearMonth: YearMonth): String =
+    yearMonth.month.getDisplayName(TextStyle.SHORT, appLocale).replaceFirstChar { it.uppercase() }
+
 fun String.toColor(): Color = Color(android.graphics.Color.parseColor(this))

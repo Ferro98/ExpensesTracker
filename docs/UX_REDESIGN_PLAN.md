@@ -300,7 +300,7 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 4):
   scope Tutte/Personali/Condivise), non multi-select: il pagatore di una spesa è sempre uno
   dei due, quindi "entrambi selezionati" non avrebbe senso.
 
-### 3.5 Statistiche
+### 3.5 Statistiche — ✅ Fase 4 completata (2026-09-14)
 
 - Barre 6 mesi (Vico): speso per mese in EUR, linea/marker del budget se impostato,
   mese corrente evidenziato, tap su barra → cambia mese del pager.
@@ -309,6 +309,52 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 4):
 - Card "Rispetto a agosto": totale ▲/▼ %, e le 3 categorie con la variazione maggiore.
 - Card "Ritmo": media giornaliera e proiezione fine mese (spesa/giorni trascorsi × giorni
   del mese) — solo per il mese corrente.
+
+Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 5):
+
+- **API Vico usata senza documentazione online** (nessun accesso a internet in questa
+  sessione): ricostruita leggendo le classi compilate della dipendenza già presente
+  (`compose-m3-android-3.2.2.aar`/`compose-android-3.2.2.aar` nella cache Gradle locale) con
+  `javap`, poi verificata per davvero facendo compilare `MonthlyTrendChart.kt` - ha compilato
+  al primo tentativo con zero errori, il che conferma che nomi e ordine dei parametri usati
+  (`rememberColumnCartesianLayer(columnProvider = ...)`, `HorizontalAxis.rememberBottom(valueFormatter = ...)`,
+  `rememberLineComponent(fill = Fill(...), thickness = ..., shape = ...)`,
+  `ColumnCartesianLayer.ColumnProvider.series(...)`, `ProvideVicoTheme(rememberM3VicoTheme())`,
+  `producer.runTransaction { columnModel { series(valori) } }`) sono corretti - ma **non è
+  stato verificato a schermo**: questa macchina non ha un emulatore né un device ADB
+  collegato in questa sessione. Prima di fidarsi ciecamente del grafico, aprire la tab
+  Statistiche sul telefono e controllare che le barre si vedano, le etichette dei mesi non si
+  sovrappongano e il tap su una barra cambi davvero mese.
+- **Niente asse valori, niente marker budget, niente evidenziazione colorata del mese
+  corrente** sul grafico a barre - tre deviazioni deliberate dalla proposta iniziale, tutte
+  per restare dentro l'API Vico che avevo potuto verificare per compilazione:
+  - l'asse valori avrebbe richiesto `VerticalAxis.rememberStart(...)` (mai esercitato);
+  - la linea/marker budget avrebbe richiesto le `Decoration`/`HorizontalLine` di Vico (mai
+    esercitate);
+  - evidenziare UNA barra con un colore diverso dalle altre richiede un `ColumnProvider`
+    personalizzato per-indice (`series(List<LineComponent>)` mappa a *serie* diverse, non a
+    barre diverse nella stessa serie) - il mese visualizzato è comunque riconoscibile perché
+    **è sempre l'ultima barra a destra** (la finestra di 6 mesi termina sempre al mese
+    visualizzato), quindi la posizione lo rende implicito.
+  - Il tap sulle barre **non** usa il sistema marker/interaction di Vico: è un
+    `Modifier.pointerInput` con `detectTapGestures` sopra il grafico, che divide la larghezza
+    in `months.size` colonne uguali - più semplice e indipendente dall'hit-testing interno
+    di Vico, dato che le barre sono già equispaziate.
+- Il donut è disegnato a mano con `Canvas`/`drawArc` (`ui/components/CategoryDonutChart.kt`),
+  come già previsto dalla nota di Fase 0 - non Vico (che non fa a grafici a torta in questa
+  versione senza uno sforzo di configurazione paragonabile a quello del grafico a barre).
+- Trend a 6 mesi e confronto col mese precedente (`MonthViewModel.monthlyTrendFor`/
+  `comparisonFor`) leggono dallo stesso `allExpenses` già in memoria (nessuna query
+  Firestore aggiuntiva: `observeAllExpenses()` non ha mai avuto un limite di data). Sono
+  **per-pagina** del pager (ricalcolati ad ogni mese sfogliato, come `uiStateFor`), non
+  ancorati al mese "assestato": scorrendo i mesi la finestra di 6 barre e il confronto
+  scorrono insieme, coerentemente con "tap su barra → cambia mese" che ha senso solo se la
+  finestra segue il mese visualizzato.
+- Card "Ritmo" **non compare mai su un mese diverso da quello corrente** (nessuna proiezione
+  ha senso per un mese passato o futuro) - condizione `yearMonth == YearMonth.now()`.
+- Colori: aumento di spesa rispetto al mese scorso = `semanticColors.negative` (rosso),
+  diminuzione = `.positive` (verde) - **l'opposto** della convenzione del saldo di coppia,
+  perché qui "di più" è la direzione indesiderata.
 
 ### 3.6 Gruppo
 
@@ -349,7 +395,7 @@ Non mischiare fasi in un solo commit.
 | 1 | ✅ Fatta (2026-09-13). Nuova navigazione (3.1): tab Home/Storico/Statistiche/Altro + FAB centrale; Home ridotta; Storico con raggruppamento per giorno (senza filtri); Ricorrenti/Categorie sotto Altro. Vedi 3.1 per cosa è cambiato rispetto alla proposta. | `MainActivity`, `navigation/Screen.kt`, nuovi `ui/home`, `ui/history`, `ui/stats`, `ui/more`, `ui/month` (ex `ui/dashboard`, rimossa) | **Opus** (trasversale, richiede giudizio) |
 | 2 | ✅ Fatta (2026-09-13). Quick-add (3.3) + `lastUsedCategoryId` + "Duplica". Vedi 3.3 per cosa è cambiato rispetto alla proposta. | `ui/addexpense`, `SettingsRepository`, nuovo `ui/components/AmountKeypad`, `DetailSheet` | **Opus** se il budget lo consente, altrimenti Sonnet con questo doc |
 | 3 | ✅ Fatta (2026-09-14). Storico: ricerca e filtri (3.4). Vedi 3.4 per cosa è cambiato rispetto alla proposta. | `ui/history` (nuovo `HistoryFilters.kt`) | **Sonnet** |
-| 4 | Statistiche (3.5). | nuovo `ui/stats`, Vico | **Sonnet** |
+| 4 | ✅ Fatta (2026-09-14). Statistiche (3.5). Vedi 3.5 per cosa è cambiato rispetto alla proposta. | `ui/stats` (nuovo), `ui/month/MonthViewModel`, `ui/components/CategoryDonutChart` | **Sonnet** |
 | 5 | Coppia/Gruppo (3.6). | nuovo `ui/group`, `BalanceCalculator` (solo lettura) | **Sonnet** |
 | 6 | Rifiniture (3.7). | trasversale | **Sonnet** |
 

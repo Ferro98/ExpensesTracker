@@ -51,6 +51,37 @@ data class MonthUiState(
         get() = categorySpending.filter { it.spent > 0 || it.monthlyBudget != null }.sortedByDescending { it.spent }
 }
 
+/** One point of the Stats trend chart. */
+data class MonthTotal(val yearMonth: YearMonth, val totalSpent: Double)
+
+/** [months] oldest first, ending at the month the chart is centered on. */
+data class MonthlyTrend(val months: List<MonthTotal> = emptyList(), val monthlyBudget: Double? = null)
+
+/** One category's spend this month against the same category last month. */
+data class CategoryDelta(
+    val categoryId: String,
+    val name: String,
+    val icon: String,
+    val colorHex: String,
+    val currentSpent: Double,
+    val previousSpent: Double
+) {
+    val delta: Double get() = currentSpent - previousSpent
+}
+
+/** A month's total against the one before it, plus the categories that moved the most. */
+data class MonthComparison(
+    val currentMonth: YearMonth = YearMonth.now(),
+    val previousMonth: YearMonth = YearMonth.now().minusMonths(1),
+    val currentTotal: Double = 0.0,
+    val previousTotal: Double = 0.0,
+    val topMovers: List<CategoryDelta> = emptyList()
+) {
+    /** Null when there's nothing last month to compare against - a percentage would be meaningless (or infinite). */
+    val percentChange: Double?
+        get() = if (previousTotal > 0) (currentTotal - previousTotal) / previousTotal * 100 else null
+}
+
 /**
  * One month's worth of derived data, shared by Home, History and Stats - they are three views over
  * the same underlying expenses, so they share a single instance (created in ExpensesTrackerRoot)
@@ -130,6 +161,73 @@ class MonthViewModel(
             inGroup = groupContext != null,
             myUid = myUid
         )
+
+    /**
+     * Spend totals for the [monthsBack] months ending at [yearMonth] (inclusive), oldest first -
+     * for the Stats trend chart. Reads off the same [allExpenses] snapshot as everything else
+     * (it already holds full history, unfiltered by date), so this needs no separate Firestore query.
+     */
+    fun monthlyTrendFor(yearMonth: YearMonth, monthsBack: Int = 6): Flow<MonthlyTrend> {
+        val months = (monthsBack - 1 downTo 0).map { yearMonth.minusMonths(it.toLong()) }
+        return combine(allExpenses, budgets) { expenses, budgetsTriple ->
+            val (monthlyBudget, _, _) = budgetsTriple
+            val totals = months.map { ym ->
+                val start = ym.atDay(1)
+                val end = ym.atEndOfMonth()
+                val spent = expenses.filter { !it.localDate.isBefore(start) && !it.localDate.isAfter(end) }.sumOf { it.shareFor(myUid) }
+                MonthTotal(ym, spent)
+            }
+            MonthlyTrend(totals, monthlyBudget)
+        }
+    }
+
+    /** How [yearMonth] compares to the month right before it, in total and by category. */
+    fun comparisonFor(yearMonth: YearMonth): Flow<MonthComparison> {
+        val previousMonth = yearMonth.minusMonths(1)
+        return combine(allExpenses, categories, budgets) { expenses, cats, budgetsTriple ->
+            val (_, categoryBudgets, _) = budgetsTriple
+            val current = categorySpendingFor(expenses, cats, categoryBudgets, yearMonth)
+            val previous = categorySpendingFor(expenses, cats, categoryBudgets, previousMonth)
+            val previousById = previous.associateBy { it.categoryId }
+            // Sorted by absolute change, not signed: a category that dropped to zero is just as
+            // notable a "mover" as one that suddenly appeared.
+            val topMovers = current
+                .map { cur -> CategoryDelta(cur.categoryId, cur.name, cur.icon, cur.colorHex, cur.spent, previousById[cur.categoryId]?.spent ?: 0.0) }
+                .filter { it.currentSpent > 0 || it.previousSpent > 0 }
+                .sortedByDescending { kotlin.math.abs(it.delta) }
+                .take(3)
+            MonthComparison(
+                currentMonth = yearMonth,
+                previousMonth = previousMonth,
+                currentTotal = current.sumOf { it.spent },
+                previousTotal = previous.sumOf { it.spent },
+                topMovers = topMovers
+            )
+        }
+    }
+
+    /**
+     * Per-category spend for one month, independent of [buildUiState] which computes the same
+     * thing but bundled with the synthetic "Shared" fallback bucket and the raw expense grouping
+     * that only the single-month view needs. Kept separate rather than refactored together so this
+     * addition can't regress the already-shipped month view.
+     */
+    private fun categorySpendingFor(expenses: List<Expense>, categories: List<Category>, categoryBudgets: Map<String, Double>, yearMonth: YearMonth): List<CategorySpending> {
+        val start = yearMonth.atDay(1)
+        val end = yearMonth.atEndOfMonth()
+        val monthExpenses = expenses.filter { !it.localDate.isBefore(start) && !it.localDate.isAfter(end) }
+        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories)?.id }
+        return categories.map { category ->
+            CategorySpending(
+                categoryId = category.id,
+                name = category.name,
+                icon = category.icon,
+                colorHex = category.colorHex,
+                monthlyBudget = categoryBudgets[category.id],
+                spent = categoryExpenses[category.id].orEmpty().sumOf { it.shareFor(myUid) }
+            )
+        }
+    }
 
     private fun buildUiState(
         expenses: List<Expense>,

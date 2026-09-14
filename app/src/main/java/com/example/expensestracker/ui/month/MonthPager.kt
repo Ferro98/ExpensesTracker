@@ -31,6 +31,7 @@ import com.example.expensestracker.R
 import com.example.expensestracker.util.formatMonthLabel
 import kotlinx.coroutines.launch
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 
 // ~50 years either side of today: enough that the edges are unreachable in practice, cheap
 // because pages are composed lazily.
@@ -44,6 +45,10 @@ fun rememberMonthPagerState(): PagerState =
 /** The month a given pager page stands for, counted off [anchor] (the month the pager opened on). */
 fun monthForPage(anchor: YearMonth, page: Int): YearMonth =
     anchor.plusMonths((page - MONTH_INITIAL_PAGE).toLong())
+
+/** Inverse of [monthForPage]: which page shows [target], given the same [anchor] - for "jump to this month" taps (e.g. the Stats trend chart). */
+fun pageForMonth(anchor: YearMonth, target: YearMonth): Int =
+    MONTH_INITIAL_PAGE + ChronoUnit.MONTHS.between(anchor, target).toInt()
 
 /**
  * State of the month the pager has settled on, for the things that live *outside* the pages and so

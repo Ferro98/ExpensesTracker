@@ -60,6 +60,15 @@
     <string name="allocated_unallocated">%1$s allocated · %2$s unallocated</string>
     <string name="allocated_over_by">%1$s allocated · over by %2$s</string>
     <string name="by_category">By category</string>
+    <string name="stats_trend_title">Last 6 months</string>
+    <string name="stats_donut_title">%1$s by category</string>
+    <string name="stats_vs_last_month">Vs %1$s</string>
+    <string name="stats_previous_total">%1$s last month</string>
+    <string name="stats_biggest_movers">Biggest changes</string>
+    <string name="stats_pace_title">Pace</string>
+    <string name="stats_daily_average">%1$s a day on average</string>
+    <string name="stats_projected_total">Projected total: %1$s</string>
+    <string name="stats_projected_over_budget">That\'s over your %1$s budget</string>
     <string name="recent_expenses">Recent expenses</string>
     <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
     <string name="no_expenses_this_month">No expenses this month.</string>
