@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -61,6 +62,7 @@ import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.components.BudgetProgressBar
+import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
 
@@ -75,7 +77,8 @@ private val presetColors = listOf(
 fun CategoriesScreen(
     factory: AppViewModelFactory,
     showAddDialog: Boolean,
-    onDismissAddDialog: () -> Unit
+    onDismissAddDialog: () -> Unit,
+    onShowAddDialog: () -> Unit
 ) {
     val viewModel: CategoriesViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
@@ -175,6 +178,16 @@ fun CategoriesScreen(
             }
         }
 
+        if (uiState.categories.isEmpty()) {
+            item {
+                EmptyState(
+                    icon = "🏷️",
+                    title = stringResource(R.string.no_categories_yet),
+                    action = { Button(onClick = onShowAddDialog) { Text(stringResource(R.string.fab_category)) } }
+                )
+            }
+        }
+
         itemsIndexed(uiState.categories, key = { _, category -> category.id }) { index, category ->
             CategoryRow(
                 category = category,
@@ -184,7 +197,8 @@ fun CategoriesScreen(
                 onMoveUp = { viewModel.moveCategory(category, -1) },
                 onMoveDown = { viewModel.moveCategory(category, 1) },
                 onEdit = { editingCategory = category },
-                onDelete = { viewModel.deleteCategory(category) }
+                onDelete = { viewModel.deleteCategory(category) },
+                modifier = Modifier.animateItem()
             )
         }
 
@@ -233,12 +247,13 @@ private fun CategoryRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {

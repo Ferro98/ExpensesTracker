@@ -33,9 +33,9 @@ import com.example.expensestracker.util.toColor
  * living here: the user asked for the same familiar list in both places.
  */
 @Composable
-fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit) {
+fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

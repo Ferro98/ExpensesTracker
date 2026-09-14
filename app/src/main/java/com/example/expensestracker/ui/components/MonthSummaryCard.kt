@@ -1,5 +1,6 @@
 package com.example.expensestracker.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,12 +46,16 @@ fun MonthSummaryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                formatMoney(totalSpent),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Animates the crossfade when totalSpent changes under the same card - swiping months,
+            // or a save/delete landing while it's on screen - rather than the number just jumping.
+            AnimatedContent(targetState = totalSpent, label = "monthTotal") { animatedTotal ->
+                Text(
+                    formatMoney(animatedTotal),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             if (monthlyBudget == null || monthlyBudget <= 0) {
                 Spacer(modifier = Modifier.height(8.dp))

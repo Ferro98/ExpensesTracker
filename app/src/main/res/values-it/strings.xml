@@ -32,6 +32,10 @@
     <string name="action_ok">OK</string>
     <string name="action_discard">Scarta</string>
     <string name="action_duplicate">Duplica</string>
+    <string name="action_undo">Annulla</string>
+    <string name="expense_saved">Spesa salvata</string>
+    <string name="expense_updated">Spesa aggiornata</string>
+    <string name="expense_deleted">Spesa eliminata</string>
     <string name="action_keep_editing">Continua a modificare</string>
     <string name="label_amount">Importo</string>
     <string name="label_note_optional">Nota (opzionale)</string>
@@ -76,6 +80,7 @@
     <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
     <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
     <string name="no_search_results">Nessuna spesa corrisponde ai filtri.</string>
+    <string name="clear_filters">Rimuovi filtri</string>
     <string name="search_expenses_hint">Cerca per nota o categoria</string>
     <string name="cd_clear_search">Cancella ricerca</string>
     <string name="filter_scope_all">Tutte</string>
@@ -122,6 +127,7 @@
     <string name="total_monthly_budget">Budget mensile totale</string>
     <string name="categories_label">Categorie</string>
     <string name="categories_reorder_hint">Usa le frecce per riordinarle: lo stesso ordine appare quando inserisci una spesa.</string>
+    <string name="no_categories_yet">Ancora nessuna categoria. Aggiungine una per iniziare a tracciare le spese.</string>
     <string name="budget_prefix">Budget: %1$s</string>
     <string name="no_budget">Nessun budget</string>
     <string name="new_category_title">Nuova categoria</string>

@@ -112,6 +112,27 @@ class GroupViewModel(
         viewModelScope.launch { context.expenseRepository.deleteExpense(expenseId) }
     }
 
+    /** The "Annulla" side of the delete snackbar - re-adds [expense]'s data as a fresh document (new id). */
+    fun restoreExpense(expense: Expense) {
+        val context = groupContext ?: return
+        viewModelScope.launch {
+            context.expenseRepository.addExpense(
+                categoryId = expense.categoryId,
+                categoryName = expense.categoryName,
+                categoryIcon = expense.categoryIcon,
+                categoryColorHex = expense.categoryColorHex,
+                amount = expense.amount,
+                currencyCode = expense.currencyCode,
+                amountInBaseCurrency = expense.amountInBaseCurrency,
+                date = expense.localDate,
+                note = expense.note,
+                paidByUid = expense.paidByUid,
+                isShared = expense.isShared,
+                payerShare = expense.payerShare
+            )
+        }
+    }
+
     private val _isLeaving = MutableStateFlow(false)
     val isLeaving: StateFlow<Boolean> = _isLeaving
 

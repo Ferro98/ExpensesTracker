@@ -36,6 +36,8 @@ import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +70,7 @@ import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.addexpense.AddExpenseSheet
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesScreen
+import com.example.expensestracker.ui.components.showUndoSnackbar
 import com.example.expensestracker.ui.group.GroupScreen
 import com.example.expensestracker.ui.history.HistoryScreen
 import com.example.expensestracker.ui.home.HomeScreen
@@ -78,6 +82,7 @@ import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -175,7 +180,38 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
         showAddExpense = true
     }
 
+    // One shared snackbar surface (the root Scaffold's own slot below) so a snackbar triggered
+    // from any screen is positioned correctly against the same bottom-bar/FAB insets, instead of
+    // each screen needing its own nested Scaffold just to host one.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val undoLabel = stringResource(R.string.action_undo)
+    val expenseSavedMessage = stringResource(R.string.expense_saved)
+    val expenseUpdatedMessage = stringResource(R.string.expense_updated)
+    val expenseDeletedMessage = stringResource(R.string.expense_deleted)
+
+    // Home/History/Stats share monthViewModel, so their "delete, then offer to undo" wiring is
+    // built once here rather than repeated in each screen. Delete happens immediately (not
+    // deferred) - Undo re-adds the same data as a fresh document; see MonthViewModel.restoreExpense.
+    val onDeleteExpenseWithUndo: (Expense) -> Unit = { expense ->
+        monthViewModel.deleteExpense(expense.id)
+        snackbarScope.showUndoSnackbar(snackbarHostState, expenseDeletedMessage, undoLabel) {
+            monthViewModel.restoreExpense(expense)
+        }
+    }
+    val onExpenseSaved: (String) -> Unit = { createdId ->
+        snackbarScope.showUndoSnackbar(snackbarHostState, expenseSavedMessage, undoLabel) {
+            monthViewModel.deleteExpense(createdId)
+        }
+    }
+    // No undo action here - reversing an edit would need the pre-edit values, which are already
+    // gone by the time this fires. Just confirms the save went through.
+    val onExpenseUpdated: () -> Unit = {
+        snackbarScope.launch { snackbarHostState.showSnackbar(expenseUpdatedMessage) }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -251,21 +287,26 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                     onAddExpense = { showAddExpense = true },
                     onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
                     onSeeAllExpenses = { navController.navigateToTab(Screen.History) },
-                    onOpenGroup = { navController.navigate(Screen.Group.route) }
+                    onOpenGroup = { navController.navigate(Screen.Group.route) },
+                    onDeleteExpense = onDeleteExpenseWithUndo
                 )
             }
             composable(Screen.History.route) {
                 HistoryScreen(
                     viewModel = monthViewModel,
                     onEditExpense = onEditExpense,
-                    onDuplicateExpense = onDuplicateExpense
+                    onDuplicateExpense = onDuplicateExpense,
+                    onDeleteExpense = onDeleteExpenseWithUndo,
+                    onAddExpense = { showAddExpense = true }
                 )
             }
             composable(Screen.Stats.route) {
                 StatsScreen(
                     viewModel = monthViewModel,
                     onEditExpense = onEditExpense,
-                    onDuplicateExpense = onDuplicateExpense
+                    onDuplicateExpense = onDuplicateExpense,
+                    onDeleteExpense = onDeleteExpenseWithUndo,
+                    onAddExpense = { showAddExpense = true }
                 )
             }
             composable(Screen.More.route) {
@@ -287,14 +328,17 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 CategoriesScreen(
                     factory,
                     showAddDialog = showAddCategory,
-                    onDismissAddDialog = { showAddCategory = false }
+                    onDismissAddDialog = { showAddCategory = false },
+                    onShowAddDialog = { showAddCategory = true }
                 )
             }
             composable(Screen.Group.route) {
                 GroupScreen(
                     factory,
                     onEditExpense = onEditExpense,
-                    onDuplicateExpense = onDuplicateExpense
+                    onDuplicateExpense = onDuplicateExpense,
+                    onAddExpense = { showAddExpense = true },
+                    snackbarHostState = snackbarHostState
                 )
             }
             composable(Screen.Settings.route) { SettingsScreen(factory) }
@@ -302,7 +346,12 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     }
 
     if (showAddExpense) {
-        AddExpenseSheet(viewModel = addExpenseViewModel, onDismiss = { showAddExpense = false })
+        AddExpenseSheet(
+            viewModel = addExpenseViewModel,
+            onDismiss = { showAddExpense = false },
+            onExpenseSaved = onExpenseSaved,
+            onExpenseUpdated = onExpenseUpdated
+        )
     }
 }
 

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +43,9 @@ import com.example.expensestracker.util.localizedCategoryName
 fun HistoryScreen(
     viewModel: MonthViewModel,
     onEditExpense: (Expense) -> Unit,
-    onDuplicateExpense: (Expense) -> Unit
+    onDuplicateExpense: (Expense) -> Unit,
+    onDeleteExpense: (Expense) -> Unit,
+    onAddExpense: () -> Unit
 ) {
     val pagerState = rememberMonthPagerState()
     val detailState = rememberMonthDetailState()
@@ -67,7 +72,13 @@ fun HistoryScreen(
         )
 
         MonthPager(viewModel = viewModel, pagerState = pagerState, modifier = Modifier.weight(1f)) { uiState ->
-            DayGroupedExpenses(uiState, filters, onOpenExpense = detailState::openExpense)
+            DayGroupedExpenses(
+                uiState = uiState,
+                filters = filters,
+                onClearFilters = { filters = HistoryFilterState() },
+                onAddExpense = onAddExpense,
+                onOpenExpense = detailState::openExpense
+            )
         }
     }
 
@@ -76,12 +87,18 @@ fun HistoryScreen(
         uiState = currentState,
         onEditExpense = onEditExpense,
         onDuplicateExpense = onDuplicateExpense,
-        onDeleteExpense = viewModel::deleteExpense
+        onDeleteExpense = onDeleteExpense
     )
 }
 
 @Composable
-private fun DayGroupedExpenses(uiState: MonthUiState, filters: HistoryFilterState, onOpenExpense: (Expense) -> Unit) {
+private fun DayGroupedExpenses(
+    uiState: MonthUiState,
+    filters: HistoryFilterState,
+    onClearFilters: () -> Unit,
+    onAddExpense: () -> Unit,
+    onOpenExpense: (Expense) -> Unit
+) {
     // Reverses the already-resolved grouping MonthViewModel computed (via CategoryResolver) into an
     // expenseId -> categoryId lookup, so the category filter matches the same category an expense's
     // amount is actually counted under - never `expense.categoryId` directly, which for a shared
@@ -110,9 +127,17 @@ private fun DayGroupedExpenses(uiState: MonthUiState, filters: HistoryFilterStat
         if (byDay.isEmpty()) {
             item {
                 if (filters.isActive) {
-                    EmptyState(icon = "🔍", title = stringResource(R.string.no_search_results))
+                    EmptyState(
+                        icon = "🔍",
+                        title = stringResource(R.string.no_search_results),
+                        action = { TextButton(onClick = onClearFilters) { Text(stringResource(R.string.clear_filters)) } }
+                    )
                 } else {
-                    EmptyState(icon = "🧾", title = stringResource(R.string.no_expenses_this_month))
+                    EmptyState(
+                        icon = "🧾",
+                        title = stringResource(R.string.no_expenses_this_month),
+                        action = { Button(onClick = onAddExpense) { Text(stringResource(R.string.cd_add_expense)) } }
+                    )
                 }
             }
         }
@@ -126,7 +151,8 @@ private fun DayGroupedExpenses(uiState: MonthUiState, filters: HistoryFilterStat
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
-                    onClick = { onOpenExpense(expense) }
+                    onClick = { onOpenExpense(expense) },
+                    modifier = Modifier.animateItem()
                 )
             }
         }

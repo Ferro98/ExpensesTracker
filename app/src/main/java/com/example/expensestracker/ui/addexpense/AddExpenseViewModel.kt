@@ -124,7 +124,11 @@ class AddExpenseViewModel(
         paidByUid: String,
         isShared: Boolean,
         payerShare: Double,
-        onSaved: () -> Unit
+        // Non-null only when this created a brand-new expense (not an edit) - the id the
+        // "Expense saved / Undo" snackbar needs to be able to delete it again. Edits (including
+        // the shared-flag-flip path, which technically creates a new document too) don't offer
+        // this: from the user's perspective they corrected an existing expense, not created one.
+        onSaved: (createdExpenseId: String?) -> Unit
     ) {
         viewModelScope.launch {
             _errorMessage.value = null
@@ -144,7 +148,7 @@ class AddExpenseViewModel(
                 // only a real edit overwrites the one it came from.
                 val editing = _prefill.value?.takeIf { it.isEdit }?.source
 
-                when {
+                val newExpenseId: String? = when {
                     editing == null -> repositoryFor(shared).addExpense(
                         categoryId = categoryId,
                         categoryName = category.name,
@@ -160,22 +164,25 @@ class AddExpenseViewModel(
                         payerShare = payerShare
                     )
                     // Same scope as before editing - overwrite the existing document in place.
-                    editing.isShared == shared -> repositoryFor(shared).updateExpense(
-                        expenseId = editing.id,
-                        categoryId = categoryId,
-                        categoryName = category.name,
-                        categoryIcon = category.icon,
-                        categoryColorHex = category.colorHex,
-                        amount = amount,
-                        currencyCode = currencyCode,
-                        amountInBaseCurrency = amountInBaseCurrency,
-                        date = date,
-                        note = note?.takeIf { it.isNotBlank() },
-                        paidByUid = paidByUid,
-                        isShared = shared,
-                        payerShare = payerShare,
-                        createdAt = editing.createdAt
-                    )
+                    editing.isShared == shared -> {
+                        repositoryFor(shared).updateExpense(
+                            expenseId = editing.id,
+                            categoryId = categoryId,
+                            categoryName = category.name,
+                            categoryIcon = category.icon,
+                            categoryColorHex = category.colorHex,
+                            amount = amount,
+                            currencyCode = currencyCode,
+                            amountInBaseCurrency = amountInBaseCurrency,
+                            date = date,
+                            note = note?.takeIf { it.isNotBlank() },
+                            paidByUid = paidByUid,
+                            isShared = shared,
+                            payerShare = payerShare,
+                            createdAt = editing.createdAt
+                        )
+                        null
+                    }
                     // Shared flag flipped - personal and group expenses live in different Firestore
                     // collections, so "editing" here means deleting the old document and creating a
                     // fresh one in the new scope.
@@ -195,13 +202,14 @@ class AddExpenseViewModel(
                             isShared = shared,
                             payerShare = payerShare
                         )
+                        null
                     }
                 }
                 // Only for a new expense: while editing an old one you're correcting the past, and
                 // that category shouldn't become the default for what you buy next.
                 if (editing == null) settingsRepository.setLastUsedCategoryId(categoryId)
                 _prefill.value = null
-                onSaved()
+                onSaved(newExpenseId)
             } catch (e: Exception) {
                 _errorMessage.value = AddExpenseError.SAVE_FAILED
             }

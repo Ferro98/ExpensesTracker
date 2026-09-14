@@ -57,7 +57,7 @@ fun MonthDetailSheets(
     uiState: MonthUiState,
     onEditExpense: (Expense) -> Unit,
     onDuplicateExpense: (Expense) -> Unit,
-    onDeleteExpense: (String) -> Unit
+    onDeleteExpense: (Expense) -> Unit
 ) {
     state.expense?.let { expense ->
         ExpenseDetailSheet(
@@ -66,7 +66,7 @@ fun MonthDetailSheets(
             partnerName = uiState.partnerName,
             onDismiss = { state.closeExpense() },
             onEdit = { onEditExpense(expense); state.closeExpense() },
-            onDelete = { onDeleteExpense(expense.id); state.closeExpense() },
+            onDelete = { onDeleteExpense(expense); state.closeExpense() },
             onDuplicate = { onDuplicateExpense(expense); state.closeExpense() }
         )
     }

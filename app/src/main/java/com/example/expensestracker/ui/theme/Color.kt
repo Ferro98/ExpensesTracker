@@ -14,6 +14,11 @@ val CoralAccentInk = Color(0xFF2E1608)
 
 val SeaGreen = Color(0xFF3F8C6B)
 val SeaGreenLight = Color(0xFFCFE9DD)
+// A touch darker than SeaGreen: white text on plain SeaGreen only reaches a 4.06:1 contrast
+// ratio (just under WCAG AA's 4.5:1 for normal text). Not SeaGreen itself, which is also
+// colorScheme.tertiary and already visible elsewhere - this is only for solid-fill pairings
+// like Semantic.kt's positive/onPositive.
+val SeaGreenDeep = Color(0xFF3B8264)
 
 val Sand = Color(0xFFF7F5F0)
 val SandVariant = Color(0xFFEAE6DC)

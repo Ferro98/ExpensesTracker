@@ -1,5 +1,6 @@
 package com.example.expensestracker.ui.home
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,8 @@ fun HomeScreen(
     onAddExpense: () -> Unit,
     onSeeAllCategories: () -> Unit,
     onSeeAllExpenses: () -> Unit,
-    onOpenGroup: () -> Unit
+    onOpenGroup: () -> Unit,
+    onDeleteExpense: (Expense) -> Unit
 ) {
     val month = viewModel.currentMonth
     val uiState by remember { viewModel.uiStateFor(month) }
@@ -107,7 +109,11 @@ fun HomeScreen(
                 )
             }
             items(categories.take(HOME_CATEGORY_LIMIT), key = { it.categoryId }) { category ->
-                CategorySpendingRow(category, onClick = { detailState.openCategory(category, uiState) })
+                CategorySpendingRow(
+                    category,
+                    onClick = { detailState.openCategory(category, uiState) },
+                    modifier = Modifier.animateItem()
+                )
             }
         }
 
@@ -148,7 +154,8 @@ fun HomeScreen(
                     expense = expense,
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
-                    onClick = { detailState.openExpense(expense) }
+                    onClick = { detailState.openExpense(expense) },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -162,7 +169,7 @@ fun HomeScreen(
         uiState = uiState,
         onEditExpense = onEditExpense,
         onDuplicateExpense = onDuplicateExpense,
-        onDeleteExpense = viewModel::deleteExpense
+        onDeleteExpense = onDeleteExpense
     )
 
     if (showSettlementDialog) {
@@ -228,7 +235,9 @@ private fun BalanceCard(balance: Balance, myUid: String, partnerName: String, on
                 youOwe -> stringResource(R.string.balance_you_owe, partnerName, formatMoney(balance.netAmount))
                 else -> stringResource(R.string.balance_owes_you, partnerName, formatMoney(balance.netAmount))
             }
-            Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = onContainerColor)
+            AnimatedContent(targetState = text, label = "balanceText") { animatedText ->
+                Text(animatedText, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = onContainerColor)
+            }
             if (!settled) {
                 Spacer(Modifier.height(4.dp))
                 Text(

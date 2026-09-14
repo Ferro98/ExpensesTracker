@@ -36,9 +36,9 @@ import com.example.expensestracker.util.toColor
  * rather than re-implemented per screen.
  */
 @Composable
-fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onClick: () -> Unit) {
+fun ExpenseRow(expense: Expense, myUid: String, partnerName: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

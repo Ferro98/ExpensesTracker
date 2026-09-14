@@ -45,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,7 +73,13 @@ import java.time.ZoneOffset
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
+fun AddExpenseSheet(
+    viewModel: AddExpenseViewModel,
+    onDismiss: () -> Unit,
+    onExpenseSaved: (createdExpenseId: String) -> Unit = {},
+    onExpenseUpdated: () -> Unit = {}
+) {
+    val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
     // Captured once when the sheet is composed (it's only ever entered fresh - see the
@@ -290,7 +298,14 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                             paidByUid = if (isShared) paidByUid else uiState.myUid,
                             isShared = isShared,
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
-                            onSaved = dismiss
+                            onSaved = { createdId ->
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // Undo only makes sense for a brand-new expense (delete it again);
+                                // an edit gets a plain confirmation instead - "undo" would need the
+                                // pre-edit values, which are already overwritten by this point.
+                                if (createdId != null) onExpenseSaved(createdId) else onExpenseUpdated()
+                                dismiss()
+                            }
                         )
                     }
                 },

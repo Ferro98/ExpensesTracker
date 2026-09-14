@@ -412,7 +412,7 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 6):
   collegati per davvero (`GroupViewModel.deleteExpense`, `onDuplicateExpense` passato da
   `MainActivity` come altrove) - non finte azioni che chiudono solo il foglio.
 
-### 3.7 Rifiniture trasversali
+### 3.7 Rifiniture trasversali — ✅ Fase 6 completata (2026-09-14)
 
 - Empty state con azione su ogni lista (Home, Storico, Ricorrenti, Categorie, Coppia).
 - Feedback: Snackbar "Spesa salvata" con "Annulla" (soft-delete entro 5 s) dopo salva ed
@@ -422,6 +422,51 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 6):
 - Accessibilità: contentDescription su tutte le icone-azione, contrasto testi su
   container colorati verificato in dark mode.
 - Widget home screen "Speso questo mese" (opzionale, ultima cosa).
+
+Stato reale dopo l'implementazione:
+
+- **Empty state con azione**: aggiunta a Storico (due varianti: "Rimuovi filtri" quando i
+  filtri nascondono tutto, "Aggiungi spesa" quando il mese è davvero vuoto), Statistiche,
+  Ricorrenti, Categorie (nuovo - prima non esisteva alcun empty state: caso limite se si
+  cancellano tutte le categorie) e Gruppo. Home ce l'aveva già dalla Fase 1.
+- **Snackbar "Spesa salvata"/"Spesa eliminata" con Annulla**: scope deliberatamente limitato
+  alle spese (il messaggio di esempio nel piano è "Spesa salvata" - non estesa a
+  ricorrenti/categorie/saldi). Elimina è **immediato**, non differito: `Annulla` non
+  ripristina un salvataggio in sospeso, **ricrea** la spesa da zero
+  (`MonthViewModel.restoreExpense`/`GroupViewModel.restoreExpense`, stessi dati, id nuovo).
+  Scelta deliberata rispetto a "nascondi otticamente e cancella solo allo scadere del
+  timer": più semplice da implementare corretamente su più schermate (Home/Storico/
+  Statistiche/Gruppo) e Firestore resta sempre coerente con quello che l'utente vede,
+  a costo di un breve flash alla cancellazione se poi si annulla. Una barra di snackbar
+  condivisa vive nello `Scaffold` root (`ui/components/UndoSnackbar.kt`), non una per
+  schermata. **Modificare** una spesa esistente mostra "Spesa aggiornata" **senza** Annulla
+  (richiederebbe i valori precedenti, già sovrascritti) - copre la richiesta più vecchia
+  dell'utente "dovrebbe dirmi se il salvataggio è andato a buon fine".
+- **Animazioni**: `Modifier.animateItem()` (non `animateItemPlacement`, deprecata/rimossa
+  nella Compose Foundation di questo progetto) su tutte le liste con `key` stabile -
+  Storico, Home (categorie e spese), Statistiche, Gruppo (feed attività), Ricorrenti,
+  Categorie (visibile soprattutto lì: le frecce di riordino ora animano lo scambio invece
+  di scattare). `AnimatedContent` sul totale di `MonthSummaryCard` e sul testo del saldo
+  (Home e Gruppo). Haptic (`HapticFeedbackType.LongPress`) al salvataggio riuscito di una
+  spesa in `AddExpenseSheet`.
+- **Accessibilità**: audit di tutte le 16 icone con `contentDescription = null` nel
+  codebase - risultato pulito, sono tutte decorative (affiancate da testo visibile che
+  dice la stessa cosa: pulsanti con icona+etichetta, voci di menu, chip). Nessun
+  `IconButton` autonomo (l'unica azione, nessun testo accanto) ha `contentDescription`
+  nullo. **Contrasto verificato per davvero**, non a vista: calcolo del rapporto WCAG
+  (formula di luminanza relativa) per tutte le 14 coppie testo/sfondo di
+  `ui/theme/Semantic.kt` in chiaro e scuro. Trovato un problema reale (non solo teorico):
+  `onPositive` (bianco) su `positive` (`SeaGreen`, lo stesso verde di `colorScheme.tertiary`)
+  arriva solo a 4.06:1, sotto la soglia AA di 4.5:1 per testo normale - però quella coppia
+  **non è ancora usata da nessuno schermo** (solo `positive` da solo, come colore di testo
+  su sfondo chiaro, già ampiamente sopra soglia). Corretto senza toccare `SeaGreen` (che è
+  anche `colorScheme.tertiary`, già visibile altrove): nuova costante `SeaGreenDeep`
+  (`Color.kt`) usata solo per questa coppia in `Semantic.kt`, 4.60:1. Le altre 13 coppie
+  erano già tutte sopra soglia AA (minimo 4.95:1).
+- **Widget home screen "Speso questo mese": non implementato**, come da nota "opzionale,
+  ultima cosa" del piano. È una feature a sé (provider, layout RemoteViews, trigger di
+  aggiornamento, voce in `AndroidManifest.xml`), non una rifinitura da 10 righe come le
+  altre di questa fase - va fatta come lavoro dedicato se e quando serve, non infilata qui.
 
 ## 4. Fasi, ordine e modello consigliato
 
@@ -436,7 +481,7 @@ Non mischiare fasi in un solo commit.
 | 3 | ✅ Fatta (2026-09-14). Storico: ricerca e filtri (3.4). Vedi 3.4 per cosa è cambiato rispetto alla proposta. | `ui/history` (nuovo `HistoryFilters.kt`) | **Sonnet** |
 | 4 | ✅ Fatta (2026-09-14). Statistiche (3.5). Vedi 3.5 per cosa è cambiato rispetto alla proposta. | `ui/stats` (nuovo), `ui/month/MonthViewModel`, `ui/components/CategoryDonutChart` | **Sonnet** |
 | 5 | ✅ Fatta (2026-09-14). Coppia/Gruppo (3.6). Vedi 3.6 per cosa è cambiato rispetto alla proposta. | nuovo `ui/group`, `Screen.kt`, `MoreScreen`, `HomeScreen`, `SettingsScreen`/`SettingsViewModel` (sezione Gruppo rimossa, spostata) | **Sonnet** |
-| 6 | Rifiniture (3.7). | trasversale | **Sonnet** |
+| 6 | ✅ Fatta (2026-09-14). Rifiniture (3.7) - widget home screen non incluso (vedi 3.7). | trasversale | **Sonnet** |
 
 Perché così: la Fase 1 ridisegna l'ossatura e ogni scelta lì condiziona il resto, quindi
 vale il modello più forte; dalla Fase 3 in poi il lavoro è ben delimitato da questo

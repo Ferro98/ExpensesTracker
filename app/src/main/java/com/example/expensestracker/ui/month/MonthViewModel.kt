@@ -306,6 +306,32 @@ class MonthViewModel(
         }
     }
 
+    /**
+     * The "Annulla" side of the delete snackbar: re-adds [expense]'s data as a fresh document
+     * (a new id, since the old one is already gone) in whichever scope it used to live in.
+     * [Expense.isShared] is reliable here as the routing signal (unlike a raw lookup by id, which
+     * would need to guess) - it always matches the collection an expense was actually saved to.
+     */
+    fun restoreExpense(expense: Expense) {
+        viewModelScope.launch {
+            val repository = if (expense.isShared && groupContext != null) groupContext.expenseRepository else personalExpenseRepository
+            repository.addExpense(
+                categoryId = expense.categoryId,
+                categoryName = expense.categoryName,
+                categoryIcon = expense.categoryIcon,
+                categoryColorHex = expense.categoryColorHex,
+                amount = expense.amount,
+                currencyCode = expense.currencyCode,
+                amountInBaseCurrency = expense.amountInBaseCurrency,
+                date = expense.localDate,
+                note = expense.note,
+                paidByUid = expense.paidByUid,
+                isShared = expense.isShared,
+                payerShare = expense.payerShare
+            )
+        }
+    }
+
     fun addSettlement(fromUid: String, toUid: String, amount: Double, currencyCode: String, date: LocalDate, note: String?) {
         val context = groupContext ?: return
         viewModelScope.launch {

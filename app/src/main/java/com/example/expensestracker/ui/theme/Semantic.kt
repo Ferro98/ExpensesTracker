@@ -32,7 +32,9 @@ data class SemanticColors(
 )
 
 private val LightSemanticColors = SemanticColors(
-    positive = SeaGreen,
+    // SeaGreenDeep, not the SeaGreen used elsewhere as colorScheme.tertiary: white text needs
+    // the extra depth to clear WCAG AA (4.5:1) against a solid fill - see Color.kt.
+    positive = SeaGreenDeep,
     onPositive = Color.White,
     positiveContainer = SeaGreenLight,
     onPositiveContainer = Color(0xFF12291F),

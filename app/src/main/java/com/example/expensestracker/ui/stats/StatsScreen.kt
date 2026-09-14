@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +57,9 @@ import java.time.YearMonth
 fun StatsScreen(
     viewModel: MonthViewModel,
     onEditExpense: (Expense) -> Unit,
-    onDuplicateExpense: (Expense) -> Unit
+    onDuplicateExpense: (Expense) -> Unit,
+    onDeleteExpense: (Expense) -> Unit,
+    onAddExpense: () -> Unit
 ) {
     val pagerState = rememberMonthPagerState()
     val detailState = rememberMonthDetailState()
@@ -76,6 +79,7 @@ fun StatsScreen(
             trend = trend,
             comparison = comparison,
             onOpenCategory = { detailState.openCategory(it, uiState) },
+            onAddExpense = onAddExpense,
             onMonthClick = { target ->
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(pageForMonth(viewModel.currentMonth, target))
@@ -89,7 +93,7 @@ fun StatsScreen(
         uiState = currentState,
         onEditExpense = onEditExpense,
         onDuplicateExpense = onDuplicateExpense,
-        onDeleteExpense = viewModel::deleteExpense
+        onDeleteExpense = onDeleteExpense
     )
 }
 
@@ -100,6 +104,7 @@ private fun MonthBreakdown(
     trend: MonthlyTrend,
     comparison: MonthComparison,
     onOpenCategory: (CategorySpending) -> Unit,
+    onAddExpense: () -> Unit,
     onMonthClick: (YearMonth) -> Unit
 ) {
     val categories = uiState.categorySpendingByAmount
@@ -150,7 +155,13 @@ private fun MonthBreakdown(
         }
 
         if (categories.isEmpty()) {
-            item { EmptyState(icon = "📊", title = stringResource(R.string.no_expenses_this_month)) }
+            item {
+                EmptyState(
+                    icon = "📊",
+                    title = stringResource(R.string.no_expenses_this_month),
+                    action = { Button(onClick = onAddExpense) { Text(stringResource(R.string.cd_add_expense)) } }
+                )
+            }
         } else {
             item {
                 Card(
@@ -192,7 +203,7 @@ private fun MonthBreakdown(
 
             item { SectionHeader(stringResource(R.string.by_category), topPadding = 10.dp) }
             items(categories, key = { it.categoryId }) { category ->
-                CategorySpendingRow(category, onClick = { onOpenCategory(category) })
+                CategorySpendingRow(category, onClick = { onOpenCategory(category) }, modifier = Modifier.animateItem())
             }
         }
 

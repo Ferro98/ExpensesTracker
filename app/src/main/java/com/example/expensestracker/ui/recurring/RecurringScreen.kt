@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -115,7 +116,13 @@ fun RecurringScreen(
         }
 
         if (uiState.items.isEmpty()) {
-            item { EmptyState(icon = "🔁", title = stringResource(R.string.no_recurring_yet)) }
+            item {
+                EmptyState(
+                    icon = "🔁",
+                    title = stringResource(R.string.no_recurring_yet),
+                    action = { Button(onClick = { onShowAddDialogChange(true) }) { Text(stringResource(R.string.fab_recurring_expense)) } }
+                )
+            }
         }
 
         items(uiState.items, key = { it.id }) { item ->
@@ -125,7 +132,8 @@ fun RecurringScreen(
                 partnerName = uiState.partnerName,
                 currencyRates = uiState.currencyRates,
                 onToggle = { viewModel.toggleActive(item) },
-                onOpenDetail = { detailItem = item }
+                onOpenDetail = { detailItem = item },
+                modifier = Modifier.animateItem()
             )
         }
 
@@ -190,10 +198,11 @@ private fun RecurringRow(
     partnerName: String,
     currencyRates: List<CurrencyRate>,
     onToggle: () -> Unit,
-    onOpenDetail: () -> Unit
+    onOpenDetail: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenDetail),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

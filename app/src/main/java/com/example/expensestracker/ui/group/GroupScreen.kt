@@ -1,5 +1,6 @@
 package com.example.expensestracker.ui.group
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +40,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +60,7 @@ import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.ui.components.ExpenseDetailSheet
 import com.example.expensestracker.ui.components.ExpenseRow
 import com.example.expensestracker.ui.components.SettlementDialog
+import com.example.expensestracker.ui.components.showUndoSnackbar
 import com.example.expensestracker.ui.onboarding.GroupSetupSection
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMoney
@@ -72,10 +77,15 @@ import java.time.LocalDate
 fun GroupScreen(
     factory: AppViewModelFactory,
     onEditExpense: (Expense) -> Unit,
-    onDuplicateExpense: (Expense) -> Unit
+    onDuplicateExpense: (Expense) -> Unit,
+    onAddExpense: () -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
     val viewModel: GroupViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val undoLabel = stringResource(R.string.action_undo)
+    val deletedMessage = stringResource(R.string.expense_deleted)
 
     if (!uiState.inGroup) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -141,7 +151,13 @@ fun GroupScreen(
         }
 
         if (uiState.activity.isEmpty()) {
-            item { EmptyState(icon = "🤝", title = stringResource(R.string.group_no_activity_yet)) }
+            item {
+                EmptyState(
+                    icon = "🤝",
+                    title = stringResource(R.string.group_no_activity_yet),
+                    action = { Button(onClick = onAddExpense) { Text(stringResource(R.string.cd_add_expense)) } }
+                )
+            }
         } else {
             items(
                 uiState.activity,
@@ -157,12 +173,14 @@ fun GroupScreen(
                         expense = item.expense,
                         myUid = uiState.myUid,
                         partnerName = uiState.partnerName,
-                        onClick = { expenseDetail = item.expense }
+                        onClick = { expenseDetail = item.expense },
+                        modifier = Modifier.animateItem()
                     )
                     is GroupActivityItem.SettlementActivity -> SettlementRow(
                         settlement = item.settlement,
                         myUid = uiState.myUid,
-                        partnerName = uiState.partnerName
+                        partnerName = uiState.partnerName,
+                        modifier = Modifier.animateItem()
                     )
                 }
             }
@@ -198,7 +216,11 @@ fun GroupScreen(
             partnerName = uiState.partnerName,
             onDismiss = { expenseDetail = null },
             onEdit = { onEditExpense(expense); expenseDetail = null },
-            onDelete = { viewModel.deleteExpense(expense.id); expenseDetail = null },
+            onDelete = {
+                viewModel.deleteExpense(expense.id)
+                expenseDetail = null
+                scope.showUndoSnackbar(snackbarHostState, deletedMessage, undoLabel) { viewModel.restoreExpense(expense) }
+            },
             onDuplicate = { onDuplicateExpense(expense); expenseDetail = null }
         )
     }
@@ -325,7 +347,9 @@ private fun BalanceHero(balance: Balance, myUid: String, partnerName: String, on
                 youOwe -> stringResource(R.string.balance_you_owe, partnerName, formatMoney(balance.netAmount))
                 else -> stringResource(R.string.balance_owes_you, partnerName, formatMoney(balance.netAmount))
             }
-            Text(text, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = onContainerColor)
+            AnimatedContent(targetState = text, label = "balanceText") { animatedText ->
+                Text(animatedText, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = onContainerColor)
+            }
             if (!settled) {
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -379,12 +403,12 @@ private fun BreakdownRow(label: String, amount: Double) {
 
 /** "Marta → Tu 40 €" - a settlement's row in the shared activity feed, styled to sit next to [ExpenseRow] without competing with it. */
 @Composable
-private fun SettlementRow(settlement: Settlement, myUid: String, partnerName: String) {
+private fun SettlementRow(settlement: Settlement, myUid: String, partnerName: String, modifier: Modifier = Modifier) {
     val fromLabel = if (settlement.fromUid == myUid) stringResource(R.string.you) else partnerName
     val toLabel = if (settlement.toUid == myUid) stringResource(R.string.you) else partnerName
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
