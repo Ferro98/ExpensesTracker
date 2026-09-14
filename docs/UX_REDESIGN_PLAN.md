@@ -256,6 +256,13 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 3):
 - `AmountKeypad` sta in `ui/components/` con `appendAmountKey` come funzione pura accanto
   (max 7 cifre + 2 decimali, rifiuta il tasto invece di mostrare errori) - è il pezzo da
   riusare se in futuro anche le ricorrenti passano al tastierino.
+- **Correzione post-fase (2026-09-14, feedback utente)**: la nota **non** è nel Passo 2
+  espandibile come da proposta iniziale - nell'uso reale è compilata quasi sempre ed è più
+  una descrizione della spesa che un dettaglio accessorio. Ora è un campo sempre visibile
+  subito sotto il selettore categoria (fino a 2 righe, non singleLine, perché una vera
+  descrizione a volte è lunga). Il riassunto a scomparsa (`DetailsSummaryRow`) mostra solo
+  data e condivisione - le uniche due cose che cambiano davvero "a volte" - e non cita più
+  la nota.
 
 ### 3.4 Storico
 

@@ -63,9 +63,11 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * Amount-first entry: the three things every expense needs (how much, what for, save) are all on
- * screen at once with no scrolling, and everything else - date, sharing, note - hides behind the
- * one-line summary until you actually want to change it. See docs/UX_REDESIGN_PLAN.md 3.3.
+ * Amount-first entry: amount, category and note are all on screen together, since in practice a
+ * note is filled in almost every time and reads more like a short description than an optional
+ * extra - hiding it behind a tap lost it exactly when it mattered. Only date and sharing, which
+ * are genuinely "change this sometimes" fields, hide behind the one-line summary below the note.
+ * See docs/UX_REDESIGN_PLAN.md 3.3.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,12 +196,25 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
             )
             Spacer(Modifier.height(14.dp))
 
+            // Always on screen, not gated behind "details": in practice this is filled in almost
+            // every time and works more like a short description of the expense than an aside.
+            // Up to two lines rather than singleLine, since a real description sometimes runs long.
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text(stringResource(R.string.label_note_optional)) },
+                placeholder = { Text(stringResource(R.string.add_note)) },
+                minLines = 1,
+                maxLines = 2,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(14.dp))
+
             DetailsSummaryRow(
                 date = selectedDate,
                 isShared = isShared,
                 inGroup = uiState.inGroup,
                 partnerName = uiState.partnerName,
-                note = note,
                 expanded = showDetails,
                 onToggle = { showDetails = !showDetails }
             )
@@ -238,16 +253,7 @@ fun AddExpenseSheet(viewModel: AddExpenseViewModel, onDismiss: () -> Unit) {
                             onPayerShareChange = { payerShare = it }
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
                 }
-
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text(stringResource(R.string.label_note_optional)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
             } else {
                 AmountKeypad(
                     onKey = { key -> amountText = appendAmountKey(amountText, key, separator) },
@@ -352,8 +358,9 @@ private fun CurrencyChips(codes: List<String>, selected: String, onSelect: (Stri
 }
 
 /**
- * "Today · Personal · Add a note" - shows the state of everything the quick path decides for you,
- * so the defaults are visible rather than implied, and opens the fields that change them.
+ * "Today · Personal" - shows the state of the two fields that genuinely change only sometimes
+ * (date, sharing), so the defaults are visible rather than implied, and opens the fields that
+ * change them. The note has its own always-visible field above and isn't part of this summary.
  */
 @Composable
 private fun DetailsSummaryRow(
@@ -361,7 +368,6 @@ private fun DetailsSummaryRow(
     isShared: Boolean,
     inGroup: Boolean,
     partnerName: String,
-    note: String,
     expanded: Boolean,
     onToggle: () -> Unit
 ) {
@@ -372,11 +378,9 @@ private fun DetailsSummaryRow(
         else -> formatShortDate(date)
     }
     val sharedLabel = if (isShared) stringResource(R.string.shared_with, partnerName) else stringResource(R.string.personal_label)
-    val noteLabel = note.takeIf { it.isNotBlank() } ?: stringResource(R.string.add_note)
     val summary = buildList {
         add(dateLabel)
         if (inGroup) add(sharedLabel)
-        add(noteLabel)
     }.joinToString(" · ")
 
     Card(
