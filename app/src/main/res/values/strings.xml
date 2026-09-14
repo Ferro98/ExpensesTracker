@@ -63,6 +63,12 @@
     <string name="recent_expenses">Recent expenses</string>
     <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
     <string name="no_expenses_this_month">No expenses this month.</string>
+    <string name="no_search_results">No expenses match these filters.</string>
+    <string name="search_expenses_hint">Search notes and categories</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="filter_scope_all">All</string>
+    <string name="filter_paid_by_me">Paid by me</string>
+    <string name="filter_paid_by_partner">Paid by %1$s</string>
     <string name="paid_by_partner">Paid by %1$s</string>
     <string name="personal_label">Personal</string>
     <string name="dashboard_shared_category">Shared</string>

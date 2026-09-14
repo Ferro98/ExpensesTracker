@@ -63,6 +63,12 @@
     <string name="recent_expenses">Spese recenti</string>
     <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
     <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
+    <string name="no_search_results">Nessuna spesa corrisponde ai filtri.</string>
+    <string name="search_expenses_hint">Cerca per nota o categoria</string>
+    <string name="cd_clear_search">Cancella ricerca</string>
+    <string name="filter_scope_all">Tutte</string>
+    <string name="filter_paid_by_me">Pagate da me</string>
+    <string name="filter_paid_by_partner">Pagate da %1$s</string>
     <string name="paid_by_partner">Pagato da %1$s</string>
     <string name="personal_label">Personale</string>
     <string name="dashboard_shared_category">Condivise</string>

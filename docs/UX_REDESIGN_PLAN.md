@@ -264,7 +264,7 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 3):
   data e condivisione - le uniche due cose che cambiano davvero "a volte" - e non cita più
   la nota.
 
-### 3.4 Storico
+### 3.4 Storico — ✅ Fase 3 completata (2026-09-14)
 
 - ✅ Fatto in Fase 1: `ui/history/HistoryScreen` sopra `MonthViewModel.uiStateFor` (niente
   ViewModel dedicato: è la stessa vista mese).
@@ -275,6 +275,30 @@ Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 3):
   `localizedCategoryName`). Filtri: chip "Tutte / Personali / Condivise", chip categoria
   (multi), chip "Pagate da me / da Partner" (solo in gruppo).
 - Stato vuoto per ricerca senza risultati.
+
+Stato reale dopo l'implementazione (leggere prima di ripartire dalla Fase 4):
+
+- Barra di ricerca e chip filtro sono in `ui/history/HistoryFilters.kt`
+  (`HistoryFilterState`, `HistoryFilterBar`, `matchesHistoryFilters`), **fuori dal pager**
+  (in `HistoryScreen`, sopra `MonthPager`) così sopravvivono allo swipe tra mesi invece di
+  azzerarsi ad ogni pagina. Lo stato filtro usa `remember` semplice, non `rememberSaveable`
+  (coerente con `showDetails` in `AddExpenseSheet`): si perde a un kill del processo, non
+  è un bug funzionale, e un `Set<String>` non è banale da affidare a un `Bundle`.
+- Il filtro categoria confronta contro la categoria **già risolta** da `MonthViewModel`
+  (`uiState.categoryExpenses`, che usa `CategoryResolver`), mai `expense.categoryId` grezzo:
+  altrimenti una spesa condivisa inserita dal partner - il cui `categoryId` esiste solo
+  nella sua lista privata - non comparirebbe mai selezionando quella categoria.
+  `DayGroupedExpenses` costruisce una mappa inversa `expenseId -> categoryId` da
+  `categoryExpenses` per questo.
+- Le chip categoria vengono dalla pagina **assestata** (`currentMonthState`), non da quella
+  in scorrimento, così non cambiano mentre si swipa; è la lista completa delle categorie
+  dell'utente (anche a spesa zero questo mese) meno il bucket sintetico "Condivise", che
+  non è una categoria filtrabile.
+- Due stati vuoti distinti: "Nessuna spesa in questo mese" (mese davvero vuoto) vs "Nessuna
+  spesa corrisponde ai filtri" (`HistoryFilterState.isActive`), con icona diversa (🧾 vs 🔍).
+- Chip "Pagate da me/da Partner" sono a scelta singola con deseleziona-ritoccando (come lo
+  scope Tutte/Personali/Condivise), non multi-select: il pagatore di una spesa è sempre uno
+  dei due, quindi "entrambi selezionati" non avrebbe senso.
 
 ### 3.5 Statistiche
 
@@ -324,7 +348,7 @@ Non mischiare fasi in un solo commit.
 | 0 | ✅ Fatta (2026-09-13). Design system + componenti condivisi (3.2), deduplica `ExpenseRow`/sheet, aggiunta Vico. Vedi 3.2 per cosa è cambiato rispetto alla proposta. | `ui/theme`, `ui/components`, Dashboard/Recurring/Categories per usare i componenti | **Sonnet** |
 | 1 | ✅ Fatta (2026-09-13). Nuova navigazione (3.1): tab Home/Storico/Statistiche/Altro + FAB centrale; Home ridotta; Storico con raggruppamento per giorno (senza filtri); Ricorrenti/Categorie sotto Altro. Vedi 3.1 per cosa è cambiato rispetto alla proposta. | `MainActivity`, `navigation/Screen.kt`, nuovi `ui/home`, `ui/history`, `ui/stats`, `ui/more`, `ui/month` (ex `ui/dashboard`, rimossa) | **Opus** (trasversale, richiede giudizio) |
 | 2 | ✅ Fatta (2026-09-13). Quick-add (3.3) + `lastUsedCategoryId` + "Duplica". Vedi 3.3 per cosa è cambiato rispetto alla proposta. | `ui/addexpense`, `SettingsRepository`, nuovo `ui/components/AmountKeypad`, `DetailSheet` | **Opus** se il budget lo consente, altrimenti Sonnet con questo doc |
-| 3 | Storico: ricerca e filtri (3.4). | `ui/history` | **Sonnet** |
+| 3 | ✅ Fatta (2026-09-14). Storico: ricerca e filtri (3.4). Vedi 3.4 per cosa è cambiato rispetto alla proposta. | `ui/history` (nuovo `HistoryFilters.kt`) | **Sonnet** |
 | 4 | Statistiche (3.5). | nuovo `ui/stats`, Vico | **Sonnet** |
 | 5 | Coppia/Gruppo (3.6). | nuovo `ui/group`, `BalanceCalculator` (solo lettura) | **Sonnet** |
 | 6 | Rifiniture (3.7). | trasversale | **Sonnet** |
