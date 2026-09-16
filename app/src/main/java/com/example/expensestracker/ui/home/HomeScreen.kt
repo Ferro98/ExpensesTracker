@@ -51,12 +51,16 @@ import com.example.expensestracker.ui.month.rememberMonthDetailState
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMonthName
 import com.example.expensestracker.util.formatMoney
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** How many rows each Home section shows before handing off to the full list. */
 private const val HOME_CATEGORY_LIMIT = 5
 private const val HOME_EXPENSE_LIMIT = 5
+
+/** Floor on how long the pull-to-refresh spinner stays up, so a near-instant "nothing to sync" doesn't read as "didn't even try". */
+private const val MIN_REFRESH_INDICATOR_MS = 600L
 
 /**
  * The "at a glance" screen: always the month in progress (browsing other months is History's and
@@ -100,7 +104,14 @@ fun HomeScreen(
         onRefresh = {
             refreshScope.launch {
                 isRefreshing = true
+                // When there's nothing queued (the common case), waitForPendingWrites() resolves
+                // in a handful of milliseconds - the spinner would flash and vanish, reading as
+                // "didn't even try" rather than "already up to date". Runs the minimum-visible
+                // delay concurrently with the real check and waits for whichever finishes last,
+                // so a slow/offline refresh isn't held back, only a suspiciously fast one is.
+                val minVisible = launch { delay(MIN_REFRESH_INDICATOR_MS) }
                 viewModel.refresh()
+                minVisible.join()
                 isRefreshing = false
             }
         },

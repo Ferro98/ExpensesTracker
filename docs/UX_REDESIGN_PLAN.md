@@ -557,6 +557,18 @@ il messaggio di conferma.
   card) - `null` ovunque tranne `GroupScreen`, che colora ogni spesa condivisa con
   `colorScheme.primary` (tu) o `colorScheme.tertiary` (partner), gli stessi due colori di
   marchio già usati altrove, non nuovi. Piccola legenda a pallini sopra il feed.
+- **Correzione (2026-09-17, feedback utente)**: due problemi nel giro precedente.
+  1. Lo spinner del pull-to-refresh spariva troppo in fretta per essere notato - quando
+     non c'è nulla in sospeso `waitForPendingWrites()` si risolve in pochi millisecondi,
+     quindi lo spinner lampeggiava invece di girare. Aggiunta una durata minima visibile
+     di 600 ms in `HomeScreen`, eseguita in parallelo al controllo vero (non in coda dopo)
+     così un refresh lento/offline non viene rallentato ulteriormente, solo uno
+     sospettosamente veloce viene "trattenuto" fino al minimo.
+  2. `colorScheme.primary` (FjordBlue) e `colorScheme.tertiary` (SeaGreen) sono entrambi
+     blu-verde/teal e su una striscia sottile di 4dp risultavano quasi indistinguibili.
+     Sostituito `tertiary` con `colorScheme.secondary` (CoralAccent, lo stesso arancione
+     già usato per il FAB "+") - molto più lontano da `primary` sulla ruota dei colori,
+     esattamente ciò che serve per distinguere due persone a colpo d'occhio.
 
 ## Fonti consultate
 

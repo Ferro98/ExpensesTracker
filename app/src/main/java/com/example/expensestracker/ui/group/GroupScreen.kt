@@ -104,11 +104,13 @@ fun GroupScreen(
     var expenseDetail by remember { mutableStateOf<Expense?>(null) }
     val isLeaving by viewModel.isLeaving.collectAsState()
     val leaveFailed by viewModel.leaveFailed.collectAsState()
-    // The app's two most prominent brand hues, already meaningful (primary/tertiary) rather than
-    // introducing new colours just for this - reused here to answer "who paid this one" at a
-    // glance in the activity feed below.
+    // primary (cool blue-teal) and secondary (warm coral) - not primary/tertiary as first shipped:
+    // tertiary is SeaGreen, close enough in hue to primary's FjordBlue that the two read as
+    // near-identical in a thin 4dp stripe (user-reported). secondary is the FAB's own accent
+    // colour, about as far from primary on the wheel as this palette has, which is exactly what a
+    // "which of two people" indicator needs.
     val payerColorMe = MaterialTheme.colorScheme.primary
-    val payerColorPartner = MaterialTheme.colorScheme.tertiary
+    val payerColorPartner = MaterialTheme.colorScheme.secondary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
