@@ -36,6 +36,8 @@
     <string name="expense_saved">Spesa salvata</string>
     <string name="expense_updated">Spesa aggiornata</string>
     <string name="expense_deleted">Spesa eliminata</string>
+    <string name="expense_delete_failed">Non sono riuscito a eliminare la spesa - riprova</string>
+    <string name="offline_banner">Sei offline - le modifiche si sincronizzeranno quando torni online</string>
     <string name="action_keep_editing">Continua a modificare</string>
     <string name="label_amount">Importo</string>
     <string name="label_note_optional">Nota (opzionale)</string>

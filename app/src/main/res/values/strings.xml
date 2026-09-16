@@ -36,6 +36,8 @@
     <string name="expense_saved">Expense saved</string>
     <string name="expense_updated">Expense updated</string>
     <string name="expense_deleted">Expense deleted</string>
+    <string name="expense_delete_failed">Couldn\'t delete the expense - try again</string>
+    <string name="offline_banner">You\'re offline - changes will sync once you\'re back online</string>
     <string name="action_keep_editing">Keep editing</string>
     <string name="label_amount">Amount</string>
     <string name="label_note_optional">Note (optional)</string>

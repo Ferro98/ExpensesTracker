@@ -10,8 +10,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,9 +23,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -36,8 +42,10 @@ import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -64,6 +72,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.expensestracker.data.WriteOutcome
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
@@ -82,6 +91,7 @@ import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
+import com.example.expensestracker.ui.theme.semanticColors
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -122,6 +132,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val groupId by app.settingsRepository.groupId.collectAsState(initial = null)
+            // Defaults to true (no banner) until the first callback fires, rather than flashing
+            // "offline" for a frame on every cold start.
+            val isOnline by remember { app.connectivityObserver.isOnline }.collectAsState(initial = true)
 
             ExpensesTrackerTheme(darkTheme = darkTheme) {
                 val uid = myUid
@@ -135,7 +148,7 @@ class MainActivity : ComponentActivity() {
                     // already-mounted screen. Keying on groupId forces the whole nav tree - and
                     // every ViewModel in it - to be recreated when group membership changes.
                     key(groupId, uid) {
-                        ExpensesTrackerRoot(factory, vmKey = "$groupId:$uid")
+                        ExpensesTrackerRoot(factory, vmKey = "$groupId:$uid", isOnline = isOnline)
                     }
                 }
             }
@@ -152,7 +165,7 @@ private fun SplashScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
+fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String, isOnline: Boolean = true) {
     val navController = rememberNavController()
     var showAddExpense by remember { mutableStateOf(false) }
     var showAddCategory by remember { mutableStateOf(false) }
@@ -189,19 +202,37 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
     val expenseSavedMessage = stringResource(R.string.expense_saved)
     val expenseUpdatedMessage = stringResource(R.string.expense_updated)
     val expenseDeletedMessage = stringResource(R.string.expense_deleted)
+    val expenseDeleteFailedMessage = stringResource(R.string.expense_delete_failed)
 
     // Home/History/Stats share monthViewModel, so their "delete, then offer to undo" wiring is
-    // built once here rather than repeated in each screen. Delete happens immediately (not
-    // deferred) - Undo re-adds the same data as a fresh document; see MonthViewModel.restoreExpense.
+    // built once here rather than repeated in each screen. Waits for the actual outcome instead
+    // of assuming success: a timeout still gets the success message (the delete already applied
+    // to Firestore's local cache and will sync once online - see MonthViewModel.deleteExpense),
+    // but a genuine failure says so instead of quietly leaving the expense right where it was.
     val onDeleteExpenseWithUndo: (Expense) -> Unit = { expense ->
-        monthViewModel.deleteExpense(expense.id)
-        snackbarScope.showUndoSnackbar(snackbarHostState, expenseDeletedMessage, undoLabel) {
-            monthViewModel.restoreExpense(expense)
+        snackbarScope.launch {
+            when (monthViewModel.deleteExpense(expense.id)) {
+                WriteOutcome.FAILED -> snackbarHostState.showSnackbar(expenseDeleteFailedMessage)
+                WriteOutcome.SUCCESS, WriteOutcome.TIMED_OUT -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = expenseDeletedMessage,
+                        actionLabel = undoLabel,
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) monthViewModel.restoreExpense(expense)
+                }
+            }
         }
     }
-    val onExpenseSaved: (String) -> Unit = { createdId ->
-        snackbarScope.showUndoSnackbar(snackbarHostState, expenseSavedMessage, undoLabel) {
-            monthViewModel.deleteExpense(createdId)
+    // createdId is null when the create timed out waiting for Firestore's ack (still saved -
+    // it's already in the local cache - just without an id to offer "Undo" for).
+    val onExpenseSaved: (String?) -> Unit = { createdId ->
+        if (createdId != null) {
+            snackbarScope.showUndoSnackbar(snackbarHostState, expenseSavedMessage, undoLabel) {
+                monthViewModel.deleteExpense(createdId)
+            }
+        } else {
+            snackbarScope.launch { snackbarHostState.showSnackbar(expenseSavedMessage) }
         }
     }
     // No undo action here - reversing an edit would need the pre-edit values, which are already
@@ -274,11 +305,17 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
         },
         floatingActionButtonPosition = FabPosition.End
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(padding)
-        ) {
+        Column(modifier = Modifier.padding(padding)) {
+            // Firestore itself never surfaces "offline" - it just queues writes locally and stays
+            // quiet - so this is the app's own signal, not something derived from a failed call.
+            AnimatedVisibility(visible = !isOnline) {
+                OfflineBanner()
+            }
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.weight(1f)
+            ) {
             composable(Screen.Home.route) {
                 HomeScreen(
                     viewModel = monthViewModel,
@@ -342,6 +379,7 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
                 )
             }
             composable(Screen.Settings.route) { SettingsScreen(factory) }
+            }
         }
     }
 
@@ -351,6 +389,31 @@ fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String) {
             onDismiss = { showAddExpense = false },
             onExpenseSaved = onExpenseSaved,
             onExpenseUpdated = onExpenseUpdated
+        )
+    }
+}
+
+/** Persistent, not a snackbar - being offline can last a while, and a snackbar would only auto-dismiss and be forgotten. */
+@Composable
+private fun OfflineBanner(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.semanticColors.warningContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.CloudOff,
+            contentDescription = null,
+            tint = MaterialTheme.semanticColors.onWarningContainer,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.offline_banner),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.semanticColors.onWarningContainer
         )
     }
 }

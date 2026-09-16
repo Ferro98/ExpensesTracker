@@ -26,6 +26,11 @@ class PersonalDataRepository(
     private val categoriesRef get() = userRef.collection("categories")
     private val currencyRatesRef get() = userRef.collection("currencyRates")
 
+    /** Resolves once every write still queued in the local cache has reached the server - the "did pull-to-refresh actually do anything" signal, since every screen is already live via snapshot listeners regardless. Left to the caller to bound with a timeout when there's no connectivity to ever resolve it. */
+    suspend fun waitForPendingWrites() {
+        firestore.waitForPendingWrites().await()
+    }
+
     // Categories
     // Sorted client-side rather than via Firestore's orderBy("sortOrder"): that operator silently
     // drops any document missing the field entirely, and categories created before sortOrder

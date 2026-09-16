@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,12 +22,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -76,12 +80,15 @@ import java.time.ZoneOffset
 fun AddExpenseSheet(
     viewModel: AddExpenseViewModel,
     onDismiss: () -> Unit,
-    onExpenseSaved: (createdExpenseId: String) -> Unit = {},
+    // Null means either an edit, or a create that timed out before Firestore returned the new
+    // id (still saved - see AddExpenseViewModel.WRITE_TIMEOUT_MS - just without an id to undo).
+    onExpenseSaved: (createdExpenseId: String?) -> Unit = {},
     onExpenseUpdated: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
     // Captured once when the sheet is composed (it's only ever entered fresh - see the
     // `if (showAddExpense)` gate in ExpensesTrackerRoot) so prefill values don't get clobbered
     // by recomposition while the user is editing the fields below.
@@ -300,18 +307,27 @@ fun AddExpenseSheet(
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
                             onSaved = { createdId ->
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                // Undo only makes sense for a brand-new expense (delete it again);
-                                // an edit gets a plain confirmation instead - "undo" would need the
-                                // pre-edit values, which are already overwritten by this point.
-                                if (createdId != null) onExpenseSaved(createdId) else onExpenseUpdated()
+                                // isEditing, not "createdId == null", decides which callback fires -
+                                // a create can also come back with a null id if it timed out waiting
+                                // for Firestore's ack (see AddExpenseViewModel), and that's still a
+                                // creation, not an edit.
+                                if (isEditing) onExpenseUpdated() else onExpenseSaved(createdId)
                                 dismiss()
                             }
                         )
                     }
                 },
-                enabled = amount != null && amount > 0 && selectedCategoryId != null,
+                enabled = amount != null && amount > 0 && selectedCategoryId != null && !isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = LocalContentColor.current
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(stringResource(if (isEditing) R.string.save_changes else R.string.save_expense))
             }
         }

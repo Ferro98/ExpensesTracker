@@ -131,28 +131,39 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
     }
 
     /**
-     * Uses a deterministic document id ("<recurringId>_<date>") instead of an auto id so that
-     * two devices independently generating the same overdue occurrence while offline converge
-     * on the same document instead of creating a duplicate once both reconnect.
+     * Writes every due occurrence and advances `lastGeneratedDate` in one atomic batch, so a
+     * write that's interrupted partway (offline, killed mid-sync) can never leave the template
+     * pointing at an old date while its expenses already exist - which would regenerate (and
+     * silently resurrect, via the same deterministic id) an occurrence the user had since deleted
+     * or edited. Each occurrence uses a deterministic document id ("<recurringId>_<date>") instead
+     * of an auto id so that two devices independently generating the same one while offline
+     * converge on the same document instead of creating a duplicate once both reconnect.
      */
-    suspend fun insertGeneratedExpense(recurring: RecurringExpense, date: LocalDate, amountInBaseCurrency: Double) {
-        expensesRef.document("${recurring.id}_$date").set(
-            Expense(
-                categoryId = recurring.categoryId,
-                categoryName = recurring.categoryName,
-                categoryIcon = recurring.categoryIcon,
-                categoryColorHex = recurring.categoryColorHex,
-                amount = recurring.amount,
-                currencyCode = recurring.currencyCode,
-                amountInBaseCurrency = amountInBaseCurrency,
-                date = date.toString(),
-                note = recurring.note,
-                recurringExpenseId = recurring.id,
-                createdAt = Timestamp.now(),
-                paidByUid = recurring.paidByUid,
-                isShared = recurring.isShared,
-                payerShare = recurring.payerShare
+    suspend fun insertGeneratedExpensesAndAdvance(recurring: RecurringExpense, dates: List<LocalDate>, amountInBaseCurrency: Double) {
+        if (dates.isEmpty()) return
+        val batch = expensesRef.firestore.batch()
+        for (date in dates) {
+            batch.set(
+                expensesRef.document("${recurring.id}_$date"),
+                Expense(
+                    categoryId = recurring.categoryId,
+                    categoryName = recurring.categoryName,
+                    categoryIcon = recurring.categoryIcon,
+                    categoryColorHex = recurring.categoryColorHex,
+                    amount = recurring.amount,
+                    currencyCode = recurring.currencyCode,
+                    amountInBaseCurrency = amountInBaseCurrency,
+                    date = date.toString(),
+                    note = recurring.note,
+                    recurringExpenseId = recurring.id,
+                    createdAt = Timestamp.now(),
+                    paidByUid = recurring.paidByUid,
+                    isShared = recurring.isShared,
+                    payerShare = recurring.payerShare
+                )
             )
-        ).await()
+        }
+        batch.set(recurringRef.document(recurring.id), recurring.copy(lastGeneratedDate = dates.last().toString()))
+        batch.commit().await()
     }
 }

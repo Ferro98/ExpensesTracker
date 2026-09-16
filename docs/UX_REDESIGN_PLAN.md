@@ -508,6 +508,56 @@ due volte le righe lista.
 - Non fondere le categorie tra i due utenti a livello dati: la corrispondenza è solo per
   nome in lettura (`CategoryResolver`), le liste restano private.
 
+## 7. Affidabilità offline/lag (post-piano, 2026-09-16)
+
+Non una fase del redesign - correzioni di affidabilità dopo che l'uso reale ha mostrato
+il problema: salvare una spesa senza connessione non dava feedback, l'utente ha premuto
+"Salva" più volte pensando non avesse funzionato, e al ritorno online sono comparse 3
+copie della stessa spesa. Anche l'eliminazione sembrava "non fare niente" pur mostrando
+il messaggio di conferma.
+
+- **Causa della spesa triplicata**: `AddExpenseViewModel.saveExpense` non aveva nessuna
+  guardia contro tap ripetuti - ogni tap lanciava una scrittura Firestore indipendente, e
+  senza connessione lo `.await()` su quella scrittura può restare in sospeso a lungo (il
+  dato è già in coda nella cache locale, ma la Task non si conclude finché il server non
+  conferma). Aggiunta `AddExpenseViewModel.isSaving` (blocca i tap ripetuti, disabilita
+  il pulsante Salva con spinner) e `withTimeoutOrNull(8s)` attorno alla scrittura: allo
+  scadere si procede comunque come se fosse andata a buon fine (il dato è già in cache
+  locale - riprovare avrebbe ricreato lo stesso problema), semplicemente senza l'id per
+  offrire "Annulla" su quella spesa specifica.
+- **Eliminazione resa onesta**: `MonthViewModel`/`GroupViewModel.deleteExpense` sono ora
+  `suspend fun` che restituiscono `WriteOutcome` (SUCCESS/TIMED_OUT/FAILED) invece di
+  lanciare-e-dimenticare. Lo snackbar "Spesa eliminata" con Annulla appare solo dopo aver
+  atteso l'esito reale (con lo stesso timeout di 8s - un timeout conta come successo, un
+  errore vero no); un fallimento genuino mostra "Non sono riuscito a eliminare la spesa -
+  riprova" invece di mentire.
+- **Trovato un bug concreto separato investigando**: `RecurringExpenseGenerator` scriveva
+  ogni spesa generata e poi l'avanzamento di `lastGeneratedDate` sul template come
+  operazioni indipendenti. Se il processo veniva interrotto tra le due (lag, offline, app
+  chiusa a metà sync), al riavvio il `lastGeneratedDate` risultava ancora vecchio e la
+  stessa data veniva rigenerata - con lo stesso id deterministico (`insertGeneratedExpense`
+  usa `"<recurringId>_<data>"`), risorgendo silenziosamente una spesa che l'utente aveva
+  nel frattempo cancellato o modificato. Ora `ExpenseRepository.insertGeneratedExpensesAndAdvance`
+  scrive tutte le occorrenze dovute + l'avanzamento della data in un unico `WriteBatch`
+  atomico.
+- **Banner offline persistente**: nuovo `data/ConnectivityObserver` (Android
+  `ConnectivityManager`, capacità `NET_CAPABILITY_VALIDATED` - non solo "c'è un
+  adattatore di rete", ma "Android ha verificato che c'è davvero internet"). Firestore di
+  suo non segnala mai "sono offline" (mette in coda e sincronizza in silenzio, per
+  design) - questo è il segnale che mancava. Mostrato come barra persistente sotto la
+  barra superiore (non uno snackbar, che sparirebbe da solo mentre l'offline può durare a
+  lungo), in `MainActivity`.
+- **Pull-to-refresh in Home**: `PullToRefreshBox` (Material3). Tutto è già live via
+  listener Firestore, quindi non c'è "nuovo" da scaricare - il gesto è comunque quello
+  che la gente usa istintivamente quando qualcosa sembra fermo, quindi è collegato a un
+  segnale vero (`MonthViewModel.refresh` → `waitForPendingWrites()` con lo stesso
+  timeout) invece di girare a vuoto per un tempo fisso.
+- **Colore per pagatore nel feed di Gruppo**: `ExpenseRow` accetta ora un `accentColor`
+  opzionale (striscia di 4dp sul bordo sinistro, ritagliata sugli angoli arrotondati della
+  card) - `null` ovunque tranne `GroupScreen`, che colora ogni spesa condivisa con
+  `colorScheme.primary` (tu) o `colorScheme.tertiary` (partner), gli stessi due colori di
+  marchio già usati altrove, non nuovi. Piccola legenda a pallini sopra il feed.
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

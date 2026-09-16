@@ -2,6 +2,7 @@ package com.example.expensestracker.ui.month
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensestracker.data.WriteOutcome
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.CurrencyRate
@@ -22,8 +23,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.YearMonth
+
+/** How long to wait for Firestore's server ack before treating a write as "still offline" rather than hanging the caller. */
+private const val WRITE_TIMEOUT_MS = 8000L
 
 data class MonthUiState(
     val monthStart: LocalDate = LocalDate.now().withDayOfMonth(1),
@@ -299,11 +304,20 @@ class MonthViewModel(
      * and it's the only way to guarantee removal if an expense's stored flag ever disagreed with
      * which collection it actually lives in (e.g. from a stale-ViewModel write in the past).
      */
-    fun deleteExpense(expenseId: String) {
-        viewModelScope.launch {
+    /**
+     * Suspends so the caller can tell a genuine failure (worth a retry prompt) apart from a
+     * timeout (the write already applied to Firestore's local cache the moment it was dispatched -
+     * it's not lost, just not yet server-acknowledged - so a retry there would only duplicate
+     * effort, not fix anything).
+     */
+    suspend fun deleteExpense(expenseId: String): WriteOutcome = try {
+        val completed = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
             personalExpenseRepository.deleteExpense(expenseId)
             groupContext?.expenseRepository?.deleteExpense(expenseId)
         }
+        if (completed != null) WriteOutcome.SUCCESS else WriteOutcome.TIMED_OUT
+    } catch (e: Exception) {
+        WriteOutcome.FAILED
     }
 
     /**
@@ -311,24 +325,30 @@ class MonthViewModel(
      * (a new id, since the old one is already gone) in whichever scope it used to live in.
      * [Expense.isShared] is reliable here as the routing signal (unlike a raw lookup by id, which
      * would need to guess) - it always matches the collection an expense was actually saved to.
+     * Best-effort: caught rather than surfaced, since by this point the user has already moved on
+     * from the snackbar that offered the undo.
      */
     fun restoreExpense(expense: Expense) {
         viewModelScope.launch {
-            val repository = if (expense.isShared && groupContext != null) groupContext.expenseRepository else personalExpenseRepository
-            repository.addExpense(
-                categoryId = expense.categoryId,
-                categoryName = expense.categoryName,
-                categoryIcon = expense.categoryIcon,
-                categoryColorHex = expense.categoryColorHex,
-                amount = expense.amount,
-                currencyCode = expense.currencyCode,
-                amountInBaseCurrency = expense.amountInBaseCurrency,
-                date = expense.localDate,
-                note = expense.note,
-                paidByUid = expense.paidByUid,
-                isShared = expense.isShared,
-                payerShare = expense.payerShare
-            )
+            try {
+                val repository = if (expense.isShared && groupContext != null) groupContext.expenseRepository else personalExpenseRepository
+                repository.addExpense(
+                    categoryId = expense.categoryId,
+                    categoryName = expense.categoryName,
+                    categoryIcon = expense.categoryIcon,
+                    categoryColorHex = expense.categoryColorHex,
+                    amount = expense.amount,
+                    currencyCode = expense.currencyCode,
+                    amountInBaseCurrency = expense.amountInBaseCurrency,
+                    date = expense.localDate,
+                    note = expense.note,
+                    paidByUid = expense.paidByUid,
+                    isShared = expense.isShared,
+                    payerShare = expense.payerShare
+                )
+            } catch (e: Exception) {
+                // Nothing more to do - see the doc comment above.
+            }
         }
     }
 
@@ -338,5 +358,19 @@ class MonthViewModel(
             val amountInBaseCurrency = personalDataRepository.convertToBase(amount, currencyCode)
             context.settlementRepository.addSettlement(fromUid, toUid, amount, currencyCode, amountInBaseCurrency, date, note)
         }
+    }
+
+    /**
+     * Pull-to-refresh on Home: every screen is already live via Firestore's own snapshot
+     * listeners, so there's no new data to fetch - this exists to give the gesture a real,
+     * honest signal instead of just spinning for a fixed delay. TIMED_OUT (no connectivity to
+     * ever resolve waitForPendingWrites) is expected and unremarkable here, not shown as an
+     * error - the persistent offline banner already covers that.
+     */
+    suspend fun refresh(): WriteOutcome = try {
+        val completed = withTimeoutOrNull(WRITE_TIMEOUT_MS) { personalDataRepository.waitForPendingWrites() }
+        if (completed != null) WriteOutcome.SUCCESS else WriteOutcome.TIMED_OUT
+    } catch (e: Exception) {
+        WriteOutcome.FAILED
     }
 }

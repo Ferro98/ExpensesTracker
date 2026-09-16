@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
  * committed the action it's offering to undo (e.g. the delete already happened) - this is purely
  * the "tap to reverse it" feedback, not a deferred commit.
  */
-fun CoroutineScope.showUndoSnackbar(hostState: SnackbarHostState, message: String, undoLabel: String, onUndo: () -> Unit) {
+fun CoroutineScope.showUndoSnackbar(hostState: SnackbarHostState, message: String, undoLabel: String, onUndo: suspend () -> Unit) {
     launch {
         val result = hostState.showSnackbar(message = message, actionLabel = undoLabel, duration = SnackbarDuration.Short)
         if (result == SnackbarResult.ActionPerformed) onUndo()

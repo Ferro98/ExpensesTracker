@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.expensestracker.data.ConnectivityObserver
 import com.example.expensestracker.data.remote.CurrencyRateService
 import com.example.expensestracker.data.repository.AuthRepository
 import com.example.expensestracker.data.repository.ExpenseRepository
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit
 
 class ExpensesTrackerApp : Application() {
     val settingsRepository by lazy { SettingsRepository(this) }
+    val connectivityObserver by lazy { ConnectivityObserver(this) }
 
     override fun onCreate() {
         super.onCreate()

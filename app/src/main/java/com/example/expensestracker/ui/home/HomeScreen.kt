@@ -18,15 +18,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +51,7 @@ import com.example.expensestracker.ui.month.rememberMonthDetailState
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMonthName
 import com.example.expensestracker.util.formatMoney
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** How many rows each Home section shows before handing off to the full list. */
@@ -59,6 +63,7 @@ private const val HOME_EXPENSE_LIMIT = 5
  * Stats' job), each section cut short with a "see all" link so the whole thing fits a phone
  * screen instead of the endless scroll it used to be.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: MonthViewModel,
@@ -84,6 +89,23 @@ fun HomeScreen(
         uiState.monthEnd.dayOfMonth - today.dayOfMonth + 1
     else null
 
+    // Everything here is already live via Firestore's own snapshot listeners - there's no new
+    // data pull-to-refresh needs to trigger. It's still a gesture people reach for when something
+    // feels stale, so it's wired to a real signal (MonthViewModel.refresh) instead of doing nothing.
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshScope = rememberCoroutineScope()
+
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            refreshScope.launch {
+                isRefreshing = true
+                viewModel.refresh()
+                isRefreshing = false
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -162,6 +184,7 @@ fun HomeScreen(
 
         // Clears the centred FAB floating above the navigation bar.
         item { Spacer(modifier = Modifier.height(72.dp)) }
+    }
     }
 
     MonthDetailSheets(

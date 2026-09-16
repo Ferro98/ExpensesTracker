@@ -32,7 +32,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.expensestracker.R
+import com.example.expensestracker.data.WriteOutcome
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.data.model.Expense
@@ -60,11 +64,11 @@ import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.ui.components.ExpenseDetailSheet
 import com.example.expensestracker.ui.components.ExpenseRow
 import com.example.expensestracker.ui.components.SettlementDialog
-import com.example.expensestracker.ui.components.showUndoSnackbar
 import com.example.expensestracker.ui.onboarding.GroupSetupSection
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
@@ -86,6 +90,7 @@ fun GroupScreen(
     val scope = rememberCoroutineScope()
     val undoLabel = stringResource(R.string.action_undo)
     val deletedMessage = stringResource(R.string.expense_deleted)
+    val deleteFailedMessage = stringResource(R.string.expense_delete_failed)
 
     if (!uiState.inGroup) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -99,6 +104,11 @@ fun GroupScreen(
     var expenseDetail by remember { mutableStateOf<Expense?>(null) }
     val isLeaving by viewModel.isLeaving.collectAsState()
     val leaveFailed by viewModel.leaveFailed.collectAsState()
+    // The app's two most prominent brand hues, already meaningful (primary/tertiary) rather than
+    // introducing new colours just for this - reused here to answer "who paid this one" at a
+    // glance in the activity feed below.
+    val payerColorMe = MaterialTheme.colorScheme.primary
+    val payerColorPartner = MaterialTheme.colorScheme.tertiary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -142,12 +152,22 @@ fun GroupScreen(
         }
 
         item {
-            Text(
-                stringResource(R.string.group_activity_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    stringResource(R.string.group_activity_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (uiState.activity.any { it is GroupActivityItem.ExpenseActivity }) {
+                    PayerLegend(myColor = payerColorMe, partnerColor = payerColorPartner, partnerName = uiState.partnerName)
+                }
+            }
         }
 
         if (uiState.activity.isEmpty()) {
@@ -174,7 +194,8 @@ fun GroupScreen(
                         myUid = uiState.myUid,
                         partnerName = uiState.partnerName,
                         onClick = { expenseDetail = item.expense },
-                        modifier = Modifier.animateItem()
+                        modifier = Modifier.animateItem(),
+                        accentColor = if (item.expense.paidByUid == uiState.myUid) payerColorMe else payerColorPartner
                     )
                     is GroupActivityItem.SettlementActivity -> SettlementRow(
                         settlement = item.settlement,
@@ -217,9 +238,20 @@ fun GroupScreen(
             onDismiss = { expenseDetail = null },
             onEdit = { onEditExpense(expense); expenseDetail = null },
             onDelete = {
-                viewModel.deleteExpense(expense.id)
                 expenseDetail = null
-                scope.showUndoSnackbar(snackbarHostState, deletedMessage, undoLabel) { viewModel.restoreExpense(expense) }
+                scope.launch {
+                    when (viewModel.deleteExpense(expense.id)) {
+                        WriteOutcome.FAILED -> snackbarHostState.showSnackbar(deleteFailedMessage)
+                        WriteOutcome.SUCCESS, WriteOutcome.TIMED_OUT -> {
+                            val result = snackbarHostState.showSnackbar(
+                                message = deletedMessage,
+                                actionLabel = undoLabel,
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) viewModel.restoreExpense(expense)
+                        }
+                    }
+                }
             },
             onDuplicate = { onDuplicateExpense(expense); expenseDetail = null }
         )
@@ -398,6 +430,29 @@ private fun BreakdownRow(label: String, amount: Double) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Text(formatMoney(amount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** A dot + name for each payer, so the accent stripe on the rows below isn't a mystery colour code. */
+@Composable
+private fun PayerLegend(myColor: Color, partnerColor: Color, partnerName: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LegendDot(myColor, stringResource(R.string.you))
+        LegendDot(partnerColor, partnerName)
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -2,6 +2,7 @@ package com.example.expensestracker.ui.group
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.expensestracker.data.WriteOutcome
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.model.Group
@@ -19,7 +20,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
+
+/** How long to wait for Firestore's server ack before treating a write as "still offline" rather than hanging the caller. */
+private const val WRITE_TIMEOUT_MS = 8000L
 
 /** One row of the activity feed - either a shared expense or a settlement, ordered together by date. */
 sealed interface GroupActivityItem {
@@ -106,30 +111,49 @@ class GroupViewModel(
         }
     }
 
-    /** Every expense in this feed lives in the group's own collection (that's what "shared" means here), so there's only one place to delete it from - unlike MonthViewModel.deleteExpense, which has to guess between two scopes. */
-    fun deleteExpense(expenseId: String) {
-        val context = groupContext ?: return
-        viewModelScope.launch { context.expenseRepository.deleteExpense(expenseId) }
+    /**
+     * Every expense in this feed lives in the group's own collection (that's what "shared" means
+     * here), so there's only one place to delete it from - unlike MonthViewModel.deleteExpense,
+     * which has to guess between two scopes. Suspends so the caller can tell a genuine failure
+     * (worth a retry prompt) apart from a timeout (already applied locally, just not yet
+     * server-acknowledged - retrying there would only duplicate effort).
+     */
+    suspend fun deleteExpense(expenseId: String): WriteOutcome {
+        val context = groupContext ?: return WriteOutcome.FAILED
+        return try {
+            val completed = withTimeoutOrNull(WRITE_TIMEOUT_MS) { context.expenseRepository.deleteExpense(expenseId) }
+            if (completed != null) WriteOutcome.SUCCESS else WriteOutcome.TIMED_OUT
+        } catch (e: Exception) {
+            WriteOutcome.FAILED
+        }
     }
 
-    /** The "Annulla" side of the delete snackbar - re-adds [expense]'s data as a fresh document (new id). */
+    /**
+     * The "Annulla" side of the delete snackbar - re-adds [expense]'s data as a fresh document
+     * (new id). Best-effort: caught rather than surfaced, since by this point the user has
+     * already moved on from the snackbar that offered the undo.
+     */
     fun restoreExpense(expense: Expense) {
         val context = groupContext ?: return
         viewModelScope.launch {
-            context.expenseRepository.addExpense(
-                categoryId = expense.categoryId,
-                categoryName = expense.categoryName,
-                categoryIcon = expense.categoryIcon,
-                categoryColorHex = expense.categoryColorHex,
-                amount = expense.amount,
-                currencyCode = expense.currencyCode,
-                amountInBaseCurrency = expense.amountInBaseCurrency,
-                date = expense.localDate,
-                note = expense.note,
-                paidByUid = expense.paidByUid,
-                isShared = expense.isShared,
-                payerShare = expense.payerShare
-            )
+            try {
+                context.expenseRepository.addExpense(
+                    categoryId = expense.categoryId,
+                    categoryName = expense.categoryName,
+                    categoryIcon = expense.categoryIcon,
+                    categoryColorHex = expense.categoryColorHex,
+                    amount = expense.amount,
+                    currencyCode = expense.currencyCode,
+                    amountInBaseCurrency = expense.amountInBaseCurrency,
+                    date = expense.localDate,
+                    note = expense.note,
+                    paidByUid = expense.paidByUid,
+                    isShared = expense.isShared,
+                    payerShare = expense.payerShare
+                )
+            } catch (e: Exception) {
+                // Nothing more to do - see the doc comment above.
+            }
         }
     }
 

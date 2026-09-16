@@ -34,10 +34,11 @@ class RecurringExpenseGenerator(
             val dueDates = computeDueDates(recurring, today)
             if (dueDates.isEmpty()) continue
             val amountInBaseCurrency = personalDataRepository.convertToBase(recurring.amount, recurring.currencyCode)
-            for (date in dueDates) {
-                repository.insertGeneratedExpense(recurring, date, amountInBaseCurrency)
-            }
-            repository.updateRecurring(recurring.copy(lastGeneratedDate = dueDates.last().toString()))
+            // One atomic batch, not a loop of independent writes: if this gets interrupted (lag,
+            // offline, the app closing mid-sync) it either all lands or none of it does, so the
+            // template's lastGeneratedDate can never fall out of step with which occurrences
+            // actually exist - see ExpenseRepository.insertGeneratedExpensesAndAdvance.
+            repository.insertGeneratedExpensesAndAdvance(recurring, dueDates, amountInBaseCurrency)
         }
     }
 

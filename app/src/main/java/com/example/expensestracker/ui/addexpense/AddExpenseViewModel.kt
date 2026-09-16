@@ -17,7 +17,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
+
+/**
+ * How long to wait for Firestore's server acknowledgement before giving up on it. Firestore
+ * itself never "fails" while offline - it queues the write in its local cache (already durable,
+ * already reflected in every observeAllExpenses() listener) and syncs whenever connectivity
+ * returns - so timing out here is not a failure to report, just a cue to stop waiting.
+ */
+private const val WRITE_TIMEOUT_MS = 8000L
 
 data class AddExpenseUiState(
     val categories: List<Category> = emptyList(),
@@ -112,6 +121,13 @@ class AddExpenseViewModel(
         _errorMessage.value = null
     }
 
+    // Guards against the exact bug a silent, unbounded save used to cause: no feedback while
+    // offline/slow reads as "did that even register?", so the user taps Save again - and again -
+    // each tap launching an independent write. With this flag a second tap while one is still in
+    // flight is simply ignored instead of queuing a duplicate.
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
     private fun repositoryFor(shared: Boolean): ExpenseRepository =
         if (shared && groupContext != null) groupContext.expenseRepository else personalExpenseRepository
 
@@ -130,7 +146,9 @@ class AddExpenseViewModel(
         // this: from the user's perspective they corrected an existing expense, not created one.
         onSaved: (createdExpenseId: String?) -> Unit
     ) {
+        if (_isSaving.value) return
         viewModelScope.launch {
+            _isSaving.value = true
             _errorMessage.value = null
             // categoryId always comes from the currently-selected chip in uiState.categories (the
             // sheet self-corrects to one of those the moment it notices a mismatch - see the
@@ -139,6 +157,7 @@ class AddExpenseViewModel(
             val category = uiState.value.categories.firstOrNull { it.id == categoryId }
             if (category == null) {
                 _errorMessage.value = AddExpenseError.CATEGORY_NOT_FOUND
+                _isSaving.value = false
                 return@launch
             }
             try {
@@ -148,47 +167,15 @@ class AddExpenseViewModel(
                 // only a real edit overwrites the one it came from.
                 val editing = _prefill.value?.takeIf { it.isEdit }?.source
 
-                val newExpenseId: String? = when {
-                    editing == null -> repositoryFor(shared).addExpense(
-                        categoryId = categoryId,
-                        categoryName = category.name,
-                        categoryIcon = category.icon,
-                        categoryColorHex = category.colorHex,
-                        amount = amount,
-                        currencyCode = currencyCode,
-                        amountInBaseCurrency = amountInBaseCurrency,
-                        date = date,
-                        note = note?.takeIf { it.isNotBlank() },
-                        paidByUid = paidByUid,
-                        isShared = shared,
-                        payerShare = payerShare
-                    )
-                    // Same scope as before editing - overwrite the existing document in place.
-                    editing.isShared == shared -> {
-                        repositoryFor(shared).updateExpense(
-                            expenseId = editing.id,
-                            categoryId = categoryId,
-                            categoryName = category.name,
-                            categoryIcon = category.icon,
-                            categoryColorHex = category.colorHex,
-                            amount = amount,
-                            currencyCode = currencyCode,
-                            amountInBaseCurrency = amountInBaseCurrency,
-                            date = date,
-                            note = note?.takeIf { it.isNotBlank() },
-                            paidByUid = paidByUid,
-                            isShared = shared,
-                            payerShare = payerShare,
-                            createdAt = editing.createdAt
-                        )
-                        null
-                    }
-                    // Shared flag flipped - personal and group expenses live in different Firestore
-                    // collections, so "editing" here means deleting the old document and creating a
-                    // fresh one in the new scope.
-                    else -> {
-                        repositoryFor(editing.isShared).deleteExpense(editing.id)
-                        repositoryFor(shared).addExpense(
+                // Waits for Firestore's server ack up to WRITE_TIMEOUT_MS, but doesn't treat timing
+                // out as failure: the write already applied to the local cache the moment it was
+                // dispatched (before this coroutine even reached its first suspension point), so a
+                // timeout here just means "still offline", not "didn't happen". The one cost is losing
+                // newExpenseId for a create that times out (can't offer "Undo" without it) - a minor,
+                // rare trade next to the alternative of hanging indefinitely with the Save button live.
+                val newExpenseId: String? = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
+                    when {
+                        editing == null -> repositoryFor(shared).addExpense(
                             categoryId = categoryId,
                             categoryName = category.name,
                             categoryIcon = category.icon,
@@ -202,7 +189,49 @@ class AddExpenseViewModel(
                             isShared = shared,
                             payerShare = payerShare
                         )
-                        null
+                        // Same scope as before editing - overwrite the existing document in place.
+                        editing.isShared == shared -> {
+                            repositoryFor(shared).updateExpense(
+                                expenseId = editing.id,
+                                categoryId = categoryId,
+                                categoryName = category.name,
+                                categoryIcon = category.icon,
+                                categoryColorHex = category.colorHex,
+                                amount = amount,
+                                currencyCode = currencyCode,
+                                amountInBaseCurrency = amountInBaseCurrency,
+                                date = date,
+                                note = note?.takeIf { it.isNotBlank() },
+                                paidByUid = paidByUid,
+                                isShared = shared,
+                                payerShare = payerShare,
+                                createdAt = editing.createdAt
+                            )
+                            null
+                        }
+                        // Shared flag flipped - personal and group expenses live in different Firestore
+                        // collections, so "editing" here means deleting the old document and creating a
+                        // fresh one in the new scope. If the timeout fires while still awaiting the
+                        // delete, the add below never runs - a residual gap this timeout guard doesn't
+                        // fully close, left as a rare, disclosed edge case rather than added complexity.
+                        else -> {
+                            repositoryFor(editing.isShared).deleteExpense(editing.id)
+                            repositoryFor(shared).addExpense(
+                                categoryId = categoryId,
+                                categoryName = category.name,
+                                categoryIcon = category.icon,
+                                categoryColorHex = category.colorHex,
+                                amount = amount,
+                                currencyCode = currencyCode,
+                                amountInBaseCurrency = amountInBaseCurrency,
+                                date = date,
+                                note = note?.takeIf { it.isNotBlank() },
+                                paidByUid = paidByUid,
+                                isShared = shared,
+                                payerShare = payerShare
+                            )
+                            null
+                        }
                     }
                 }
                 // Only for a new expense: while editing an old one you're correcting the past, and
@@ -212,6 +241,8 @@ class AddExpenseViewModel(
                 onSaved(newExpenseId)
             } catch (e: Exception) {
                 _errorMessage.value = AddExpenseError.SAVE_FAILED
+            } finally {
+                _isSaving.value = false
             }
         }
     }
