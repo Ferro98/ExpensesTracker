@@ -7,6 +7,7 @@ import com.example.expensestracker.R
 import com.example.expensestracker.ui.addexpense.AddExpenseViewModel
 import com.example.expensestracker.ui.categories.CategoriesViewModel
 import com.example.expensestracker.ui.group.GroupViewModel
+import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
 import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.onboarding.OnboardingViewModel
 import com.example.expensestracker.ui.recurring.RecurringViewModel
@@ -44,6 +45,9 @@ class AppViewModelFactory(
 
             modelClass.isAssignableFrom(GroupViewModel::class.java) ->
                 GroupViewModel(groupContext, personalDataRepository, app.settingsRepository, myUid) as T
+
+            modelClass.isAssignableFrom(NewSharedExpensesViewModel::class.java) ->
+                NewSharedExpensesViewModel(groupContext, app.settingsRepository, myUid) as T
 
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
                 SettingsViewModel(app, personalDataRepository, groupContext, app.settingsRepository, app.authRepository) as T

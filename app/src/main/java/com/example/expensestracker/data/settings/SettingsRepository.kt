@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.expensestracker.data.model.DefaultUserData
@@ -30,6 +31,7 @@ class SettingsRepository(private val context: Context) {
         val DEFAULT_SHARED_RECURRING = booleanPreferencesKey("default_shared_recurring")
         val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
         val LAST_USED_CATEGORY = stringPreferencesKey("last_used_category_id")
+        val LAST_SEEN_SHARED_EXPENSES_AT = longPreferencesKey("last_seen_shared_expenses_at")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -97,7 +99,17 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[Keys.GROUP_ID] = groupId
             prefs[Keys.MY_DISPLAY_NAME] = displayName
+            // Joining/creating a group starts the "new shared expenses" check from now, not from
+            // the group's entire past - there's nothing genuinely new to report on day one.
+            prefs[Keys.LAST_SEEN_SHARED_EXPENSES_AT] = System.currentTimeMillis()
         }
+    }
+
+    /** Epoch millis of the last time the "your partner added N expenses" dialog was dismissed (or the check ran for the very first time). Null only before that has ever happened. */
+    val lastSeenSharedExpensesAt: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[Keys.LAST_SEEN_SHARED_EXPENSES_AT] }
+
+    suspend fun setLastSeenSharedExpensesAt(epochMillis: Long) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_SEEN_SHARED_EXPENSES_AT] = epochMillis }
     }
 
     suspend fun clearGroup() {

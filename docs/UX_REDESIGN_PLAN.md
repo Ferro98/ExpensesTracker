@@ -570,52 +570,43 @@ il messaggio di conferma.
      già usato per il FAB "+") - molto più lontano da `primary` sulla ruota dei colori,
      esattamente ciò che serve per distinguere due persone a colpo d'occhio.
 
-## 8. Notifiche push su spesa condivisa (post-piano, 2026-09-18)
+## 8. Avviso di nuove spese condivise (post-piano, 2026-09-18)
 
-Richiesta dell'utente: notificare l'altro membro del gruppo quando uno dei due
-aggiunge una spesa condivisa. Un semplice listener Firestore lato client non basta -
-funziona solo ad app aperta; per una vera notifica anche ad app chiusa serve un
-trigger server-side (Cloud Function) + FCM. Questo richiede il piano **Blaze**
-(pay-as-you-go) sul progetto Firebase - la free tier di Cloud Functions (2M
-invocazioni/mese) copre comunque l'uso reale di un'app a 2 utenti, quindi il costo
-atteso è ~€0.
+Richiesta dell'utente: farsi avvisare quando l'altro membro del gruppo aggiunge una
+spesa condivisa. Una vera notifica push (anche ad app chiusa) richiederebbe un
+trigger server-side - una Cloud Function su Firestore + FCM - e quindi il piano
+**Blaze** (pay-as-you-go) sul progetto Firebase. Prima implementazione tentata
+proprio così (client FCM + `functions/src/index.ts`), ma l'utente ha deciso di non
+attivare Blaze - quel codice è stato rimosso e sostituito con l'alternativa
+descritta sotto, **niente Cloud Function, niente FCM, niente server**.
 
-- **Lato Android**:
-  - `data/repository/PersonalDataRepository.registerFcmToken(token)` scrive il token
-    corrente in `users/{uid}/fcmTokens/{token}`.
-  - `notifications/SharedExpenseFcmService` (estende `FirebaseMessagingService`):
-    `onNewToken` ri-registra il token quando ruota; `onMessageReceived` costruisce
-    titolo/corpo della notifica **lato client**, non li riceve già pronti dalla Cloud
-    Function - è l'unico modo per avere il testo nella lingua del dispositivo di chi
-    riceve, dato che la funzione non ha un modo affidabile di conoscere quella lingua.
-    Riusa la stessa tabella `DefaultUserData.knownDefaultNameVariants` che
-    `localizedCategoryName` usa per le categorie di default.
-  - Il messaggio FCM è **data-only** (nessuna chiave `"notification"`): così
-    `onMessageReceived` scatta sempre, anche in background/app chiusa, invece di
-    essere gestito automaticamente (e senza controllo su canale/icona/tap) dal
-    tray di sistema come accade con un payload `"notification"`.
-  - `MainActivity`: registra il token a ogni sign-in (`LaunchedEffect(authState?.uid)`),
-    e gestisce il tap sulla notifica con un extra `EXTRA_OPEN_GROUP` sull'`Intent` ->
-    `openGroupSignal` (proprietà dell'Activity, non dentro `setContent`, così
-    `onNewIntent` - che con app già aperta scatta fuori da Compose - può comunque
-    aggiornarla) -> `ExpensesTrackerRoot` naviga a `Screen.Group.route` e resetta il
-    segnale.
-  - Canale di notifica `shared_expenses` creato in `SharedExpenseNotifications.kt`.
-- **Lato server**: `functions/src/index.ts`, Cloud Function v2
-  `onSharedExpenseCreated` su trigger Firestore `onDocumentCreated` per
-  `groups/{groupId}/expenses/{expenseId}`. Se `isShared == true`, legge
-  `memberUids`/`memberNames` dal documento del gruppo, esclude chi ha pagato
-  (`paidByUid`), raccoglie i token FCM di tutti gli altri membri da
-  `users/{uid}/fcmTokens`, e invia un messaggio data-only con `payerName`,
-  `categoryName`, `categoryIcon`, `amount`, `currencyCode` via
-  `sendEachForMulticast`. I token che risultano non più validi
-  (`registration-token-not-registered`/`invalid-argument`) vengono cancellati.
-  `firebase.json`/`.firebaserc` aggiunti alla radice del repo per il deploy
-  (`firebase deploy --only functions`, progetto `expensetracker-a68c0`).
-- **Non ancora fatto**: attivazione del piano Blaze (azione dell'utente, non
-  automatizzabile) e primo deploy effettivo della function - finché non è
-  deployata, il trigger non esiste e nessuna notifica parte, anche se il client è
-  già pronto a riceverle.
+- **Approccio scelto**: invece di una notifica push, un dialog mostrato **all'apertura
+  dell'app** (cold start o ritorno in foreground) se il partner ha aggiunto spese
+  condivise dall'ultima volta che il dialog è stato chiuso. Ritardo tipico: fino al
+  prossimo avvio/resume dell'app (nessuna garanzia di tempo, ma per un'app che si usa
+  più volte al giorno è comunque tempestivo) - in cambio, costo zero e nessuna
+  infrastruttura da mantenere.
+- **`data/settings/SettingsRepository`**: nuova chiave locale (DataStore, non
+  Firestore - per-dispositivo, non serve sincronizzarla) `lastSeenSharedExpensesAt`
+  (epoch millis). Impostata a "adesso" quando si crea/entra in un gruppo (altrimenti
+  il primo controllo mostrerebbe l'intera storia condivisa del gruppo come "nuova").
+- **`ui/group/NewSharedExpensesViewModel`** (nuovo): a ogni `checkForNewExpenses()`,
+  legge `lastSeenSharedExpensesAt`, prende tutte le spese condivise del gruppo
+  (`ExpenseRepository.observeAllExpenses()`), filtra quelle pagate dal partner con
+  `createdAt` più recente di quel timestamp, e le espone in uno `StateFlow`. Se la
+  chiave non è mai stata impostata (prima esecuzione di questa funzionalità su un
+  dispositivo esistente), la inizializza senza mostrare nulla - stesso motivo di
+  sopra, non dumpare la storia pregressa.
+- **`MainActivity`/`ExpensesTrackerRoot`**: un `DisposableEffect` registra un
+  `LifecycleEventObserver` sul `ON_START` del lifecycle e richiama
+  `checkForNewExpenses()` a ogni ritorno in foreground, non solo alla creazione del
+  ViewModel - altrimenti riaprire l'app dai recenti (stesso processo, nessun cold
+  start) non lo farebbe scattare.
+- **`ui/components/NewSharedExpensesDialog`** (nuovo): `AlertDialog` con titolo
+  plurale ("X ha aggiunto N nuove spese condivise") e la lista delle spese, renderizzate
+  con lo stesso `ExpenseRow` già usato ovunque nell'app (solo non cliccabile qui - è
+  un avviso, non un punto di modifica). Un solo pulsante "OK" che chiude e aggiorna
+  `lastSeenSharedExpensesAt` a adesso.
 
 ## Fonti consultate
 

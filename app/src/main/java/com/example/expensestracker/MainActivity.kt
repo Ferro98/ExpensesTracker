@@ -1,7 +1,6 @@
 package com.example.expensestracker
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -51,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,6 +59,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -85,29 +88,21 @@ import com.example.expensestracker.ui.group.GroupScreen
 import com.example.expensestracker.ui.history.HistoryScreen
 import com.example.expensestracker.ui.home.HomeScreen
 import com.example.expensestracker.ui.month.MonthViewModel
-import com.example.expensestracker.notifications.EXTRA_OPEN_GROUP
 import com.example.expensestracker.ui.more.MoreScreen
 import com.example.expensestracker.ui.navigation.BottomTab
 import com.example.expensestracker.ui.navigation.Screen
 import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.stats.StatsScreen
+import com.example.expensestracker.ui.components.NewSharedExpensesDialog
+import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
 import com.example.expensestracker.ui.theme.semanticColors
-import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
-    // A plain Activity property (not inside setContent's lambda) so onNewIntent - which fires
-    // outside Compose entirely, when the app is already running and a second notification is
-    // tapped - can still reach it. mutableStateOf still triggers recomposition from here same as
-    // anywhere else.
-    private var openGroupSignal by mutableStateOf(false)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openGroupSignal = intent?.getBooleanExtra(EXTRA_OPEN_GROUP, false) == true
         enableEdgeToEdge()
         val app = application as ExpensesTrackerApp
         setContent {
@@ -126,20 +121,6 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) { app.authRepository.ensureSignedIn() }
             LaunchedEffect(authState?.uid) {
                 authState?.uid?.let { app.personalDataRepositoryFor(it).seedDefaultsIfNeeded() }
-            }
-            // Registers (or re-registers - it's just an idempotent overwrite) this device's
-            // current push token against the signed-in uid. onNewToken in SharedExpenseFcmService
-            // covers the rarer case of the token itself changing later; this covers every normal
-            // app open, including the very first one before any token-rotation event has ever fired.
-            LaunchedEffect(authState?.uid) {
-                val uid = authState?.uid ?: return@LaunchedEffect
-                try {
-                    val token = FirebaseMessaging.getInstance().token.await()
-                    app.personalDataRepositoryFor(uid).registerFcmToken(token)
-                } catch (e: Exception) {
-                    // No connectivity or FCM unavailable (e.g. no Play Services) - not fatal,
-                    // onNewToken will pick it up if/when a token does become available.
-                }
             }
             val myUid = authState?.uid
 
@@ -176,21 +157,11 @@ class MainActivity : ComponentActivity() {
                         ExpensesTrackerRoot(
                             factory,
                             vmKey = "$groupId:$uid",
-                            isOnline = isOnline,
-                            openGroupSignal = openGroupSignal,
-                            onOpenGroupHandled = { openGroupSignal = false }
+                            isOnline = isOnline
                         )
                     }
                 }
             }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        if (intent.getBooleanExtra(EXTRA_OPEN_GROUP, false)) {
-            openGroupSignal = true
         }
     }
 }
@@ -207,20 +178,9 @@ private fun SplashScreen() {
 fun ExpensesTrackerRoot(
     factory: AppViewModelFactory,
     vmKey: String,
-    isOnline: Boolean = true,
-    openGroupSignal: Boolean = false,
-    onOpenGroupHandled: () -> Unit = {}
+    isOnline: Boolean = true
 ) {
     val navController = rememberNavController()
-    // Jumps to Group once the NavController exists, whether that's a cold start from tapping the
-    // notification or the app was already open and onNewIntent set the signal. Consumes it
-    // immediately so backing out of Group afterwards doesn't re-trigger the same jump.
-    LaunchedEffect(openGroupSignal) {
-        if (openGroupSignal) {
-            navController.navigate(Screen.Group.route)
-            onOpenGroupHandled()
-        }
-    }
     var showAddExpense by remember { mutableStateOf(false) }
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
@@ -235,6 +195,20 @@ fun ExpensesTrackerRoot(
     // Home, History and Stats are three views over the same month data: one shared instance means
     // one set of Firestore listeners instead of three.
     val monthViewModel: MonthViewModel = viewModel(factory = factory, key = "month:$vmKey")
+    val newSharedExpensesViewModel: NewSharedExpensesViewModel =
+        viewModel(factory = factory, key = "newSharedExpenses:$vmKey")
+    // Re-checks every time the app comes back to the foreground, not just on this ViewModel's own
+    // (process-lifetime) creation - "you were away, here's what happened" is the whole point, and
+    // that includes resuming from the background, not only a cold start.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, newSharedExpensesViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) newSharedExpensesViewModel.checkForNewExpenses()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val newSharedExpensesState by newSharedExpensesViewModel.uiState.collectAsState()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentScreen = Screen.fromRoute(backStackEntry?.destination?.route)
@@ -443,6 +417,15 @@ fun ExpensesTrackerRoot(
             onDismiss = { showAddExpense = false },
             onExpenseSaved = onExpenseSaved,
             onExpenseUpdated = onExpenseUpdated
+        )
+    }
+
+    if (newSharedExpensesState.newExpenses.isNotEmpty()) {
+        NewSharedExpensesDialog(
+            expenses = newSharedExpensesState.newExpenses,
+            myUid = newSharedExpensesState.myUid,
+            partnerName = newSharedExpensesState.partnerName,
+            onDismiss = { newSharedExpensesViewModel.dismiss() }
         )
     }
 }

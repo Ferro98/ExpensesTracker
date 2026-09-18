@@ -25,22 +25,10 @@ class PersonalDataRepository(
     private val userRef get() = firestore.collection("users").document(uid)
     private val categoriesRef get() = userRef.collection("categories")
     private val currencyRatesRef get() = userRef.collection("currencyRates")
-    private val fcmTokensRef get() = userRef.collection("fcmTokens")
 
     /** Resolves once every write still queued in the local cache has reached the server - the "did pull-to-refresh actually do anything" signal, since every screen is already live via snapshot listeners regardless. Left to the caller to bound with a timeout when there's no connectivity to ever resolve it. */
     suspend fun waitForPendingWrites() {
         firestore.waitForPendingWrites().await()
-    }
-
-    /**
-     * Records this device's push notification token so the "someone added a shared expense"
-     * Cloud Function (Admin SDK - not bound by firestore.rules, unlike every client read/write
-     * here) can find it. One document per token rather than a single field, since a person can
-     * have the app installed on more than one device and every one of them should be notified;
-     * re-registering the same token (e.g. on every app start) is just an idempotent overwrite.
-     */
-    suspend fun registerFcmToken(token: String) {
-        fcmTokensRef.document(token).set(mapOf("updatedAt" to Timestamp.now())).await()
     }
 
     // Categories
