@@ -163,6 +163,10 @@
     <string name="reminder_subtitle">Get a notification before it\'s due</string>
     <string name="reminder_channel_name">Recurring expense reminders</string>
     <string name="reminder_channel_description">Notifies you ahead of a recurring expense\'s due date</string>
+    <string name="shared_expense_channel_name">Shared expenses</string>
+    <string name="shared_expense_channel_description">Notifies you when your partner adds a shared expense</string>
+    <string name="shared_expense_notification_title">%1$s added a shared expense</string>
+    <string name="shared_expense_notification_body">%1$s · %2$s</string>
     <string name="reminder_notification_title">Upcoming: %1$s</string>
     <string name="reminder_notification_body_today">%1$s is due today</string>
 

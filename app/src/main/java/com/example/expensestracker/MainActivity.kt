@@ -1,6 +1,7 @@
 package com.example.expensestracker
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -84,6 +85,7 @@ import com.example.expensestracker.ui.group.GroupScreen
 import com.example.expensestracker.ui.history.HistoryScreen
 import com.example.expensestracker.ui.home.HomeScreen
 import com.example.expensestracker.ui.month.MonthViewModel
+import com.example.expensestracker.notifications.EXTRA_OPEN_GROUP
 import com.example.expensestracker.ui.more.MoreScreen
 import com.example.expensestracker.ui.navigation.BottomTab
 import com.example.expensestracker.ui.navigation.Screen
@@ -92,11 +94,20 @@ import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
 import com.example.expensestracker.ui.theme.semanticColors
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
+    // A plain Activity property (not inside setContent's lambda) so onNewIntent - which fires
+    // outside Compose entirely, when the app is already running and a second notification is
+    // tapped - can still reach it. mutableStateOf still triggers recomposition from here same as
+    // anywhere else.
+    private var openGroupSignal by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openGroupSignal = intent?.getBooleanExtra(EXTRA_OPEN_GROUP, false) == true
         enableEdgeToEdge()
         val app = application as ExpensesTrackerApp
         setContent {
@@ -115,6 +126,20 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) { app.authRepository.ensureSignedIn() }
             LaunchedEffect(authState?.uid) {
                 authState?.uid?.let { app.personalDataRepositoryFor(it).seedDefaultsIfNeeded() }
+            }
+            // Registers (or re-registers - it's just an idempotent overwrite) this device's
+            // current push token against the signed-in uid. onNewToken in SharedExpenseFcmService
+            // covers the rarer case of the token itself changing later; this covers every normal
+            // app open, including the very first one before any token-rotation event has ever fired.
+            LaunchedEffect(authState?.uid) {
+                val uid = authState?.uid ?: return@LaunchedEffect
+                try {
+                    val token = FirebaseMessaging.getInstance().token.await()
+                    app.personalDataRepositoryFor(uid).registerFcmToken(token)
+                } catch (e: Exception) {
+                    // No connectivity or FCM unavailable (e.g. no Play Services) - not fatal,
+                    // onNewToken will pick it up if/when a token does become available.
+                }
             }
             val myUid = authState?.uid
 
@@ -148,10 +173,24 @@ class MainActivity : ComponentActivity() {
                     // already-mounted screen. Keying on groupId forces the whole nav tree - and
                     // every ViewModel in it - to be recreated when group membership changes.
                     key(groupId, uid) {
-                        ExpensesTrackerRoot(factory, vmKey = "$groupId:$uid", isOnline = isOnline)
+                        ExpensesTrackerRoot(
+                            factory,
+                            vmKey = "$groupId:$uid",
+                            isOnline = isOnline,
+                            openGroupSignal = openGroupSignal,
+                            onOpenGroupHandled = { openGroupSignal = false }
+                        )
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_GROUP, false)) {
+            openGroupSignal = true
         }
     }
 }
@@ -165,8 +204,23 @@ private fun SplashScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpensesTrackerRoot(factory: AppViewModelFactory, vmKey: String, isOnline: Boolean = true) {
+fun ExpensesTrackerRoot(
+    factory: AppViewModelFactory,
+    vmKey: String,
+    isOnline: Boolean = true,
+    openGroupSignal: Boolean = false,
+    onOpenGroupHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
+    // Jumps to Group once the NavController exists, whether that's a cold start from tapping the
+    // notification or the app was already open and onNewIntent set the signal. Consumes it
+    // immediately so backing out of Group afterwards doesn't re-trigger the same jump.
+    LaunchedEffect(openGroupSignal) {
+        if (openGroupSignal) {
+            navController.navigate(Screen.Group.route)
+            onOpenGroupHandled()
+        }
+    }
     var showAddExpense by remember { mutableStateOf(false) }
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
