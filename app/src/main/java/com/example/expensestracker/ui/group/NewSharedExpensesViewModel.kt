@@ -47,11 +47,11 @@ class NewSharedExpensesViewModel(
                 return@launch
             }
 
-            val group = context.groupRepository.observeGroup(context.groupId).first()
+            val group = context.groupRepository.getGroup(context.groupId)
             val partnerUid = group?.otherMemberUid(myUid)
             val partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner"
 
-            val allShared = context.expenseRepository.observeAllExpenses().first()
+            val allShared = context.expenseRepository.getAllExpenses()
             val fresh = allShared
                 .filter { it.isShared && it.paidByUid == partnerUid && (it.createdAt?.toDate()?.time ?: 0L) > lastSeenAt }
                 .sortedByDescending { it.createdAt?.seconds ?: 0 }

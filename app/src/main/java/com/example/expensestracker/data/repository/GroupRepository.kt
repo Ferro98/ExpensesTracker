@@ -21,6 +21,9 @@ class GroupRepository(private val firestore: FirebaseFirestore) {
 
     fun observeGroup(groupId: String): Flow<Group?> = groupsRef.document(groupId).observeAsFlow()
 
+    /** Same data as [observeGroup] but a single read instead of a live listener, for callers that only need a one-off snapshot. */
+    suspend fun getGroup(groupId: String): Group? = groupsRef.document(groupId).get().await().toObject(Group::class.java)
+
     suspend fun createGroup(uid: String, displayName: String): Result<Group> = runCatching {
         val codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         lateinit var ref: com.google.firebase.firestore.DocumentReference

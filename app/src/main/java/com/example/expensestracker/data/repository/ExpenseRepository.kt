@@ -31,6 +31,13 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
     /** Every expense in this scope, unfiltered - needed for lifetime balance and budget attribution. */
     fun observeAllExpenses(): Flow<List<Expense>> = expensesRef.observeAsFlow()
 
+    /**
+     * Same data as [observeAllExpenses] but a single read instead of a live listener - for callers
+     * that only need a one-off snapshot (e.g. NewSharedExpensesViewModel's foreground check) and
+     * would otherwise open and immediately tear down a real-time subscription just to read it once.
+     */
+    suspend fun getAllExpenses(): List<Expense> = expensesRef.get().await().toObjects(Expense::class.java)
+
     fun observeRecent(limit: Int): Flow<List<Expense>> =
         expensesRef.orderBy("date", Query.Direction.DESCENDING).limit(limit.toLong()).observeAsFlow()
 
