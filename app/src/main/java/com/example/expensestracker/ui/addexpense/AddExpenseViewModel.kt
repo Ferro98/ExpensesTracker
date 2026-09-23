@@ -30,6 +30,7 @@ private const val WRITE_TIMEOUT_MS = 8000L
 
 data class AddExpenseUiState(
     val categories: List<Category> = emptyList(),
+    val categoryAliases: Map<String, String> = emptyMap(),
     val currencyRates: List<CurrencyRate> = emptyList(),
     val myUid: String = "",
     val partnerUid: String? = null,
@@ -73,12 +74,14 @@ class AddExpenseViewModel(
         personalDataRepository.observeCategories(),
         personalDataRepository.observeCurrencyRates(),
         groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
-        preferences
-    ) { categories, currencyRates, group, prefs ->
+        preferences,
+        settingsRepository.categoryAliases
+    ) { categories, currencyRates, group, prefs, categoryAliases ->
         val (defaultShared, defaultCurrency, lastUsedCategoryId) = prefs
         val partnerUid = group?.otherMemberUid(myUid)
         AddExpenseUiState(
             categories = categories,
+            categoryAliases = categoryAliases,
             currencyRates = currencyRates,
             myUid = myUid,
             partnerUid = partnerUid,

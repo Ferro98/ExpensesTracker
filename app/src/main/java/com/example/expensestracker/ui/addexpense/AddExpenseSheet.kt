@@ -122,7 +122,7 @@ fun AddExpenseSheet(
     //  - the first in the list, when there's nothing better to go on.
     LaunchedEffect(uiState.categories, uiState.lastUsedCategoryId) {
         if (uiState.categories.isEmpty() || userPickedCategory) return@LaunchedEffect
-        selectedCategoryId = source?.let { CategoryResolver.resolve(it, uiState.categories)?.id }
+        selectedCategoryId = source?.let { CategoryResolver.resolve(it, uiState.categories, uiState.categoryAliases)?.id }
             ?: uiState.lastUsedCategoryId?.takeIf { id -> uiState.categories.any { it.id == id } }
                     ?: uiState.categories.first().id
     }

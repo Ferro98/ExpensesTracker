@@ -124,8 +124,14 @@ class MonthViewModel(
     ) { personal, group -> personal + group }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val categories = personalDataRepository.observeCategories()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // Bundled together (rather than as a 6th flow in uiStateFor's combine, which already sits at
+    // the 5-flow overload limit) since resolving a category and applying the viewer's own alias
+    // overrides are really one step - see CategoryResolver.
+    private val categoriesAndAliases = combine(
+        personalDataRepository.observeCategories(),
+        settingsRepository.categoryAliases
+    ) { categories, aliases -> categories to aliases }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<Category>() to emptyMap())
 
     private val settlementsAndGroup = combine(
         groupContext?.settlementRepository?.observeSettlements() ?: flowOf(emptyList()),
@@ -150,11 +156,12 @@ class MonthViewModel(
     fun uiStateFor(yearMonth: YearMonth): Flow<MonthUiState> {
         val monthStart = yearMonth.atDay(1)
         val monthEnd = yearMonth.atEndOfMonth()
-        return combine(allExpenses, categories, settlementsAndGroup, budgets, currencyRates) {
-            expenses, cats, settlementsAndGroupPair, budgetsTriple, rates ->
+        return combine(allExpenses, categoriesAndAliases, settlementsAndGroup, budgets, currencyRates) {
+            expenses, catsAndAliases, settlementsAndGroupPair, budgetsTriple, rates ->
+            val (cats, aliases) = catsAndAliases
             val (settlements, group) = settlementsAndGroupPair
             val (monthlyBudget, categoryBudgets, defaultCurrency) = budgetsTriple
-            buildUiState(expenses, cats, settlements, group, monthlyBudget, categoryBudgets, rates, defaultCurrency, monthStart, monthEnd)
+            buildUiState(expenses, cats, aliases, settlements, group, monthlyBudget, categoryBudgets, rates, defaultCurrency, monthStart, monthEnd)
         }
     }
 
@@ -189,10 +196,11 @@ class MonthViewModel(
     /** How [yearMonth] compares to the month right before it, in total and by category. */
     fun comparisonFor(yearMonth: YearMonth): Flow<MonthComparison> {
         val previousMonth = yearMonth.minusMonths(1)
-        return combine(allExpenses, categories, budgets) { expenses, cats, budgetsTriple ->
+        return combine(allExpenses, categoriesAndAliases, budgets) { expenses, catsAndAliases, budgetsTriple ->
+            val (cats, aliases) = catsAndAliases
             val (_, categoryBudgets, _) = budgetsTriple
-            val current = categorySpendingFor(expenses, cats, categoryBudgets, yearMonth)
-            val previous = categorySpendingFor(expenses, cats, categoryBudgets, previousMonth)
+            val current = categorySpendingFor(expenses, cats, aliases, categoryBudgets, yearMonth)
+            val previous = categorySpendingFor(expenses, cats, aliases, categoryBudgets, previousMonth)
             val previousById = previous.associateBy { it.categoryId }
             // Sorted by absolute change, not signed: a category that dropped to zero is just as
             // notable a "mover" as one that suddenly appeared.
@@ -217,11 +225,11 @@ class MonthViewModel(
      * that only the single-month view needs. Kept separate rather than refactored together so this
      * addition can't regress the already-shipped month view.
      */
-    private fun categorySpendingFor(expenses: List<Expense>, categories: List<Category>, categoryBudgets: Map<String, Double>, yearMonth: YearMonth): List<CategorySpending> {
+    private fun categorySpendingFor(expenses: List<Expense>, categories: List<Category>, aliases: Map<String, String>, categoryBudgets: Map<String, Double>, yearMonth: YearMonth): List<CategorySpending> {
         val start = yearMonth.atDay(1)
         val end = yearMonth.atEndOfMonth()
         val monthExpenses = expenses.filter { !it.localDate.isBefore(start) && !it.localDate.isAfter(end) }
-        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories)?.id }
+        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories, aliases)?.id }
         return categories.map { category ->
             CategorySpending(
                 categoryId = category.id,
@@ -237,6 +245,7 @@ class MonthViewModel(
     private fun buildUiState(
         expenses: List<Expense>,
         categories: List<Category>,
+        aliases: Map<String, String>,
         settlements: List<Settlement>,
         group: Group?,
         monthlyBudget: Double?,
@@ -253,7 +262,7 @@ class MonthViewModel(
         // a shared expense the partner filed under one of *their* private categories - by name,
         // falling back to "Other". Only when the viewer has no "Other" category at all does
         // anything land in the synthetic bucket, so that spend never silently disappears.
-        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories)?.id ?: SHARED_BUCKET_ID }
+        val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories, aliases)?.id ?: SHARED_BUCKET_ID }
         val categorySpending = categories.map { category ->
             CategorySpending(
                 categoryId = category.id,

@@ -608,6 +608,37 @@ descritta sotto, **niente Cloud Function, niente FCM, niente server**.
   un avviso, non un punto di modifica). Un solo pulsante "OK" che chiude e aggiorna
   `lastSeenSharedExpensesAt` a adesso.
 
+## 9. Unione categorie tra partner (post-piano, 2026-09-23)
+
+Richiesta dell'utente: le categorie sono private per utente (`users/{uid}/categories`), quindi
+lui aveva creato "Spesa" per la spesa/groceries mentre il partner aveva creato "Shopping" per lo
+stesso concetto - nelle Statistiche finivano come due categorie diverse (o "Altro", quando il
+nome non combaciava affatto). Esisteva già `domain/CategoryResolver` che mappa la categoria
+straniera di una spesa condivisa sulle proprie per nome (anche fra lingue diverse, via
+`DefaultUserData.knownDefaultNameVariants`) - mancava solo un modo per l'utente di dire
+esplicitamente "questa categoria del partner è in realtà questa mia", quando i nomi non
+coincidono affatto.
+
+- **`SettingsRepository.categoryAliases`**: nuova mappa locale (DataStore, stesso pattern JSON di
+  `myCategoryBudgets`) `categoryId straniero -> mio categoryId`. Solo una preferenza di
+  visualizzazione/aggregazione su questo dispositivo - non viene mai scritta sui documenti spesa.
+- **`CategoryResolver.resolve`**: nuovo parametro opzionale `aliases`, controllato per primo
+  (prima del match per id/nome) - un'unione esplicita dell'utente vince sempre sul match
+  automatico.
+- Il risultato si propaga automaticamente ovunque le spese vengono raggruppate per categoria
+  (Stats, filtri di Storico, i drill-down per categoria) perché tutti derivano da
+  `MonthViewModel.categoryExpenses`/`categorySpendingFor`, l'unico punto che chiama
+  `CategoryResolver.resolve` per quei percorsi - bastava far arrivare `aliases` lì (bundlato con
+  `categories` in un unico `StateFlow`, dato che il `combine` in `uiStateFor` era già al limite di
+  5 flow). Anche `AddExpenseSheet` (prefill della categoria quando si modifica/duplica una spesa
+  del partner) ora rispetta l'unione.
+- **UI**: nuova sezione "Categorie del partner" in fondo a `CategoriesScreen`, con ogni categoria
+  del partner incontrata in una spesa condivisa che non corrisponde già a una propria (per id o
+  nome) - `CategoriesViewModel` la deriva da `groupContext.expenseRepository.observeAllExpenses()`
+  filtrando quelle il cui `categoryId` non è tra i propri. Tap su una riga apre un dialog che
+  riusa `ui/components/CategoryPicker` per scegliere a quale propria categoria unirla (o rimuovere
+  l'unione esistente).
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

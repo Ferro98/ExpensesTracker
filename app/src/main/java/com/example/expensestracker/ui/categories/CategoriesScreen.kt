@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,6 +63,7 @@ import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.components.BudgetProgressBar
+import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
@@ -84,6 +86,7 @@ fun CategoriesScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var editingCategory by remember { mutableStateOf<Category?>(null) }
+    var mergingCategory by remember { mutableStateOf<PartnerCategory?>(null) }
     var budgetText by remember(uiState.monthlyBudget) {
         mutableStateOf(uiState.monthlyBudget?.let { String.format("%.2f", it) } ?: "")
     }
@@ -202,6 +205,31 @@ fun CategoriesScreen(
             )
         }
 
+        if (uiState.partnerCategories.isNotEmpty()) {
+            item {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Text(
+                        stringResource(R.string.partner_categories_label),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.partner_categories_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            items(uiState.partnerCategories, key = { it.categoryId }) { partnerCategory ->
+                PartnerCategoryRow(
+                    partnerCategory = partnerCategory,
+                    mergedCategoryName = uiState.categories.firstOrNull { it.id == partnerCategory.mergedIntoCategoryId }?.name,
+                    onClick = { mergingCategory = partnerCategory },
+                    modifier = Modifier.animateItem()
+                )
+            }
+        }
+
         item { Spacer(modifier = Modifier.height(72.dp)) }
     }
 
@@ -236,6 +264,105 @@ fun CategoriesScreen(
             }
         )
     }
+
+    mergingCategory?.let { partnerCategory ->
+        MergeCategoryDialog(
+            partnerCategory = partnerCategory,
+            myCategories = uiState.categories,
+            onDismiss = { mergingCategory = null },
+            onMerge = { myCategoryId ->
+                viewModel.mergeCategory(partnerCategory.categoryId, myCategoryId)
+                mergingCategory = null
+            },
+            onRemoveMerge = {
+                viewModel.unmergeCategory(partnerCategory.categoryId)
+                mergingCategory = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun PartnerCategoryRow(
+    partnerCategory: PartnerCategory,
+    mergedCategoryName: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(partnerCategory.icon)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(partnerCategory.name, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = mergedCategoryName?.let { stringResource(R.string.partner_category_merged_into, it) }
+                        ?: stringResource(R.string.partner_category_not_merged),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MergeCategoryDialog(
+    partnerCategory: PartnerCategory,
+    myCategories: List<Category>,
+    onDismiss: () -> Unit,
+    onMerge: (myCategoryId: String) -> Unit,
+    onRemoveMerge: () -> Unit
+) {
+    var selectedId by remember(partnerCategory.categoryId) { mutableStateOf(partnerCategory.mergedIntoCategoryId) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.merge_category_title, partnerCategory.name)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.merge_category_hint, partnerCategory.name),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                CategoryPicker(
+                    categories = myCategories,
+                    selectedCategoryId = selectedId,
+                    onSelect = { selectedId = it }
+                )
+                if (partnerCategory.mergedIntoCategoryId != null) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = onRemoveMerge) { Text(stringResource(R.string.action_remove_merge)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selectedId?.let(onMerge) },
+                enabled = selectedId != null
+            ) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        }
+    )
 }
 
 @Composable

@@ -32,6 +32,7 @@ class SettingsRepository(private val context: Context) {
         val DEFAULT_CURRENCY = stringPreferencesKey("default_currency")
         val LAST_USED_CATEGORY = stringPreferencesKey("last_used_category_id")
         val LAST_SEEN_SHARED_EXPENSES_AT = longPreferencesKey("last_seen_shared_expenses_at")
+        val CATEGORY_ALIASES = stringPreferencesKey("category_aliases")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -118,6 +119,33 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Maps a foreign category id (from a shared expense the partner created - see
+     * [com.example.expensestracker.domain.CategoryResolver]) onto one of the viewer's own
+     * category ids, for whenever the automatic by-name match isn't good enough (e.g. their
+     * "Shopping" really is the same thing as my "Spesa", but the names don't match). Purely a
+     * display/aggregation preference on this device - never written back to any expense document.
+     */
+    val categoryAliases: Flow<Map<String, String>> = context.dataStore.data.map { prefs ->
+        decodeStringMap(prefs[Keys.CATEGORY_ALIASES])
+    }
+
+    suspend fun setCategoryAlias(foreignCategoryId: String, myCategoryId: String) {
+        context.dataStore.edit { prefs ->
+            val current = decodeStringMap(prefs[Keys.CATEGORY_ALIASES]).toMutableMap()
+            current[foreignCategoryId] = myCategoryId
+            prefs[Keys.CATEGORY_ALIASES] = encodeStringMap(current)
+        }
+    }
+
+    suspend fun removeCategoryAlias(foreignCategoryId: String) {
+        context.dataStore.edit { prefs ->
+            val current = decodeStringMap(prefs[Keys.CATEGORY_ALIASES]).toMutableMap()
+            current.remove(foreignCategoryId)
+            prefs[Keys.CATEGORY_ALIASES] = encodeStringMap(current)
+        }
+    }
+
     private fun encodeCategoryBudgets(map: Map<String, Double>): String {
         val json = JSONObject()
         map.forEach { (id, amount) -> json.put(id, amount) }
@@ -129,6 +157,20 @@ class SettingsRepository(private val context: Context) {
         return runCatching {
             val obj = JSONObject(json)
             obj.keys().asSequence().associateWith { obj.getDouble(it) }
+        }.getOrDefault(emptyMap())
+    }
+
+    private fun encodeStringMap(map: Map<String, String>): String {
+        val json = JSONObject()
+        map.forEach { (key, value) -> json.put(key, value) }
+        return json.toString()
+    }
+
+    private fun decodeStringMap(json: String?): Map<String, String> {
+        if (json.isNullOrBlank()) return emptyMap()
+        return runCatching {
+            val obj = JSONObject(json)
+            obj.keys().asSequence().associateWith { obj.getString(it) }
         }.getOrDefault(emptyMap())
     }
 }

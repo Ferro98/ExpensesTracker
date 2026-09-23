@@ -6,9 +6,12 @@ import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.settings.SettingsRepository
+import com.example.expensestracker.domain.CategoryResolver
+import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -17,21 +20,61 @@ data class CategoriesUiState(
     val monthlyBudget: Double? = null,
     val categoryBudgets: Map<String, Double> = emptyMap(),
     val currencyRates: List<CurrencyRate> = emptyList(),
-    val defaultCurrency: String = "EUR"
+    val defaultCurrency: String = "EUR",
+    val partnerCategories: List<PartnerCategory> = emptyList()
+)
+
+/**
+ * A category id seen on a shared expense the partner created, that doesn't already match one of
+ * the viewer's own categories by name (see [CategoryResolver]) - [mergedIntoCategoryId] is set once
+ * the viewer has chosen which of their own categories it should count toward instead of "Other".
+ */
+data class PartnerCategory(
+    val categoryId: String,
+    val name: String,
+    val icon: String,
+    val mergedIntoCategoryId: String?
 )
 
 class CategoriesViewModel(
     private val repository: PersonalDataRepository,
+    private val groupContext: GroupContext?,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-    val uiState: StateFlow<CategoriesUiState> = combine(
+    // combine tops out at 5 typed flows: categories/aliases are bundled since deriving
+    // partnerCategories needs both together anyway.
+    private val categoriesAndAliases = combine(
         repository.observeCategories(),
+        settingsRepository.categoryAliases
+    ) { categories, aliases -> categories to aliases }
+
+    val uiState: StateFlow<CategoriesUiState> = combine(
+        categoriesAndAliases,
         settingsRepository.myMonthlyBudget,
         settingsRepository.myCategoryBudgets,
         repository.observeCurrencyRates(),
-        settingsRepository.defaultCurrency
-    ) { categories, budget, categoryBudgets, rates, defaultCurrency ->
-        CategoriesUiState(categories, budget, categoryBudgets, rates, defaultCurrency)
+        combine(
+            settingsRepository.defaultCurrency,
+            groupContext?.expenseRepository?.observeAllExpenses() ?: flowOf(emptyList())
+        ) { defaultCurrency, sharedExpenses -> defaultCurrency to sharedExpenses }
+    ) { catsAndAliases, budget, categoryBudgets, rates, currencyAndShared ->
+        val (categories, aliases) = catsAndAliases
+        val (defaultCurrency, sharedExpenses) = currencyAndShared
+        val partnerCategories = sharedExpenses
+            .filter { it.categoryId.isNotEmpty() && categories.none { own -> own.id == it.categoryId } }
+            .distinctBy { it.categoryId }
+            .map { expense ->
+                PartnerCategory(
+                    categoryId = expense.categoryId,
+                    name = expense.categoryName,
+                    icon = expense.categoryIcon,
+                    mergedIntoCategoryId = aliases[expense.categoryId]
+                        ?.takeIf { aliasedId -> categories.any { it.id == aliasedId } }
+                )
+            }
+            // Unmerged ones (still landing in "Other") are the ones worth the viewer's attention first.
+            .sortedBy { it.mergedIntoCategoryId != null }
+        CategoriesUiState(categories, budget, categoryBudgets, rates, defaultCurrency, partnerCategories)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoriesUiState())
 
     /** Converts an amount entered in [currencyCode] to the base currency (EUR). */
@@ -66,6 +109,20 @@ class CategoriesViewModel(
         viewModelScope.launch {
             repository.deleteCategory(category.id)
             settingsRepository.setCategoryBudget(category.id, null)
+        }
+    }
+
+    /** "This partner category is really the same as one of mine" - merges it in for display/aggregation purposes only. */
+    fun mergeCategory(partnerCategoryId: String, myCategoryId: String) {
+        viewModelScope.launch {
+            settingsRepository.setCategoryAlias(partnerCategoryId, myCategoryId)
+        }
+    }
+
+    /** Reverts to the automatic by-name match (or "Other" if that doesn't match either). */
+    fun unmergeCategory(partnerCategoryId: String) {
+        viewModelScope.launch {
+            settingsRepository.removeCategoryAlias(partnerCategoryId)
         }
     }
 
