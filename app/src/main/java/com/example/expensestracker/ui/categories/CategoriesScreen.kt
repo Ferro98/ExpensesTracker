@@ -223,7 +223,6 @@ fun CategoriesScreen(
             items(uiState.partnerCategories, key = { it.categoryId }) { partnerCategory ->
                 PartnerCategoryRow(
                     partnerCategory = partnerCategory,
-                    mergedCategoryName = uiState.categories.firstOrNull { it.id == partnerCategory.mergedIntoCategoryId }?.name,
                     onClick = { mergingCategory = partnerCategory },
                     modifier = Modifier.animateItem()
                 )
@@ -285,7 +284,6 @@ fun CategoriesScreen(
 @Composable
 private fun PartnerCategoryRow(
     partnerCategory: PartnerCategory,
-    mergedCategoryName: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -310,8 +308,17 @@ private fun PartnerCategoryRow(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(partnerCategory.name, fontWeight = FontWeight.SemiBold)
+                // Shows what this ACTUALLY resolves to right now (automatic name match, an
+                // explicit merge, or "Other") - not just whether the viewer has set a merge, so a
+                // category that already silently landed on one of their own by name isn't shown
+                // as if nothing were happening.
+                val statusRes = if (partnerCategory.isExplicitMerge) {
+                    R.string.partner_category_merged_into
+                } else {
+                    R.string.partner_category_auto_matched
+                }
                 Text(
-                    text = mergedCategoryName?.let { stringResource(R.string.partner_category_merged_into, it) }
+                    text = partnerCategory.resolvedCategoryName?.let { stringResource(statusRes, it) }
                         ?: stringResource(R.string.partner_category_not_merged),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -329,7 +336,10 @@ private fun MergeCategoryDialog(
     onMerge: (myCategoryId: String) -> Unit,
     onRemoveMerge: () -> Unit
 ) {
-    var selectedId by remember(partnerCategory.categoryId) { mutableStateOf(partnerCategory.mergedIntoCategoryId) }
+    // Starts on whatever this currently resolves to (even if only by automatic name match, not
+    // an explicit merge yet) so the picker reflects what the viewer already sees in Stats, rather
+    // than looking unset every time.
+    var selectedId by remember(partnerCategory.categoryId) { mutableStateOf(partnerCategory.resolvedCategoryId) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -347,7 +357,7 @@ private fun MergeCategoryDialog(
                     selectedCategoryId = selectedId,
                     onSelect = { selectedId = it }
                 )
-                if (partnerCategory.mergedIntoCategoryId != null) {
+                if (partnerCategory.isExplicitMerge) {
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = onRemoveMerge) { Text(stringResource(R.string.action_remove_merge)) }
                 }

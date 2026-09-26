@@ -140,11 +140,12 @@
     <string name="budget_remaining_to_allocate">%1$s ancora da allocare sul budget totale</string>
     <string name="budget_over_allocated_by">%1$s oltre il budget totale</string>
     <string name="partner_categories_label">Categorie del partner</string>
-    <string name="partner_categories_hint">Categorie che usa il tuo partner e che non corrispondono a una tua categoria. Uniscile a una tua categoria per vederle insieme nelle Statistiche.</string>
+    <string name="partner_categories_hint">Categorie che usa il tuo partner, diverse dalle tue. Tocca una per scegliere (o cambiare) a quale tua categoria deve contare.</string>
     <string name="partner_category_merged_into">Unita con: %1$s</string>
-    <string name="partner_category_not_merged">Non unita (conta come \"Altro\")</string>
+    <string name="partner_category_auto_matched">Corrisponde automaticamente a: %1$s</string>
+    <string name="partner_category_not_merged">Ancora nessuna corrispondenza</string>
     <string name="merge_category_title">Unisci \"%1$s\"</string>
-    <string name="merge_category_hint">Scegli una tua categoria: le spese del partner con \"%1$s\" conteranno come questa invece che come \"Altro\".</string>
+    <string name="merge_category_hint">Scegli una tua categoria: le spese del partner con \"%1$s\" conteranno come questa.</string>
     <string name="action_remove_merge">Rimuovi unione</string>
 
     <!-- Recurring -->

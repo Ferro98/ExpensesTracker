@@ -20,10 +20,18 @@ object CategoryResolver {
         DefaultUserData.knownDefaultNameVariants[name] ?: name.trim().lowercase()
 
     /** The viewer's category this expense counts toward, or null only if the viewer has no "Other" category either. */
-    fun resolve(expense: Expense, categories: List<Category>, aliases: Map<String, String> = emptyMap()): Category? {
-        aliases[expense.categoryId]?.let { aliasedId -> categories.firstOrNull { it.id == aliasedId } }?.let { return it }
-        categories.firstOrNull { it.id == expense.categoryId }?.let { return it }
-        val wanted = key(expense.categoryName)
+    fun resolve(expense: Expense, categories: List<Category>, aliases: Map<String, String> = emptyMap()): Category? =
+        resolve(expense.categoryId, expense.categoryName, categories, aliases)
+
+    /**
+     * Same resolution [resolve] does for an [Expense], but from a bare (categoryId, categoryName)
+     * pair - for callers that want to know what a foreign category currently counts toward
+     * (e.g. CategoriesViewModel's "partner's categories" list) without needing a whole Expense.
+     */
+    fun resolve(categoryId: String, categoryName: String, categories: List<Category>, aliases: Map<String, String> = emptyMap()): Category? {
+        aliases[categoryId]?.let { aliasedId -> categories.firstOrNull { it.id == aliasedId } }?.let { return it }
+        categories.firstOrNull { it.id == categoryId }?.let { return it }
+        val wanted = key(categoryName)
         categories.firstOrNull { key(it.name) == wanted }?.let { return it }
         return categories.firstOrNull { key(it.name) == R.string.default_category_other }
     }

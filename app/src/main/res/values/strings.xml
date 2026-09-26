@@ -140,11 +140,12 @@
     <string name="budget_remaining_to_allocate">%1$s left to allocate from the total budget</string>
     <string name="budget_over_allocated_by">%1$s over the total budget</string>
     <string name="partner_categories_label">Partner\'s categories</string>
-    <string name="partner_categories_hint">Categories your partner uses that don\'t match one of yours. Merge one into your own to see them together in Stats.</string>
+    <string name="partner_categories_hint">Categories your partner uses, different from yours. Tap one to choose (or change) which of your own categories it should count toward.</string>
     <string name="partner_category_merged_into">Merged with: %1$s</string>
-    <string name="partner_category_not_merged">Not merged (counts as \"Other\")</string>
+    <string name="partner_category_auto_matched">Automatically matched to: %1$s</string>
+    <string name="partner_category_not_merged">No match at all yet</string>
     <string name="merge_category_title">Merge \"%1$s\"</string>
-    <string name="merge_category_hint">Pick one of your categories - your partner\'s expenses tagged \"%1$s\" will count toward it instead of \"Other\".</string>
+    <string name="merge_category_hint">Pick one of your categories - your partner\'s expenses tagged \"%1$s\" will count toward it instead.</string>
     <string name="action_remove_merge">Remove merge</string>
 
     <!-- Recurring -->

@@ -25,15 +25,20 @@ data class CategoriesUiState(
 )
 
 /**
- * A category id seen on a shared expense the partner created, that doesn't already match one of
- * the viewer's own categories by name (see [CategoryResolver]) - [mergedIntoCategoryId] is set once
- * the viewer has chosen which of their own categories it should count toward instead of "Other".
+ * A category id seen on a shared expense the partner created, that isn't one of the viewer's own
+ * (see [CategoryResolver]). [resolvedCategoryId]/[resolvedCategoryName] is whatever it *currently*
+ * counts toward - the automatic by-name match, an explicit alias, or "Other" - exactly what Stats
+ * uses, so the viewer sees the real effect instead of only "has an alias been set or not".
+ * [isExplicitMerge] is true only when that resolution came from a user-chosen alias rather than
+ * the automatic name match, since only that case can be undone with "remove merge".
  */
 data class PartnerCategory(
     val categoryId: String,
     val name: String,
     val icon: String,
-    val mergedIntoCategoryId: String?
+    val resolvedCategoryId: String?,
+    val resolvedCategoryName: String?,
+    val isExplicitMerge: Boolean
 )
 
 class CategoriesViewModel(
@@ -64,16 +69,20 @@ class CategoriesViewModel(
             .filter { it.categoryId.isNotEmpty() && categories.none { own -> own.id == it.categoryId } }
             .distinctBy { it.categoryId }
             .map { expense ->
+                val isExplicitMerge = aliases[expense.categoryId]?.let { aliasedId -> categories.any { it.id == aliasedId } } == true
+                val resolved = CategoryResolver.resolve(expense.categoryId, expense.categoryName, categories, aliases)
                 PartnerCategory(
                     categoryId = expense.categoryId,
                     name = expense.categoryName,
                     icon = expense.categoryIcon,
-                    mergedIntoCategoryId = aliases[expense.categoryId]
-                        ?.takeIf { aliasedId -> categories.any { it.id == aliasedId } }
+                    resolvedCategoryId = resolved?.id,
+                    resolvedCategoryName = resolved?.name,
+                    isExplicitMerge = isExplicitMerge
                 )
             }
-            // Unmerged ones (still landing in "Other") are the ones worth the viewer's attention first.
-            .sortedBy { it.mergedIntoCategoryId != null }
+            // Ones nobody has confirmed yet (still relying on the automatic name match, or
+            // falling to "Other") are the ones worth the viewer's attention first.
+            .sortedBy { it.isExplicitMerge }
         CategoriesUiState(categories, budget, categoryBudgets, rates, defaultCurrency, partnerCategories)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoriesUiState())
 
