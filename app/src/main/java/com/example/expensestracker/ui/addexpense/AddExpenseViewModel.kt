@@ -143,6 +143,8 @@ class AddExpenseViewModel(
         paidByUid: String,
         isShared: Boolean,
         payerShare: Double,
+        periodStart: LocalDate?,
+        periodEnd: LocalDate?,
         // Non-null only when this created a brand-new expense (not an edit) - the id the
         // "Expense saved / Undo" snackbar needs to be able to delete it again. Edits (including
         // the shared-flag-flip path, which technically creates a new document too) don't offer
@@ -190,7 +192,9 @@ class AddExpenseViewModel(
                             note = note?.takeIf { it.isNotBlank() },
                             paidByUid = paidByUid,
                             isShared = shared,
-                            payerShare = payerShare
+                            payerShare = payerShare,
+                            periodStart = periodStart,
+                            periodEnd = periodEnd
                         )
                         // Same scope as before editing - overwrite the existing document in place.
                         editing.isShared == shared -> {
@@ -208,7 +212,9 @@ class AddExpenseViewModel(
                                 paidByUid = paidByUid,
                                 isShared = shared,
                                 payerShare = payerShare,
-                                createdAt = editing.createdAt
+                                createdAt = editing.createdAt,
+                                periodStart = periodStart,
+                                periodEnd = periodEnd
                             )
                             null
                         }
@@ -231,7 +237,9 @@ class AddExpenseViewModel(
                                 note = note?.takeIf { it.isNotBlank() },
                                 paidByUid = paidByUid,
                                 isShared = shared,
-                                payerShare = payerShare
+                                payerShare = payerShare,
+                                periodStart = periodStart,
+                                periodEnd = periodEnd
                             )
                             null
                         }

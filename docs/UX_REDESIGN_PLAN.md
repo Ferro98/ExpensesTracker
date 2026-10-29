@@ -639,6 +639,39 @@ coincidono affatto.
   riusa `ui/components/CategoryPicker` per scegliere a quale propria categoria unirla (o rimuovere
   l'unione esistente).
 
+## 10. Abbonamenti: costo ripartito sui giorni coperti (post-piano, 2026-10-29)
+
+Richiesta dell'utente: poter marcare una spesa come abbonamento con il suo periodo, così che
+(es.) un abbonamento mezzi da 200 € pagato a fine mese conti per ottobre solo la quota dei suoi
+giorni e il resto su novembre (e oltre).
+
+- **Modello**: `Expense.periodStart`/`periodEnd` (date ISO, estremi inclusi, entrambi o nessuno).
+  `date` resta il giorno in cui si è pagato davvero.
+- **Attribuzione ai mesi**: `domain/ExpensePeriod.attributedTo(finestra)` - una spesa normale conta
+  per intero nella finestra che contiene la sua data; un abbonamento conta in ogni finestra che
+  il suo periodo tocca, per la frazione di giorni che cadono dentro. Applicata nei tre punti di
+  `MonthViewModel` che prima filtravano per data (totale mese, ripartizione per categoria,
+  trend/confronto), quindi Home, Storico, Statistiche e budget per categoria seguono da soli.
+- **Perché un moltiplicatore e non un importo riscritto**: la copia "del mese" porta
+  `periodFactor` (non salvato, `@get:Exclude`) e solo `shareFor()` lo applica. `amount` e
+  `amountInBaseCurrency` restano quelli pagati, così modifica, duplica e annulla-eliminazione -
+  che leggono l'oggetto che gli viene passato - non possono riscrivere per sbaglio l'importo
+  con la quota di un mese.
+- **Cosa NON cambia (di proposito)**: saldo del gruppo, "pagato da" e regolamenti restano per
+  cassa - seguono i soldi usciti, nel giorno in cui sono usciti (`BalanceCalculator`,
+  `GroupViewModel`, feed di Gruppo non passano da `attributedTo`).
+- **Ritmo di spesa** (`PaceCalculator`): la quota di un abbonamento è un costo fisso già noto,
+  quindi è sempre fuori dal ritmo giornaliero (come le spese una tantum grandi) - altrimenti i
+  14 € di ottobre verrebbero proiettati su tutti i giorni del mese. Testo "Esclude ..." aggiornato.
+- **UI**: nei dettagli di "nuova spesa" interruttore "Abbonamento / copre un periodo", pulsanti
+  Dal/Al e scorciatoie 1 mese / 3 mesi / 6 mesi / 1 anno, con anteprima "≈ X al giorno su N
+  giorni · mese: quota". Il periodo è tenuto come inizio + durata, così cambiando la data della
+  spesa si sposta tutto insieme. Nelle righe: etichetta "Abbonamento" e, nei mesi dove conta solo
+  una parte, "Nel mese: X". Nello Storico una spesa pagata in un mese precedente è raggruppata
+  sotto il giorno 1 del mese invece che sotto un giorno di un altro mese.
+- **Test**: `ExpensePeriodTest` (somma delle quote = importo pagato, mesi fuori periodo, periodo
+  dentro un mese, spesa normale, importo reale intatto, quota in spesa condivisa).
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

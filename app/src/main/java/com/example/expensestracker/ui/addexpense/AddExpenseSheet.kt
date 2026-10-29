@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,10 +64,15 @@ import com.example.expensestracker.ui.components.appendAmountKey
 import com.example.expensestracker.ui.theme.MoneyStyle
 import com.example.expensestracker.util.currencySymbol
 import com.example.expensestracker.util.decimalSeparator
+import com.example.expensestracker.util.formatLongDate
+import com.example.expensestracker.util.formatMoney
+import com.example.expensestracker.util.formatMonthName
 import com.example.expensestracker.util.formatShortDate
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 /**
  * Amount-first entry: amount, category and note are all on screen together, since in practice a
@@ -112,6 +118,29 @@ fun AddExpenseSheet(
     var customSplitEnabled by remember { mutableStateOf(source?.let { it.payerShare != 0.5 } ?: false) }
     var payerShare by remember { mutableStateOf(source?.payerShare ?: 0.5) }
     var showDetails by remember { mutableStateOf(false) }
+
+    // Subscription: the cost is spread over [periodStart]..[periodEnd] instead of landing on the
+    // expense date. The period is held as a start override plus a length rather than two dates, so
+    // that changing the expense date (the default start) moves the whole period with it instead
+    // of leaving an end date stranded before the new start. A duplicate keeps the old length but
+    // starts from the new date; an edit keeps the stored start even when it differs from the date.
+    var isSubscription by remember { mutableStateOf(source?.hasPeriod == true) }
+    var periodStartOverride by remember {
+        mutableStateOf(
+            if (isEditing) source?.let { s -> s.localPeriodStart?.takeIf { it != s.localDate } } else null
+        )
+    }
+    var periodLengthDays by remember {
+        val storedStart = source?.localPeriodStart
+        val storedEnd = source?.localPeriodEnd
+        mutableStateOf(
+            if (storedStart != null && storedEnd != null) ChronoUnit.DAYS.between(storedStart, storedEnd)
+            else monthsLengthDays(LocalDate.now(), 1)
+        )
+    }
+    var periodPicker by remember { mutableStateOf<PeriodPicker?>(null) }
+    val periodStart = periodStartOverride ?: selectedDate
+    val periodEnd = periodStart.plusDays(periodLengthDays)
 
     // Keeps re-deciding the category until the user picks one themselves, so a slow DataStore read
     // still beats the first-in-list guess made a moment earlier. In order of preference:
@@ -228,6 +257,7 @@ fun AddExpenseSheet(
             DetailsSummaryRow(
                 date = selectedDate,
                 isShared = isShared,
+                isSubscription = isSubscription,
                 inGroup = uiState.inGroup,
                 partnerName = uiState.partnerName,
                 expanded = showDetails,
@@ -238,6 +268,54 @@ fun AddExpenseSheet(
             if (showDetails) {
                 OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.date_prefix, formatShortDate(selectedDate)))
+                }
+                Spacer(Modifier.height(12.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.subscription_label), style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            stringResource(R.string.subscription_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = isSubscription, onCheckedChange = { isSubscription = it })
+                }
+                if (isSubscription) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = { periodPicker = PeriodPicker.START }, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.period_from_prefix, formatLongDate(periodStart)), maxLines = 1)
+                        }
+                        OutlinedButton(onClick = { periodPicker = PeriodPicker.END }, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.period_to_prefix, formatLongDate(periodEnd)), maxLines = 1)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    PeriodChips(
+                        periodStart = periodStart,
+                        periodLengthDays = periodLengthDays,
+                        onSelectMonths = { months -> periodLengthDays = monthsLengthDays(periodStart, months) }
+                    )
+                    val previewAmount = amountText.replace(',', '.').toDoubleOrNull()
+                    if (previewAmount != null && previewAmount > 0) {
+                        val totalDays = (periodLengthDays + 1).toInt()
+                        val firstMonth = YearMonth.from(periodStart)
+                        val daysInFirstMonth = (ChronoUnit.DAYS.between(periodStart, minOf(periodEnd, firstMonth.atEndOfMonth())) + 1).toInt()
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(
+                                R.string.subscription_preview,
+                                formatMoney(previewAmount / totalDays, selectedCurrency),
+                                pluralStringResource(R.plurals.period_days, totalDays, totalDays),
+                                formatMonthName(firstMonth),
+                                formatMoney(previewAmount * daysInFirstMonth / totalDays, selectedCurrency)
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
 
@@ -305,6 +383,8 @@ fun AddExpenseSheet(
                             paidByUid = if (isShared) paidByUid else uiState.myUid,
                             isShared = isShared,
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
+                            periodStart = if (isSubscription) periodStart else null,
+                            periodEnd = if (isSubscription) periodEnd else null,
                             onSaved = { createdId ->
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 // isEditing, not "createdId == null", decides which callback fires -
@@ -355,6 +435,39 @@ fun AddExpenseSheet(
         }
     }
 
+    periodPicker?.let { picker ->
+        val initial = if (picker == PeriodPicker.START) periodStart else periodEnd
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { periodPicker = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        if (picker == PeriodPicker.START) {
+                            // Moves only the start: the end stays where it was unless that would
+                            // leave it before the new start, in which case the length is kept.
+                            val keptEnd = periodEnd
+                            periodStartOverride = picked
+                            if (!keptEnd.isBefore(picked)) periodLengthDays = ChronoUnit.DAYS.between(picked, keptEnd)
+                        } else {
+                            // An end before the start can't be a period; clamp to a single day.
+                            periodLengthDays = ChronoUnit.DAYS.between(periodStart, picked).coerceAtLeast(0)
+                        }
+                    }
+                    periodPicker = null
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { periodPicker = null }) { Text(stringResource(R.string.action_cancel)) }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
@@ -388,6 +501,32 @@ private fun CurrencyChips(codes: List<String>, selected: String, onSelect: (Stri
     }
 }
 
+private enum class PeriodPicker { START, END }
+
+/** Days from [start] to the last day of an N-month period beginning on it (inclusive end): 1 month from 29 Oct ends 28 Nov. */
+private fun monthsLengthDays(start: LocalDate, months: Int): Long =
+    ChronoUnit.DAYS.between(start, start.plusMonths(months.toLong())) - 1
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PeriodChips(periodStart: LocalDate, periodLengthDays: Long, onSelectMonths: (Int) -> Unit) {
+    val options = listOf(
+        1 to R.string.period_1_month,
+        3 to R.string.period_3_months,
+        6 to R.string.period_6_months,
+        12 to R.string.period_1_year
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (months, labelRes) ->
+            FilterChip(
+                selected = periodLengthDays == monthsLengthDays(periodStart, months),
+                onClick = { onSelectMonths(months) },
+                label = { Text(stringResource(labelRes)) }
+            )
+        }
+    }
+}
+
 /**
  * "Today · Personal" - shows the state of the two fields that genuinely change only sometimes
  * (date, sharing), so the defaults are visible rather than implied, and opens the fields that
@@ -397,6 +536,7 @@ private fun CurrencyChips(codes: List<String>, selected: String, onSelect: (Stri
 private fun DetailsSummaryRow(
     date: LocalDate,
     isShared: Boolean,
+    isSubscription: Boolean,
     inGroup: Boolean,
     partnerName: String,
     expanded: Boolean,
@@ -412,6 +552,7 @@ private fun DetailsSummaryRow(
     val summary = buildList {
         add(dateLabel)
         if (inGroup) add(sharedLabel)
+        if (isSubscription) add(stringResource(R.string.subscription_short))
     }.joinToString(" · ")
 
     Card(

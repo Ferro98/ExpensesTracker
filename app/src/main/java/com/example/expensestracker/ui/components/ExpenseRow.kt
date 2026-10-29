@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatShortDate
 import com.example.expensestracker.util.localizedCategoryName
 import com.example.expensestracker.util.toColor
@@ -96,7 +97,10 @@ fun ExpenseRow(
                 Spacer(Modifier.height(2.dp))
                 val payerLabel = if (expense.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (expense.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-                val subtitle = "${expense.categoryIcon} $categoryName · ${formatShortDate(expense.localDate)} · $sharedLabel"
+                val subtitle = buildString {
+                    append("${expense.categoryIcon} $categoryName · ${formatShortDate(expense.localDate)} · $sharedLabel")
+                    if (expense.hasPeriod) append(" · ${stringResource(R.string.subscription_short)}")
+                }
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -104,6 +108,17 @@ fun ExpenseRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                // Only when the row is showing a slice of a longer period (i.e. a month view of
+                // a subscription): the amount on the right is what was paid, this is what it
+                // contributes to the month the row sits in.
+                if (expense.periodFactor < 1.0) {
+                    Text(
+                        stringResource(R.string.expense_month_share, formatMoney(expense.amountInBaseCurrency * expense.periodFactor)),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(8.dp))
             AmountText(

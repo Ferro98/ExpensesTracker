@@ -32,6 +32,10 @@ fun decimalSeparator(): Char = DecimalFormatSymbols.getInstance(appLocale).decim
 fun formatShortDate(date: LocalDate): String =
     date.format(DateTimeFormatter.ofPattern("d MMM", appLocale))
 
+/** "29 ott 2026" - where the year matters, e.g. the two ends of a subscription period. */
+fun formatLongDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("d MMM yyyy", appLocale))
+
 fun formatWeekdayShort(date: LocalDate): String =
     date.dayOfWeek.getDisplayName(TextStyle.SHORT, appLocale).replaceFirstChar { it.uppercase() }
 

@@ -117,7 +117,9 @@ private fun DayGroupedExpenses(
     }
     // monthExpenses already comes newest-first, so groupBy preserves that order for both the days
     // and the expenses inside each day.
-    val byDay = filtered.groupBy { it.localDate }
+    // A subscription paid in an earlier month still counts here, but a day header from last month
+    // inside this month's list would read as a mistake - it's filed under the 1st instead.
+    val byDay = filtered.groupBy { maxOf(it.localDate, uiState.monthStart) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

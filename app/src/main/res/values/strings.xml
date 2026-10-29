@@ -76,8 +76,8 @@
     <string name="stats_daily_average">%1$s a day on average</string>
     <string name="stats_projected_total">Projected total: %1$s</string>
     <string name="stats_projected_over_budget">That\'s over your %1$s budget</string>
-    <string name="stats_pace_excludes_one">Excludes 1 large one-off expense (%1$s)</string>
-    <string name="stats_pace_excludes_many">Excludes %1$d large one-off expenses (%2$s)</string>
+    <string name="stats_pace_excludes_one">Excludes 1 one-off or subscription expense (%1$s)</string>
+    <string name="stats_pace_excludes_many">Excludes %1$d one-off or subscription expenses (%2$s)</string>
     <string name="recent_expenses">Recent expenses</string>
     <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
     <string name="no_expenses_this_month">No expenses this month.</string>
@@ -147,6 +147,26 @@
     <string name="merge_category_title">Merge \"%1$s\"</string>
     <string name="merge_category_hint">Pick one of your categories - your partner\'s expenses tagged \"%1$s\" will count toward it instead.</string>
     <string name="action_remove_merge">Remove merge</string>
+
+    <!-- Subscriptions (prepaid period spread over its days) -->
+    <string name="subscription_label">Subscription / covers a period</string>
+    <string name="subscription_hint">Spreads the cost over the days it covers, so each month only counts its own share.</string>
+    <string name="subscription_short">Subscription</string>
+    <string name="period_from_prefix">From: %1$s</string>
+    <string name="period_to_prefix">To: %1$s</string>
+    <string name="period_1_month">1 month</string>
+    <string name="period_3_months">3 months</string>
+    <string name="period_6_months">6 months</string>
+    <string name="period_1_year">1 year</string>
+    <string name="subscription_preview">≈ %1$s per day over %2$s · %3$s: %4$s</string>
+    <string name="expense_month_share">This month: %1$s</string>
+    <string name="month_share_label">Share of this month</string>
+    <string name="period_label">Period</string>
+    <string name="period_range">%1$s – %2$s (%3$s)</string>
+    <plurals name="period_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
 
     <!-- Recurring -->
     <string name="fab_recurring_expense">Recurring expense</string>

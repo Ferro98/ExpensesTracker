@@ -16,6 +16,7 @@ import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.domain.BalanceCalculator
 import com.example.expensestracker.domain.CategoryResolver
 import com.example.expensestracker.domain.RecurringExpenseGenerator
+import com.example.expensestracker.domain.attributedTo
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -186,7 +187,7 @@ class MonthViewModel(
             val totals = months.map { ym ->
                 val start = ym.atDay(1)
                 val end = ym.atEndOfMonth()
-                val spent = expenses.filter { !it.localDate.isBefore(start) && !it.localDate.isAfter(end) }.sumOf { it.shareFor(myUid) }
+                val spent = expenses.attributedTo(start, end).sumOf { it.shareFor(myUid) }
                 MonthTotal(ym, spent)
             }
             MonthlyTrend(totals, monthlyBudget)
@@ -228,7 +229,7 @@ class MonthViewModel(
     private fun categorySpendingFor(expenses: List<Expense>, categories: List<Category>, aliases: Map<String, String>, categoryBudgets: Map<String, Double>, yearMonth: YearMonth): List<CategorySpending> {
         val start = yearMonth.atDay(1)
         val end = yearMonth.atEndOfMonth()
-        val monthExpenses = expenses.filter { !it.localDate.isBefore(start) && !it.localDate.isAfter(end) }
+        val monthExpenses = expenses.attributedTo(start, end)
         val categoryExpenses = monthExpenses.groupBy { CategoryResolver.resolve(it, categories, aliases)?.id }
         return categories.map { category ->
             CategorySpending(
@@ -255,7 +256,7 @@ class MonthViewModel(
         monthStart: LocalDate,
         monthEnd: LocalDate
     ): MonthUiState {
-        val monthExpenses = expenses.filter { !it.localDate.isBefore(monthStart) && !it.localDate.isAfter(monthEnd) }
+        val monthExpenses = expenses.attributedTo(monthStart, monthEnd)
         val myMonthSpend = monthExpenses.sumOf { it.shareFor(myUid) }
 
         // Each expense counts toward one of the viewer's own categories, matched by id or - for
@@ -353,7 +354,9 @@ class MonthViewModel(
                     note = expense.note,
                     paidByUid = expense.paidByUid,
                     isShared = expense.isShared,
-                    payerShare = expense.payerShare
+                    payerShare = expense.payerShare,
+                    periodStart = expense.localPeriodStart,
+                    periodEnd = expense.localPeriodEnd
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.

@@ -149,7 +149,9 @@ class GroupViewModel(
                     note = expense.note,
                     paidByUid = expense.paidByUid,
                     isShared = expense.isShared,
-                    payerShare = expense.payerShare
+                    payerShare = expense.payerShare,
+                    periodStart = expense.localPeriodStart,
+                    periodEnd = expense.localPeriodEnd
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.
