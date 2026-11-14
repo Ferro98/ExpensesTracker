@@ -30,8 +30,6 @@ import com.example.expensestracker.domain.PaceCalculator
 import com.example.expensestracker.ui.components.CategoryDonutChart
 import com.example.expensestracker.ui.components.CategorySpendingRow
 import com.example.expensestracker.ui.components.EmptyState
-import com.example.expensestracker.ui.components.MonthSummaryCard
-import com.example.expensestracker.ui.components.SectionHeader
 import com.example.expensestracker.ui.month.MonthComparison
 import com.example.expensestracker.ui.month.MonthDetailSheets
 import com.example.expensestracker.ui.month.MonthPager
@@ -42,10 +40,12 @@ import com.example.expensestracker.ui.month.currentMonthState
 import com.example.expensestracker.ui.month.pageForMonth
 import com.example.expensestracker.ui.month.rememberMonthDetailState
 import com.example.expensestracker.ui.month.rememberMonthPagerState
+import com.example.expensestracker.util.distinctChartColors
 import com.example.expensestracker.util.formatMonthName
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlin.math.roundToInt
 
 /**
  * Where the month gets broken down: the summary, the 6-month trend, the category donut, and
@@ -108,28 +108,19 @@ private fun MonthBreakdown(
     onMonthClick: (YearMonth) -> Unit
 ) {
     val categories = uiState.categorySpendingByAmount
+    val chartColors = remember(categories) { distinctChartColors(categories) }
+    val categoryTotal = categories.sumOf { it.spent }
     val today = LocalDate.now()
     val isCurrentMonth = yearMonth == YearMonth.now()
     val daysElapsed = if (isCurrentMonth) today.dayOfMonth else null
-    val daysLeft = if (!today.isBefore(uiState.monthStart) && !today.isAfter(uiState.monthEnd))
-        uiState.monthEnd.dayOfMonth - today.dayOfMonth + 1
-    else null
 
+    // No "spent this month" card here: Home already opens with it, and it was identical. What this
+    // screen adds is the trend, the mix, and how the month compares.
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item {
-            MonthSummaryCard(
-                title = stringResource(R.string.spent_this_month),
-                totalSpent = uiState.totalSpent,
-                monthlyBudget = uiState.monthlyBudget,
-                categoryBudgetTotal = uiState.categoryBudgetTotal,
-                daysLeft = daysLeft
-            )
-        }
-
         if (trend.months.any { it.totalSpent > 0 }) {
             item {
                 Card(
@@ -178,10 +169,21 @@ private fun MonthBreakdown(
                         Spacer(Modifier.height(8.dp))
                         CategoryDonutChart(
                             categories = categories,
-                            onCategoryClick = onOpenCategory
+                            colors = chartColors
                         )
                     }
                 }
+            }
+
+            // Straight under the ring: these rows are its legend (same colours, plus share and budget).
+            items(categories, key = { it.categoryId }) { category ->
+                CategorySpendingRow(
+                    category,
+                    onClick = { onOpenCategory(category) },
+                    modifier = Modifier.animateItem(),
+                    chartColor = chartColors[category.categoryId],
+                    sharePercent = if (categoryTotal > 0) (category.spent / categoryTotal * 100).roundToInt() else null
+                )
             }
 
             item { MonthComparisonCard(comparison) }
@@ -199,11 +201,6 @@ private fun MonthBreakdown(
                     }
                     PaceCard(pace = pace, monthlyBudget = uiState.monthlyBudget)
                 }
-            }
-
-            item { SectionHeader(stringResource(R.string.by_category), topPadding = 10.dp) }
-            items(categories, key = { it.categoryId }) { category ->
-                CategorySpendingRow(category, onClick = { onOpenCategory(category) }, modifier = Modifier.animateItem())
             }
         }
 

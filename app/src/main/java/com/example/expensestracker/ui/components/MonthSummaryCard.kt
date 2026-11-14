@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,7 +29,6 @@ fun MonthSummaryCard(
     title: String,
     totalSpent: Double,
     monthlyBudget: Double?,
-    categoryBudgetTotal: Double,
     daysLeft: Int? = null,
     modifier: Modifier = Modifier
 ) {
@@ -41,8 +39,8 @@ fun MonthSummaryCard(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                title.uppercase(),
-                style = MaterialTheme.typography.labelLarge,
+                title,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -94,29 +92,6 @@ fun MonthSummaryCard(
                 )
             }
 
-            if (categoryBudgetTotal > 0) {
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(stringResource(R.string.category_budgets_label), style = MaterialTheme.typography.labelLarge)
-                Spacer(modifier = Modifier.height(8.dp))
-                val allocationProgress = (categoryBudgetTotal / monthlyBudget).toFloat().coerceIn(0f, 1f)
-                val overAllocated = categoryBudgetTotal > monthlyBudget
-                BudgetProgressBar(
-                    progress = allocationProgress,
-                    color = if (overAllocated) MaterialTheme.semanticColors.negative else MaterialTheme.colorScheme.tertiary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                val unallocated = monthlyBudget - categoryBudgetTotal
-                Text(
-                    text = if (unallocated >= 0)
-                        stringResource(R.string.allocated_unallocated, formatMoney(categoryBudgetTotal), formatMoney(unallocated))
-                    else
-                        stringResource(R.string.allocated_over_by, formatMoney(categoryBudgetTotal), formatMoney(-unallocated)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (overAllocated) MaterialTheme.semanticColors.negative else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }

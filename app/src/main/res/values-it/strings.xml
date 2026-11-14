@@ -53,7 +53,7 @@
     <string name="balance_settled_up">In pari</string>
     <string name="balance_you_owe">Devi %2$s a %1$s</string>
     <string name="balance_owes_you">%1$s ti deve %2$s</string>
-    <string name="record_settlement">Registra un saldo</string>
+    <string name="record_settlement">Registra saldo</string>
     <string name="balance_lifetime_note">Totale complessivo di sempre, non limitato al mese che stai visualizzando.</string>
     <string name="settlement_i_paid">Ho pagato io a %1$s</string>
     <string name="settlement_partner_paid_me">%1$s ha pagato me</string>
@@ -68,6 +68,7 @@
     <string name="allocated_over_by">%1$s allocato · superato di %2$s</string>
     <string name="by_category">Per categoria</string>
     <string name="stats_trend_title">Ultimi 6 mesi</string>
+    <string name="stats_trend_budget_line">Linea tratteggiata: budget mensile %1$s</string>
     <string name="stats_donut_title">%1$s per categoria</string>
     <string name="stats_vs_last_month">Rispetto a %1$s</string>
     <string name="stats_previous_total">%1$s il mese scorso</string>
@@ -75,7 +76,7 @@
     <string name="stats_pace_title">Ritmo</string>
     <string name="stats_daily_average">%1$s al giorno in media</string>
     <string name="stats_projected_total">Proiezione fine mese: %1$s</string>
-    <string name="stats_projected_over_budget">Supera il budget di %1$s</string>
+    <string name="stats_projected_over_budget">Previsto sforamento del budget: %1$s</string>
     <string name="stats_pace_excludes_one">Esclude 1 spesa occasionale o abbonamento (%1$s)</string>
     <string name="stats_pace_excludes_many">Esclude %1$d spese occasionali o abbonamenti (%2$s)</string>
     <string name="recent_expenses">Spese recenti</string>
@@ -83,7 +84,7 @@
     <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
     <string name="no_search_results">Nessuna spesa corrisponde ai filtri.</string>
     <string name="clear_filters">Rimuovi filtri</string>
-    <string name="search_expenses_hint">Cerca per nota o categoria</string>
+    <string name="search_expenses_hint">Cerca spese</string>
     <string name="cd_clear_search">Cancella ricerca</string>
     <string name="filter_scope_all">Tutte</string>
     <string name="filter_paid_by_me">Pagate da me</string>

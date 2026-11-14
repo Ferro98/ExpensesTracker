@@ -65,14 +65,13 @@ import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.components.BudgetProgressBar
 import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.EmptyState
+import com.example.expensestracker.util.categoryPresetColors
 import com.example.expensestracker.util.formatMoney
+import com.example.expensestracker.util.nextUnusedCategoryColor
 import com.example.expensestracker.util.toColor
 
 private val presetIcons = listOf("🍔", "🚌", "🏨", "🛍️", "🎉", "📱", "💊", "✈️", "📦", "☕", "🎮", "📚", "🐶", "🏋️", "🎵", "💡")
-private val presetColors = listOf(
-    "#FF7043", "#42A5F5", "#AB47BC", "#EC407A", "#FFA726", "#5C6BC0",
-    "#26A69A", "#29B6F6", "#78909C", "#8D6E63", "#66BB6A", "#EF5350"
-)
+private val presetColors = categoryPresetColors
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -235,6 +234,7 @@ fun CategoriesScreen(
     if (showAddDialog) {
         CategoryEditDialog(
             initial = null,
+            usedColors = uiState.categories.map { it.colorHex },
             initialBudget = null,
             currencyRates = uiState.currencyRates,
             defaultCurrency = uiState.defaultCurrency,
@@ -251,6 +251,7 @@ fun CategoriesScreen(
     editingCategory?.let { category ->
         CategoryEditDialog(
             initial = category,
+            usedColors = uiState.categories.map { it.colorHex },
             initialBudget = uiState.categoryBudgets[category.id],
             currencyRates = uiState.currencyRates,
             defaultCurrency = uiState.defaultCurrency,
@@ -460,6 +461,7 @@ private fun CategoryRow(
 @Composable
 private fun CategoryEditDialog(
     initial: Category?,
+    usedColors: List<String>,
     initialBudget: Double?,
     currencyRates: List<CurrencyRate>,
     defaultCurrency: String,
@@ -470,7 +472,7 @@ private fun CategoryEditDialog(
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: presetIcons.first()) }
-    var color by remember { mutableStateOf(initial?.colorHex ?: presetColors.first()) }
+    var color by remember { mutableStateOf(initial?.colorHex ?: nextUnusedCategoryColor(usedColors)) }
     var budgetText by remember { mutableStateOf(initialBudget?.let { String.format("%.2f", it) } ?: "") }
     var budgetCurrency by remember { mutableStateOf(defaultCurrency) }
 

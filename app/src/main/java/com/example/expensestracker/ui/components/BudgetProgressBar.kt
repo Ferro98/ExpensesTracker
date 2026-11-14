@@ -34,6 +34,10 @@ fun BudgetProgressBar(
             .height(height)
             .clip(RoundedCornerShape(height / 2)),
         color = color,
-        trackColor = trackColor
+        trackColor = trackColor,
+        // The default M3 indicator leaves a gap before the track and ends it with a stray dot;
+        // on a thin bar both just read as specks of dirt.
+        gapSize = 0.dp,
+        drawStopIndicator = {}
     )
 }

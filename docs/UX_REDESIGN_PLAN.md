@@ -672,6 +672,55 @@ giorni e il resto su novembre (e oltre).
 - **Test**: `ExpensePeriodTest` (somma delle quote = importo pagato, mesi fuori periodo, periodo
   dentro un mese, spesa normale, importo reale intatto, quota in spesa condivisa).
 
+## 11. Passata grafica e UI/UX dagli screenshot reali (post-piano, 2026-11-14)
+
+Fatta a partire da 9 screenshot in tema scuro mandati dall'utente (Home, Storico, Statistiche,
+Nuova spesa; non c'era Gruppo). Né `unslop` (è una skill di scrittura per tedesco/inglese, non
+di UI) né `frontend-design` (pensata per HTML/CSS) servivano: i suoi principi - niente look "da
+template", una cosa memorabile e il resto sobrio - sono stati applicati a mano su Compose.
+
+**Difetti corretti**
+- *Nuova spesa*: titolo+importo fissi in alto, "Salva" fisso in basso, solo i campi in mezzo
+  scorrono (prima Salva era l'ultimo elemento di una colonna unica e restava tagliato sotto il
+  tastierino, e con i dettagli aperti l'importo usciva dallo schermo). Tasti del tastierino 52→48dp.
+- *Ciambella*: angoli netti con un filo di spazio tra le fette (i `StrokeCap.Round` si
+  sovrapponevano a macchie), anello più sottile, totale con larghezza fissa che sta nel buco.
+- *Colori categoria identici*: causa era `presetColors.first()` come colore di partenza di
+  ogni nuova categoria. Ora `nextUnusedCategoryColor` sceglie il primo preset non usato; per le
+  categorie già esistenti con lo stesso colore `distinctChartColors` ne distingue la resa **solo
+  nei grafici** (la categoria mantiene il colore scelto altrove).
+- *"Supera il budget di € 1.273,59"*: mostrava il budget, non lo sforamento. Ora "Previsto
+  sforamento del budget: €20,10" (EN: "Projected to go X over budget").
+- *Storico*: segnaposto ricerca accorciato ("Cerca spese"), che andava a capo; i due blocchi di chip
+  diventano una sola riga scorrevole (tipo, pagante, poi categorie dopo un divisore).
+- *Home*: "Registra un saldo" andava a capo - padding ridotto, una riga, "Registra saldo".
+- *Barre di budget*: tolti il buco e il puntino finale dell'indicatore M3 di default.
+- *Fogli e dialoghi*: la palette non definiva i `surfaceContainer*`, quindi Material usava il suo
+  viola-grigio di default (sfondo del foglio "Nuova spesa" diverso dal blu-nero dell'app).
+- Checkbox "Divisione personalizzata" riallineato al bordo degli altri campi.
+
+**Densità e gerarchia**
+- *Statistiche*: tolta la scheda "Speso questo mese" (identica a quella di Home). Ordine ora:
+  andamento 6 mesi, ciambella, elenco categorie (subito sotto, è la sua legenda), confronto, ritmo.
+  Niente più legenda duplicata dentro la ciambella: le righe portano lo stesso colore, la quota %
+  e il budget. Conseguenza voluta: per i mesi passati il budget non è più in una scheda ma nella
+  linea tratteggiata del grafico.
+- *Righe spesa*: emoji non più ripetuta nel sottotitolo; categoria omessa se è già il titolo
+  (nota assente o uguale); data omessa nello Storico (c'è l'intestazione del giorno); sottotitolo
+  fino a 2 righe invece di troncare "Pagato da…".
+- *Home*: saldo di coppia subito sotto il totale del mese (era in fondo); tolta dalla scheda la
+  barra "Budget per categoria" (dato di impostazione, già presente nella schermata Categorie).
+
+**Identità visiva (parte già applicata)**
+- Etichette in minuscolo (niente `uppercase()` su "Speso a novembre" / "Saldo").
+- Barre budget delle categorie: ambra da 90%, rosso se sforato, altrimenti il colore categoria.
+- Grafico a 6 mesi riscritto in puro Compose (`MonthlyTrendChart`): mese visualizzato pieno e gli
+  altri attenuati, importo sopra ogni barra, linea tratteggiata del budget, niente linee sui
+  mesi vuoti, ogni barra con descrizione per l'accessibilità. Vico non serviva più ed è stato
+  rimosso da `build.gradle.kts`/`libs.versions.toml`.
+- **Non applicato, in attesa di approvazione**: unificazione della palette (oggi tre arancioni: FAB
+  pesca, chip selezionati bruciato, colore categoria #FF7043).
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

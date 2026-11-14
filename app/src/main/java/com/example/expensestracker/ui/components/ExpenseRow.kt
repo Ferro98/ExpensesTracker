@@ -48,7 +48,9 @@ fun ExpenseRow(
     partnerName: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    accentColor: Color? = null
+    accentColor: Color? = null,
+    // Off where rows already sit under a day header (History), which says the date for them.
+    showDate: Boolean = true
 ) {
     Card(
         modifier = modifier
@@ -86,7 +88,8 @@ fun ExpenseRow(
                 // The note is what the user actually cares about at a glance - the category (already
                 // shown as the icon) rides along as a small subtitle instead of pushing the note out.
                 val categoryName = localizedCategoryName(expense.categoryName)
-                val primaryText = expense.note?.takeIf { it.isNotBlank() } ?: categoryName
+                val note = expense.note?.takeIf { it.isNotBlank() }
+                val primaryText = note ?: categoryName
                 Text(
                     primaryText,
                     style = MaterialTheme.typography.bodyMedium,
@@ -97,15 +100,20 @@ fun ExpenseRow(
                 Spacer(Modifier.height(2.dp))
                 val payerLabel = if (expense.paidByUid == myUid) stringResource(R.string.you) else partnerName
                 val sharedLabel = if (expense.isShared) stringResource(R.string.paid_by_partner, payerLabel) else stringResource(R.string.personal_label)
-                val subtitle = buildString {
-                    append("${expense.categoryIcon} $categoryName · ${formatShortDate(expense.localDate)} · $sharedLabel")
-                    if (expense.hasPeriod) append(" · ${stringResource(R.string.subscription_short)}")
-                }
+                // The category's emoji is already in the circle on the left, and its name is already
+                // the title when there's no note (or the note just repeats it) - saying it a second
+                // time only pushed "who paid" off the end of the line.
+                val subtitle = listOfNotNull(
+                    categoryName.takeIf { note != null && !note.equals(categoryName, ignoreCase = true) },
+                    formatShortDate(expense.localDate).takeIf { showDate },
+                    sharedLabel,
+                    stringResource(R.string.subscription_short).takeIf { expense.hasPeriod }
+                ).joinToString(" · ")
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 // Only when the row is showing a slice of a longer period (i.e. a month view of

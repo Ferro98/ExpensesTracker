@@ -154,7 +154,8 @@ private fun DayGroupedExpenses(
                     myUid = uiState.myUid,
                     partnerName = uiState.partnerName,
                     onClick = { onOpenExpense(expense) },
-                    modifier = Modifier.animateItem()
+                    modifier = Modifier.animateItem(),
+                    showDate = false
                 )
             }
         }

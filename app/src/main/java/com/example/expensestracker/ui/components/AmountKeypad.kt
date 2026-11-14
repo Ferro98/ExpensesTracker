@@ -89,7 +89,7 @@ fun AmountKeypad(onKey: (Char) -> Unit, onBackspace: () -> Unit, modifier: Modif
 private fun KeypadKey(modifier: Modifier, onClick: () -> Unit, content: @Composable () -> Unit) {
     TextButton(
         onClick = onClick,
-        modifier = modifier.height(52.dp),
+        modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.textButtonColors(
             contentColor = MaterialTheme.colorScheme.onSurface

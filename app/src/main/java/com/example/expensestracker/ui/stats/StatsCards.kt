@@ -152,7 +152,7 @@ fun PaceCard(pace: MonthPace, monthlyBudget: Double?, modifier: Modifier = Modif
             )
             if (overBudget) {
                 Text(
-                    stringResource(R.string.stats_projected_over_budget, formatMoney(monthlyBudget)),
+                    stringResource(R.string.stats_projected_over_budget, formatMoney(pace.projectedTotal - monthlyBudget!!)),
                     style = MaterialTheme.typography.bodySmall,
                     color = semantic.negative
                 )

@@ -127,9 +127,22 @@ fun HomeScreen(
                 title = stringResource(R.string.spent_in_month, formatMonthName(month)),
                 totalSpent = uiState.totalSpent,
                 monthlyBudget = uiState.monthlyBudget,
-                categoryBudgetTotal = uiState.categoryBudgetTotal,
                 daysLeft = daysLeft
             )
+        }
+
+        // Right under the month total, ahead of the category list: for a couple, "who owes whom"
+        // is the number they actually open the app for, and it used to sit below the fold.
+        if (uiState.inGroup) {
+            item {
+                BalanceCard(
+                    balance = uiState.balance,
+                    myUid = uiState.myUid,
+                    partnerName = uiState.partnerName,
+                    onRecordSettlement = { showSettlementDialog = true },
+                    onSeeActivity = onOpenGroup
+                )
+            }
         }
 
         if (categories.isNotEmpty()) {
@@ -146,18 +159,6 @@ fun HomeScreen(
                     category,
                     onClick = { detailState.openCategory(category, uiState) },
                     modifier = Modifier.animateItem()
-                )
-            }
-        }
-
-        if (uiState.inGroup) {
-            item {
-                BalanceCard(
-                    balance = uiState.balance,
-                    myUid = uiState.myUid,
-                    partnerName = uiState.partnerName,
-                    onRecordSettlement = { showSettlementDialog = true },
-                    onSeeActivity = onOpenGroup
                 )
             }
         }
@@ -258,8 +259,8 @@ private fun BalanceCard(balance: Balance, myUid: String, partnerName: String, on
                 Text(emoji, style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(R.string.balance_label).uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
+                    stringResource(R.string.balance_label),
+                    style = MaterialTheme.typography.titleSmall,
                     color = onContainerColor.copy(alpha = 0.75f)
                 )
             }
@@ -283,20 +284,28 @@ private fun BalanceCard(balance: Balance, myUid: String, partnerName: String, on
                 )
             }
             Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            // Tight horizontal padding and single-line labels: at a large system font the
+            // settlement button's text used to wrap into a tall two-line pill.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedButton(
                     onClick = onRecordSettlement,
                     modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = onContainerColor),
                     border = BorderStroke(1.dp, onContainerColor.copy(alpha = 0.4f))
                 ) {
-                    Text(stringResource(R.string.record_settlement))
+                    Text(stringResource(R.string.record_settlement), maxLines = 1, softWrap = false)
                 }
                 TextButton(
                     onClick = onSeeActivity,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = onContainerColor)
                 ) {
-                    Text(stringResource(R.string.see_group_activity))
+                    Text(stringResource(R.string.see_group_activity), maxLines = 1, softWrap = false)
                 }
             }
         }

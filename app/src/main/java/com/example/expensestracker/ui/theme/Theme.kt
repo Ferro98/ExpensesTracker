@@ -31,7 +31,12 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Ink,
     surfaceVariant = SandVariant,
     onSurfaceVariant = InkVariant,
-    outline = InkVariant
+    outline = InkVariant,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = SandContainerLow,
+    surfaceContainer = SandContainer,
+    surfaceContainerHigh = SandContainerHigh,
+    surfaceContainerHighest = SandContainerHighest
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -51,7 +56,12 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = Mist,
     surfaceVariant = MidnightSurfaceVariant,
     onSurfaceVariant = MistMuted,
-    outline = MistMuted
+    outline = MistMuted,
+    surfaceContainerLowest = MidnightContainerLowest,
+    surfaceContainerLow = MidnightContainerLow,
+    surfaceContainer = MidnightSurface,
+    surfaceContainerHigh = MidnightContainerHigh,
+    surfaceContainerHighest = MidnightSurfaceVariant
 )
 
 @Composable

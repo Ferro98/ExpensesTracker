@@ -20,10 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.data.model.CategorySpending
+import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.toColor
 
@@ -33,7 +35,16 @@ import com.example.expensestracker.util.toColor
  * living here: the user asked for the same familiar list in both places.
  */
 @Composable
-fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun CategorySpendingRow(
+    category: CategorySpending,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    // Only the Stats breakdown passes these: it has a ring above whose slices these rows are the
+    // key to, so each row repeats that slice's colour and share. Home leaves them off.
+    chartColor: Color? = null,
+    sharePercent: Int? = null
+) {
+    val barColor = category.colorHex.toColor()
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -43,11 +54,20 @@ fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit, modifie
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (chartColor != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(chartColor)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(category.colorHex.toColor().copy(alpha = 0.18f)),
+                        .background(barColor.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(category.icon)
@@ -62,23 +82,39 @@ fun CategorySpendingRow(category: CategorySpending, onClick: () -> Unit, modifie
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (category.monthlyBudget != null)
-                        "${formatMoney(category.spent)} / ${formatMoney(category.monthlyBudget)}"
-                    else
-                        formatMoney(category.spent),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = if (category.monthlyBudget != null)
+                            "${formatMoney(category.spent)} / ${formatMoney(category.monthlyBudget)}"
+                        else
+                            formatMoney(category.spent),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (sharePercent != null) {
+                        Text(
+                            "$sharePercent%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
             if (category.monthlyBudget != null && category.monthlyBudget > 0) {
                 Spacer(modifier = Modifier.height(10.dp))
                 val progress = (category.spent / category.monthlyBudget).toFloat().coerceIn(0f, 1f)
-                val overBudget = category.spent > category.monthlyBudget
+                // Status colours override the category's own colour only when there's something to
+                // flag - otherwise an 83% bar and a 100% bar in the same hue look like the same news.
+                val semantic = MaterialTheme.semanticColors
+                val fillColor = when {
+                    category.spent > category.monthlyBudget -> semantic.negative
+                    progress >= 0.9f -> semantic.warning
+                    else -> barColor
+                }
                 BudgetProgressBar(
                     progress = progress,
-                    color = if (overBudget) MaterialTheme.colorScheme.error else category.colorHex.toColor(),
-                    trackColor = category.colorHex.toColor().copy(alpha = 0.15f),
+                    color = fillColor,
+                    trackColor = barColor.copy(alpha = 0.15f),
                     height = 6.dp
                 )
             }

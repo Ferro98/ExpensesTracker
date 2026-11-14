@@ -195,14 +195,15 @@ fun AddExpenseSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = confirmValueChange)
 
     ModalBottomSheet(onDismissRequest = requestDismiss, sheetState = sheetState) {
+        // Three bands: the title + amount pinned on top (so the amount stays visible while the
+        // details are open), the fields in the middle (the only part that scrolls - on a short
+        // screen, or a large font), and the error + Save pinned at the bottom. Save used to be the
+        // last item of one big scrolling column and ended up cut off below the keypad.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // Everything is meant to fit without scrolling; this is only the safety net for
-                // short screens, landscape, and large font scales.
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -223,6 +224,7 @@ fun AddExpenseSheet(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
+            Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
             // One currency means nothing to choose - the chip row would just be a label.
             if (uiState.currencyRates.size > 1) {
                 CurrencyChips(
@@ -352,6 +354,7 @@ fun AddExpenseSheet(
                     onKey = { key -> amountText = appendAmountKey(amountText, key, separator) },
                     onBackspace = { amountText = amountText.dropLast(1) }
                 )
+            }
             }
 
             if (error != null) {

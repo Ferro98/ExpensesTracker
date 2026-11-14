@@ -1,41 +1,47 @@
 package com.example.expensestracker.ui.stats
 
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.expensestracker.R
 import com.example.expensestracker.ui.month.MonthlyTrend
+import com.example.expensestracker.util.formatCompactAmount
+import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatMonthShort
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
-import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.common.Fill
-import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
-import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
-import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 import java.time.YearMonth
 
+private val BarAreaHeight = 112.dp
+// Room above the tallest bar for its value label.
+private val LabelSlotHeight = 22.dp
+
 /**
- * The last 6 months' totals as bars, tap-to-jump to that month. No value axis - the point is the
- * shape of the trend and the month labels, not reading exact figures off a scale (those are in
- * the summary card above). Tap detection is done with a plain pointerInput over the chart's own
- * bounds (dividing the width into [MonthlyTrend.months].size equal slots) rather than through
- * Vico's marker/interaction system, since every bar is the same width and evenly spaced - it's
- * simpler and doesn't depend on Vico's own hit-testing internals.
+ * The last months' totals as bars, tap-to-jump to that month. The month being viewed (always the
+ * last bar) is drawn solid and the earlier ones muted, each bar carries its amount, and the personal
+ * monthly budget - when there is one - is a dashed line across them, so "was that month over?" reads
+ * straight off the chart. Plain Compose layout rather than a charting library: six bars and a line
+ * don't need one, and it keeps full control over the highlight and labels.
  */
 @Composable
 fun MonthlyTrendChart(
@@ -46,47 +52,86 @@ fun MonthlyTrendChart(
     val months = trend.months
     if (months.isEmpty()) return
 
-    val modelProducer = remember { CartesianChartModelProducer() }
-    LaunchedEffect(months) {
-        modelProducer.runTransaction {
-            columnModel { series(months.map { it.totalSpent }) }
-        }
-    }
+    val budget = trend.monthlyBudget?.takeIf { it > 0 }
+    val scaleMax = maxOf(months.maxOf { it.totalSpent }, budget ?: 0.0).coerceAtLeast(1.0)
 
-    val columnColor = MaterialTheme.colorScheme.primary
+    val primary = MaterialTheme.colorScheme.primary
+    val mutedBar = primary.copy(alpha = 0.32f)
+    val baseline = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+    val budgetColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .pointerInput(months) {
-                detectTapGestures { offset ->
-                    val slotWidth = size.width / months.size.toFloat()
-                    val index = (offset.x / slotWidth).toInt().coerceIn(0, months.size - 1)
-                    onMonthClick(months[index].yearMonth)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                months.forEachIndexed { index, month ->
+                    val selected = index == months.lastIndex
+                    val spent = month.totalSpent
+                    val fraction = (spent / scaleMax).toFloat().coerceIn(0f, 1f)
+                    val description = "${formatMonthShort(month.yearMonth)}: ${formatMoney(spent)}"
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onMonthClick(month.yearMonth) }
+                            .clearAndSetSemantics { contentDescription = description }
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.height(BarAreaHeight + LabelSlotHeight)
+                        ) {
+                            if (spent > 0) {
+                                Text(
+                                    formatCompactAmount(spent),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.height(3.dp))
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(if (spent > 0) 26.dp else 18.dp)
+                                    .height(if (spent > 0) (BarAreaHeight * fraction).coerceAtLeast(4.dp) else 2.dp)
+                                    .background(
+                                        color = if (spent <= 0) baseline else if (selected) primary else mutedBar,
+                                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+                                    )
+                            )
+                        }
+                        Text(
+                            formatMonthShort(month.yearMonth),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
                 }
             }
-    ) {
-        ProvideVicoTheme(rememberM3VicoTheme()) {
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberColumnCartesianLayer(
-                        columnProvider = ColumnCartesianLayer.ColumnProvider.series(
-                            rememberLineComponent(
-                                fill = Fill(columnColor),
-                                thickness = 22.dp,
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                        )
-                    ),
-                    bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = CartesianValueFormatter { _, value, _ ->
-                            months.getOrNull(value.toInt())?.let { formatMonthShort(it.yearMonth) } ?: ""
-                        }
+
+            if (budget != null) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val fractionAbove = 1f - (budget / scaleMax).toFloat().coerceIn(0f, 1f)
+                    val y = LabelSlotHeight.toPx() + BarAreaHeight.toPx() * fractionAbove
+                    drawLine(
+                        color = budgetColor,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 8.dp.toPx()))
                     )
-                ),
-                modelProducer = modelProducer,
-                modifier = Modifier.fillMaxSize()
+                }
+            }
+        }
+
+        if (budget != null) {
+            Text(
+                stringResource(R.string.stats_trend_budget_line, formatMoney(budget)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp, start = 8.dp)
             )
         }
     }

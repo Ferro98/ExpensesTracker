@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +47,9 @@ fun PaidByAndSplitFields(
             FilterChip(selected = paidByUid == partnerUid, onClick = { onPaidByChange(partnerUid) }, label = { Text(partnerName) })
         }
         Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // The checkbox's 48dp touch target insets the box itself by 12dp; pulling the row back
+        // left lines the box up with the edge of every other field above it.
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.offset(x = (-12).dp)) {
             Checkbox(checked = customSplitEnabled, onCheckedChange = onCustomSplitToggle)
             Text(stringResource(R.string.custom_split_label), style = MaterialTheme.typography.bodyMedium)
         }

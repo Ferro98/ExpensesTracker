@@ -32,6 +32,11 @@ fun decimalSeparator(): Char = DecimalFormatSymbols.getInstance(appLocale).decim
 fun formatShortDate(date: LocalDate): String =
     date.format(DateTimeFormatter.ofPattern("d MMM", appLocale))
 
+/** "1,3k" / "840" - an amount short enough to sit on top of a chart bar. */
+fun formatCompactAmount(amount: Double): String =
+    if (amount >= 1000) String.format(appLocale, "%.1fk", amount / 1000).replace(Regex("[.,]0k$"), "k")
+    else String.format(appLocale, "%.0f", amount)
+
 /** "29 ott 2026" - where the year matters, e.g. the two ends of a subscription period. */
 fun formatLongDate(date: LocalDate): String =
     date.format(DateTimeFormatter.ofPattern("d MMM yyyy", appLocale))

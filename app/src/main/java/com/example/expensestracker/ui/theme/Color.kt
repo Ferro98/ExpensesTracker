@@ -30,3 +30,15 @@ val MidnightSurface = Color(0xFF1A2327)
 val MidnightSurfaceVariant = Color(0xFF2A363B)
 val Mist = Color(0xFFDCE4E5)
 val MistMuted = Color(0xFF9FB0B2)
+
+// Surface "container" steps (bottom sheets, dialogs, menus). Left unset, Material falls back to its
+// own purple-grey baseline, which made the add-expense sheet a visibly different colour from the
+// blue-black screens behind it.
+val MidnightContainerLowest = Color(0xFF0E1417)
+val MidnightContainerLow = Color(0xFF161F23)
+val MidnightContainerHigh = Color(0xFF1F2A2F)
+
+val SandContainerLow = Color(0xFFFBF9F5)
+val SandContainer = Color(0xFFF3F0E9)
+val SandContainerHigh = Color(0xFFEDE9E0)
+val SandContainerHighest = Color(0xFFE6E2D8)
