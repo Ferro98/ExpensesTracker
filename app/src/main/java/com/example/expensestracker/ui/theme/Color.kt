@@ -8,8 +8,6 @@ val FjordBlueLight = Color(0xFFCFE7EF)
 val FjordBlueDark = Color(0xFF0E4A5F)
 
 val CoralAccent = Color(0xFFF2935C)
-val CoralAccentLight = Color(0xFFFFDFC7)
-val CoralAccentDark = Color(0xFFB35F2E)
 val CoralAccentInk = Color(0xFF2E1608)
 
 val SeaGreen = Color(0xFF3F8C6B)

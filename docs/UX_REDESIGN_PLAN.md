@@ -718,8 +718,13 @@ template", una cosa memorabile e il resto sobrio - sono stati applicati a mano s
   altri attenuati, importo sopra ogni barra, linea tratteggiata del budget, niente linee sui
   mesi vuoti, ogni barra con descrizione per l'accessibilità. Vico non serviva più ed è stato
   rimosso da `build.gradle.kts`/`libs.versions.toml`.
-- **Non applicato, in attesa di approvazione**: unificazione della palette (oggi tre arancioni: FAB
-  pesca, chip selezionati bruciato, colore categoria #FF7043).
+- **Palette (approvata dall'utente, applicata dopo)**: c'erano tre arancioni (FAB pesca, chip
+  selezionati bruciato, colore categoria #FF7043). Il corallo resta solo per il bottone "+" e per
+  "il partner" (strisce dei paganti in Gruppo); `secondaryContainer` (che M3 usa per i chip
+  selezionati) ora segue il teal primario in entrambi i temi. In chiaro `onSecondary` passa da
+  bianco a inchiostro scuro: il bianco sul corallo arrivava a ~2,3:1 di contrasto. Rimossi i
+  colori `CoralAccentLight/Dark`, non più usati. I colori delle categorie restano quelli scelti
+  dall'utente.
 
 ## Fonti consultate
 

@@ -18,10 +18,14 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = Color.White,
     primaryContainer = FjordBlueLight,
     onPrimaryContainer = FjordBlueDark,
+    // Coral is reserved for the add-expense button and "the partner" (payer stripes in Group).
+    // Everything Material tints with secondaryContainer - selected chips above all - follows the
+    // primary teal instead, so the accent has one job rather than three. White on this coral only
+    // reaches ~2.3:1, hence the dark ink for what sits on it.
     secondary = CoralAccent,
-    onSecondary = Color.White,
-    secondaryContainer = CoralAccentLight,
-    onSecondaryContainer = CoralAccentDark,
+    onSecondary = CoralAccentInk,
+    secondaryContainer = FjordBlueLight,
+    onSecondaryContainer = FjordBlueDark,
     tertiary = SeaGreen,
     onTertiary = Color.White,
     tertiaryContainer = SeaGreenLight,
@@ -46,8 +50,8 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = FjordBlueLight,
     secondary = CoralAccent,
     onSecondary = CoralAccentInk,
-    secondaryContainer = CoralAccentDark,
-    onSecondaryContainer = CoralAccentLight,
+    secondaryContainer = FjordBlueDark,
+    onSecondaryContainer = FjordBlueLight,
     tertiary = SeaGreenLight,
     onTertiary = Color(0xFF12291F),
     background = Midnight,
