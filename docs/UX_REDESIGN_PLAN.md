@@ -822,6 +822,31 @@ proprio. Foto degli scontrini escluse: Cloud Storage richiede ormai Blaze (da ve
   essenziali sono esclusi: l'affitto è al 100% ogni mese per costruzione.
 - **Non fatto**: elenco abbonamenti attivi, progetti/viaggi con budget proprio.
 
+## 14. Abbonamenti attivi e Viaggi (post-piano, 2026-11-21)
+
+- **Abbonamenti** (`domain/Subscriptions`, schermata in Altro): due fonti sullo stesso piano - i
+  modelli ricorrenti attivi e le spese con un periodo prepagato che copre oggi. Per ognuno il
+  **costo mensile** sulla mia quota (settimanale ×52/12; periodo prepagato = importo ÷ giorni ×
+  30,4375), il prossimo addebito o la scadenza (ambra a 7 giorni o meno), totale mensile e annuo.
+  Solo lettura: i ricorrenti si gestiscono nella loro schermata ("Gestisci"). Legge gli stessi
+  snapshot di `MonthViewModel`, nessun listener nuovo.
+- **Viaggi** (`Trip`, `TripRepository`, `TripCalculator`, schermata in Altro): date + budget
+  proprio, personali o di gruppo, in una collezione piatta `trips` (le regole Firestore già la
+  coprono). Le spese partecipano con `Expense.tripId`, **solo dentro lo stesso ambito**: un
+  viaggio personale raccoglie spese personali, uno di gruppo spese condivise, perché nessuno dei
+  due vede le spese private dell'altro. Nel foglio "Nuova spesa" compaiono i viaggi dell'ambito
+  scelto e **quello in corso oggi è già selezionato** (niente tap per ogni spesa in vacanza); in
+  modifica/duplicazione resta quello che c'era, e cambiando "condivisa" un viaggio dell'ambito
+  sbagliato si deseleziona.
+- **Dettaglio viaggio**: speso (somma degli importi interi per un viaggio condiviso, la mia quota
+  per uno personale) contro il budget, rimasti, media al giorno finora, quanto si può spendere al
+  giorno per restare nel budget, per categoria (sulle *mie* categorie, come le Statistiche), e le
+  spese. Eliminare un viaggio lascia le spese intatte: un id senza viaggio vale "nessun viaggio".
+- **Ritmo di spesa**: le spese di viaggio sono escluse dalla media giornaliera come le una tantum
+  e gli abbonamenti - una settimana via non è un giorno normale.
+- **Non fatto**: collegare un viaggio a un salvadanaio (mostrare il saldo accanto al budget); il
+  segnalino del viaggio sulle righe spesa (servirebbe il nome del viaggio in ogni lista).
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

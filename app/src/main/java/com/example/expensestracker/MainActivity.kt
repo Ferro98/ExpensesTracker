@@ -99,6 +99,9 @@ import com.example.expensestracker.ui.recurring.RecurringScreen
 import com.example.expensestracker.ui.savings.SavingsScreen
 import com.example.expensestracker.ui.savings.SavingsViewModel
 import com.example.expensestracker.ui.settings.SettingsScreen
+import com.example.expensestracker.ui.subscriptions.SubscriptionsScreen
+import com.example.expensestracker.ui.trips.TripsScreen
+import com.example.expensestracker.ui.trips.TripsViewModel
 import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.components.NewSharedExpensesDialog
 import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
@@ -229,6 +232,7 @@ fun ExpensesTrackerRoot(
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
     var showAddSavingsGoal by remember { mutableStateOf(false) }
+    var showAddTrip by remember { mutableStateOf(false) }
     // From the launcher shortcut: straight to the add-expense sheet. Consumed at once so a
     // rotation or recomposition doesn't reopen it.
     LaunchedEffect(openAddExpenseSignal) {
@@ -251,6 +255,7 @@ fun ExpensesTrackerRoot(
     // Shared by Home (progress + the start-of-month prompt) and the Savings screen: one set of
     // listeners, and both see the same state the moment either changes it.
     val savingsViewModel: SavingsViewModel = viewModel(factory = factory, key = "savings:$vmKey")
+    val tripsViewModel: TripsViewModel = viewModel(factory = factory, key = "trips:$vmKey")
     val newSharedExpensesViewModel: NewSharedExpensesViewModel =
         viewModel(factory = factory, key = "newSharedExpenses:$vmKey")
     // Re-checks every time the app comes back to the foreground, not just on this ViewModel's own
@@ -399,6 +404,11 @@ fun ExpensesTrackerRoot(
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.fab_savings)) }
                 )
+                Screen.Trips -> ExtendedFloatingActionButton(
+                    onClick = { showAddTrip = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.fab_trip)) }
+                )
                 else -> Unit
             }
         },
@@ -451,7 +461,24 @@ fun ExpensesTrackerRoot(
                     onOpenCategories = { navController.navigate(Screen.Categories.route) },
                     onOpenGroup = { navController.navigate(Screen.Group.route) },
                     onOpenSavings = { navController.navigate(Screen.Savings.route) },
+                    onOpenSubscriptions = { navController.navigate(Screen.Subscriptions.route) },
+                    onOpenTrips = { navController.navigate(Screen.Trips.route) },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) }
+                )
+            }
+            composable(Screen.Subscriptions.route) {
+                SubscriptionsScreen(
+                    viewModel = monthViewModel,
+                    onManageRecurring = { navController.navigate(Screen.Recurring.route) }
+                )
+            }
+            composable(Screen.Trips.route) {
+                TripsScreen(
+                    viewModel = tripsViewModel,
+                    showAddDialog = showAddTrip,
+                    onDismissAddDialog = { showAddTrip = false },
+                    onShowAddDialog = { showAddTrip = true },
+                    snackbarHostState = snackbarHostState
                 )
             }
             composable(Screen.Savings.route) {

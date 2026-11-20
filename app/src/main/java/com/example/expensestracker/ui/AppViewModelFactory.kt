@@ -12,6 +12,7 @@ import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.onboarding.OnboardingViewModel
 import com.example.expensestracker.ui.recurring.RecurringViewModel
 import com.example.expensestracker.ui.savings.SavingsViewModel
+import com.example.expensestracker.ui.trips.TripsViewModel
 import com.example.expensestracker.ui.settings.SettingsViewModel
 
 /** [myUid] is always resolved before this factory is ever constructed (see MainActivity); only [groupId] is optional. */
@@ -26,8 +27,12 @@ class AppViewModelFactory(
         val personalDataRepository = app.personalDataRepositoryFor(myUid)
         val personalSavingsRepository = app.personalSavingsRepositoryFor(myUid)
         val groupContext = groupId?.let {
-            GroupContext(it, app.groupRepository, app.groupExpenseRepositoryFor(it), app.settlementRepositoryFor(it), app.groupSavingsRepositoryFor(it))
+            GroupContext(
+                it, app.groupRepository, app.groupExpenseRepositoryFor(it), app.settlementRepositoryFor(it),
+                app.groupSavingsRepositoryFor(it), app.groupTripRepositoryFor(it)
+            )
         }
+        val personalTripRepository = app.personalTripRepositoryFor(myUid)
 
         return when {
             modelClass.isAssignableFrom(MonthViewModel::class.java) ->
@@ -37,6 +42,12 @@ class AppViewModelFactory(
                     personalSavingsRepository
                 ) as T
 
+            modelClass.isAssignableFrom(TripsViewModel::class.java) ->
+                TripsViewModel(
+                    personalTripRepository, personalExpenseRepository, groupContext,
+                    personalDataRepository, app.settingsRepository, myUid
+                ) as T
+
             modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
                 SavingsViewModel(
                     personalSavingsRepository, personalExpenseRepository, personalDataRepository,
@@ -44,7 +55,10 @@ class AppViewModelFactory(
                 ) as T
 
             modelClass.isAssignableFrom(AddExpenseViewModel::class.java) ->
-                AddExpenseViewModel(personalExpenseRepository, personalDataRepository, groupContext, app.settingsRepository, myUid) as T
+                AddExpenseViewModel(
+                    personalExpenseRepository, personalDataRepository, groupContext, app.settingsRepository, myUid,
+                    personalTripRepository
+                ) as T
 
             modelClass.isAssignableFrom(CategoriesViewModel::class.java) ->
                 CategoriesViewModel(personalDataRepository, groupContext, app.settingsRepository) as T

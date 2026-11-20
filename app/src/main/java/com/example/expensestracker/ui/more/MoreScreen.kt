@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Savings
@@ -45,6 +47,8 @@ fun MoreScreen(
     onOpenCategories: () -> Unit,
     onOpenGroup: () -> Unit,
     onOpenSavings: () -> Unit,
+    onOpenSubscriptions: () -> Unit,
+    onOpenTrips: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     LazyColumn(
@@ -67,6 +71,22 @@ fun MoreScreen(
                 title = stringResource(R.string.title_categories),
                 subtitle = stringResource(R.string.more_categories_desc),
                 onClick = onOpenCategories
+            )
+        }
+        item {
+            MoreEntry(
+                icon = Icons.Default.Flight,
+                title = stringResource(R.string.title_trips),
+                subtitle = stringResource(R.string.more_trips_desc),
+                onClick = onOpenTrips
+            )
+        }
+        item {
+            MoreEntry(
+                icon = Icons.Default.Autorenew,
+                title = stringResource(R.string.title_subscriptions),
+                subtitle = stringResource(R.string.more_subscriptions_desc),
+                onClick = onOpenSubscriptions
             )
         }
         item {

@@ -4,6 +4,7 @@ import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.GroupRepository
 import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.repository.SettlementRepository
+import com.example.expensestracker.data.repository.TripRepository
 
 /** Present only when the current device belongs to a group; null everywhere in solo mode. */
 data class GroupContext(
@@ -11,5 +12,6 @@ data class GroupContext(
     val groupRepository: GroupRepository,
     val expenseRepository: ExpenseRepository,
     val settlementRepository: SettlementRepository,
-    val savingsRepository: SavingsRepository
+    val savingsRepository: SavingsRepository,
+    val tripRepository: TripRepository
 )

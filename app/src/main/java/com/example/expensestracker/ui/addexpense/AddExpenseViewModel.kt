@@ -7,6 +7,7 @@ import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.repository.TripRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,9 +29,20 @@ import java.time.LocalDate
  */
 private const val WRITE_TIMEOUT_MS = 8000L
 
+/** A trip an expense can be tagged with, plus which scope it lives in. */
+data class TripChoice(
+    val id: String,
+    val name: String,
+    val icon: String,
+    val isGroup: Boolean,
+    val start: LocalDate,
+    val end: LocalDate
+)
+
 data class AddExpenseUiState(
     val categories: List<Category> = emptyList(),
     val categoryAliases: Map<String, String> = emptyMap(),
+    val trips: List<TripChoice> = emptyList(),
     val currencyRates: List<CurrencyRate> = emptyList(),
     val myUid: String = "",
     val partnerUid: String? = null,
@@ -59,8 +71,19 @@ class AddExpenseViewModel(
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
     private val settingsRepository: SettingsRepository,
-    private val myUid: String
+    private val myUid: String,
+    personalTripRepository: TripRepository
 ) : ViewModel() {
+    // Every trip the viewer can tag an expense with; the sheet narrows it to the ones matching the
+    // expense's scope (a personal expense can only join a personal trip, a shared one a group trip).
+    private val tripChoices = combine(
+        personalTripRepository.observeTrips(),
+        groupContext?.tripRepository?.observeTrips() ?: flowOf(emptyList())
+    ) { personal, shared ->
+        personal.map { TripChoice(it.id, it.name, it.icon, false, it.localStart, it.localEnd) } +
+            shared.map { TripChoice(it.id, it.name, it.icon, true, it.localStart, it.localEnd) }
+    }
+
     // combine tops out at 5 typed flows, so the three DataStore preferences travel bundled.
     private val preferences = combine(
         settingsRepository.defaultSharedForExpense,
@@ -75,13 +98,15 @@ class AddExpenseViewModel(
         personalDataRepository.observeCurrencyRates(),
         groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
         preferences,
-        settingsRepository.categoryAliases
-    ) { categories, currencyRates, group, prefs, categoryAliases ->
+        combine(settingsRepository.categoryAliases, tripChoices) { aliases, trips -> aliases to trips }
+    ) { categories, currencyRates, group, prefs, aliasesAndTrips ->
+        val (categoryAliases, trips) = aliasesAndTrips
         val (defaultShared, defaultCurrency, lastUsedCategoryId) = prefs
         val partnerUid = group?.otherMemberUid(myUid)
         AddExpenseUiState(
             categories = categories,
             categoryAliases = categoryAliases,
+            trips = trips,
             currencyRates = currencyRates,
             myUid = myUid,
             partnerUid = partnerUid,
@@ -145,6 +170,7 @@ class AddExpenseViewModel(
         payerShare: Double,
         periodStart: LocalDate?,
         periodEnd: LocalDate?,
+        tripId: String?,
         // Non-null only when this created a brand-new expense (not an edit) - the id the
         // "Expense saved / Undo" snackbar needs to be able to delete it again. Edits (including
         // the shared-flag-flip path, which technically creates a new document too) don't offer
@@ -194,7 +220,8 @@ class AddExpenseViewModel(
                             isShared = shared,
                             payerShare = payerShare,
                             periodStart = periodStart,
-                            periodEnd = periodEnd
+                            periodEnd = periodEnd,
+                            tripId = tripId
                         )
                         // Same scope as before editing - overwrite the existing document in place.
                         editing.isShared == shared -> {
@@ -214,7 +241,8 @@ class AddExpenseViewModel(
                                 payerShare = payerShare,
                                 createdAt = editing.createdAt,
                                 periodStart = periodStart,
-                                periodEnd = periodEnd
+                                periodEnd = periodEnd,
+                                tripId = tripId
                             )
                             null
                         }
@@ -239,7 +267,8 @@ class AddExpenseViewModel(
                                 isShared = shared,
                                 payerShare = payerShare,
                                 periodStart = periodStart,
-                                periodEnd = periodEnd
+                                periodEnd = periodEnd,
+                                tripId = tripId
                             )
                             null
                         }

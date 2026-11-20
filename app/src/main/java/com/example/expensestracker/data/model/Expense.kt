@@ -34,6 +34,8 @@ data class Expense(
      */
     val periodStart: String? = null,
     val periodEnd: String? = null,
+    /** The [Trip] this expense belongs to, if any - always one in the same scope (personal/group) as the expense itself. */
+    val tripId: String? = null,
     /**
      * Never stored. The slice (0..1) of a [periodStart]..[periodEnd] expense that falls inside the
      * month being viewed, set by [com.example.expensestracker.domain.attributedTo]. Deliberately

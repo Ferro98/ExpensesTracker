@@ -92,8 +92,8 @@
     <string name="stats_daily_average">%1$s al giorno in media</string>
     <string name="stats_projected_total">Proiezione fine mese: %1$s</string>
     <string name="stats_projected_over_budget">Previsto sforamento del budget: %1$s</string>
-    <string name="stats_pace_excludes_one">Esclude 1 spesa occasionale o abbonamento (%1$s)</string>
-    <string name="stats_pace_excludes_many">Esclude %1$d spese occasionali o abbonamenti (%2$s)</string>
+    <string name="stats_pace_excludes_one">Esclude 1 spesa occasionale, abbonamento o di viaggio (%1$s)</string>
+    <string name="stats_pace_excludes_many">Esclude %1$d spese occasionali, abbonamenti o di viaggio (%2$s)</string>
     <string name="recent_expenses">Spese recenti</string>
     <string name="no_expenses_yet">Ancora nessuna spesa. Tocca + per aggiungerne una.</string>
     <string name="no_expenses_this_month">Nessuna spesa in questo mese.</string>
@@ -387,4 +387,47 @@
     <string name="csv_my_share">Mia quota (EUR)</string>
     <string name="csv_period_start">Inizio periodo</string>
     <string name="csv_period_end">Fine periodo</string>
+
+    <!-- Panoramica abbonamenti -->
+    <string name="title_subscriptions">Abbonamenti</string>
+    <string name="more_subscriptions_desc">Cosa ti costa a scadenza fissa, e quanto al mese</string>
+    <string name="subscriptions_empty">Nessun abbonamento attivo. Le spese ricorrenti e i periodi già pagati compaiono qui.</string>
+    <string name="subscriptions_monthly_total">Costo mensile stimato</string>
+    <string name="subscriptions_yearly_total">Circa %1$s all\'anno</string>
+    <string name="subscriptions_recurring">Si rinnovano da soli</string>
+    <string name="subscriptions_manage">Gestisci</string>
+    <string name="subscriptions_prepaid">Periodi già pagati</string>
+    <string name="subscriptions_every_month">Ogni mese · prossimo addebito %1$s</string>
+    <string name="subscriptions_every_week">Ogni settimana · prossimo addebito %1$s</string>
+    <string name="subscriptions_until">Fino al %1$s (restano %2$s)</string>
+    <string name="subscriptions_shared">condiviso</string>
+    <string name="subscriptions_per_month">%1$s / mese</string>
+
+    <!-- Viaggi -->
+    <string name="title_trips">Viaggi</string>
+    <string name="more_trips_desc">Un budget e delle date per un viaggio o un progetto, con le sue spese</string>
+    <string name="fab_trip">Viaggio</string>
+    <string name="trips_empty_title">Ancora nessun viaggio. Creane uno per vedere quanto costa davvero, rispetto al suo budget.</string>
+    <string name="trips_empty_action">Nuovo viaggio</string>
+    <string name="trip_phase_upcoming">tra %1$s</string>
+    <string name="trip_phase_ongoing">giorno %1$d di %2$d</string>
+    <string name="trip_phase_ended">concluso</string>
+    <string name="trip_spent_no_budget">%1$s spesi · nessun budget impostato</string>
+    <string name="trip_remaining">%1$s rimasti nel budget</string>
+    <string name="trip_over_by">%1$s oltre il budget</string>
+    <string name="trip_average_per_day">Media finora: %1$s al giorno</string>
+    <string name="trip_can_spend_per_day">Puoi spendere %1$s al giorno per restare nel budget</string>
+    <string name="trip_budget_per_day">Il budget equivale a %1$s al giorno</string>
+    <string name="trip_my_share">La tua quota: %1$s</string>
+    <string name="trip_by_category">Per categoria</string>
+    <string name="trip_expenses">Spese</string>
+    <string name="trip_no_expenses">Ancora niente. Scegli questo viaggio in \"Viaggio\" quando aggiungi una spesa: quello in corso oggi è già selezionato.</string>
+    <string name="trip_delete_title">Eliminare questo viaggio?</string>
+    <string name="trip_delete_text">Sparisce solo il viaggio. Le sue spese restano, semplicemente non fanno più parte di un viaggio.</string>
+    <string name="trip_new_title">Nuovo viaggio</string>
+    <string name="trip_edit_title">Modifica viaggio</string>
+    <string name="trip_name">Nome (es. Disneyland)</string>
+    <string name="trip_scope">Per chi è?</string>
+    <string name="trip_budget">Budget (opzionale)</string>
+    <string name="trip_label">Viaggio</string>
 </resources>

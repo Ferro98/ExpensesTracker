@@ -92,8 +92,8 @@
     <string name="stats_daily_average">%1$s a day on average</string>
     <string name="stats_projected_total">Projected total: %1$s</string>
     <string name="stats_projected_over_budget">Projected to go %1$s over budget</string>
-    <string name="stats_pace_excludes_one">Excludes 1 one-off or subscription expense (%1$s)</string>
-    <string name="stats_pace_excludes_many">Excludes %1$d one-off or subscription expenses (%2$s)</string>
+    <string name="stats_pace_excludes_one">Excludes 1 one-off, subscription or trip expense (%1$s)</string>
+    <string name="stats_pace_excludes_many">Excludes %1$d one-off, subscription or trip expenses (%2$s)</string>
     <string name="recent_expenses">Recent expenses</string>
     <string name="no_expenses_yet">No expenses yet. Tap + to add one.</string>
     <string name="no_expenses_this_month">No expenses this month.</string>
@@ -387,4 +387,47 @@
     <string name="csv_my_share">My share (EUR)</string>
     <string name="csv_period_start">Period start</string>
     <string name="csv_period_end">Period end</string>
+
+    <!-- Subscriptions overview -->
+    <string name="title_subscriptions">Subscriptions</string>
+    <string name="more_subscriptions_desc">What\'s costing you on a schedule, and how much per month</string>
+    <string name="subscriptions_empty">No active subscriptions. Recurring expenses and prepaid periods show up here.</string>
+    <string name="subscriptions_monthly_total">Estimated cost per month</string>
+    <string name="subscriptions_yearly_total">About %1$s a year</string>
+    <string name="subscriptions_recurring">Renew by themselves</string>
+    <string name="subscriptions_manage">Manage</string>
+    <string name="subscriptions_prepaid">Already paid periods</string>
+    <string name="subscriptions_every_month">Every month · next charge %1$s</string>
+    <string name="subscriptions_every_week">Every week · next charge %1$s</string>
+    <string name="subscriptions_until">Until %1$s (%2$s left)</string>
+    <string name="subscriptions_shared">shared</string>
+    <string name="subscriptions_per_month">%1$s / month</string>
+
+    <!-- Trips -->
+    <string name="title_trips">Trips</string>
+    <string name="more_trips_desc">A budget and dates for a trip or project, with its own expenses</string>
+    <string name="fab_trip">Trip</string>
+    <string name="trips_empty_title">No trips yet. Create one to see what a trip really costs, against its own budget.</string>
+    <string name="trips_empty_action">New trip</string>
+    <string name="trip_phase_upcoming">in %1$s</string>
+    <string name="trip_phase_ongoing">day %1$d of %2$d</string>
+    <string name="trip_phase_ended">over</string>
+    <string name="trip_spent_no_budget">%1$s spent · no budget set</string>
+    <string name="trip_remaining">%1$s left in the budget</string>
+    <string name="trip_over_by">%1$s over the budget</string>
+    <string name="trip_average_per_day">Average so far: %1$s a day</string>
+    <string name="trip_can_spend_per_day">You can spend %1$s a day to stay in budget</string>
+    <string name="trip_budget_per_day">Budget works out at %1$s a day</string>
+    <string name="trip_my_share">Your share: %1$s</string>
+    <string name="trip_by_category">By category</string>
+    <string name="trip_expenses">Expenses</string>
+    <string name="trip_no_expenses">Nothing yet. Pick this trip in \"Trip\" when adding an expense - the one that\'s on today is pre-selected.</string>
+    <string name="trip_delete_title">Delete this trip?</string>
+    <string name="trip_delete_text">Only the trip goes away. Its expenses stay, they just stop being part of a trip.</string>
+    <string name="trip_new_title">New trip</string>
+    <string name="trip_edit_title">Edit trip</string>
+    <string name="trip_name">Name (e.g. Disneyland)</string>
+    <string name="trip_scope">Who is it for?</string>
+    <string name="trip_budget">Budget (optional)</string>
+    <string name="trip_label">Trip</string>
 </resources>

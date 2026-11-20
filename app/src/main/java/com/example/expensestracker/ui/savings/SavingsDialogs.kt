@@ -18,16 +18,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,10 +39,9 @@ import com.example.expensestracker.R
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.SavingsEntryKind
+import com.example.expensestracker.ui.components.AppDatePickerDialog
 import com.example.expensestracker.util.formatLongDate
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 private val goalIcons = listOf("🐷", "🏰", "💻", "✈️", "🏖️", "🚗", "🏠", "🎁", "📱", "🎓", "💍", "🛠️")
 
@@ -56,24 +51,6 @@ private fun parseAmount(text: String): Double? = text.replace(',', '.').toDouble
 
 private fun formatAmountField(amount: Double): String =
     if (amount == amount.toLong().toDouble()) amount.toLong().toString() else String.format("%.2f", amount)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SavingsDatePickerDialog(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate) -> Unit) {
-    val state = rememberDatePickerState(initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
-                onDismiss()
-            }) { Text(stringResource(R.string.action_ok)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
-    ) {
-        DatePicker(state = state)
-    }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -208,7 +185,7 @@ fun GoalEditDialog(
     )
 
     if (showDatePicker) {
-        SavingsDatePickerDialog(
+        AppDatePickerDialog(
             initial = targetDate ?: LocalDate.now().plusMonths(6),
             onDismiss = { showDatePicker = false },
             onPick = { targetDate = it }
@@ -296,6 +273,6 @@ fun SavingsEntryDialog(
     )
 
     if (showDatePicker) {
-        SavingsDatePickerDialog(initial = date, onDismiss = { showDatePicker = false }, onPick = { date = it })
+        AppDatePickerDialog(initial = date, onDismiss = { showDatePicker = false }, onPick = { date = it })
     }
 }

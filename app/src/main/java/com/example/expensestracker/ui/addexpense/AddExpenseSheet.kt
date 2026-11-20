@@ -81,7 +81,7 @@ import java.time.temporal.ChronoUnit
  * are genuinely "change this sometimes" fields, hide behind the one-line summary below the note.
  * See docs/UX_REDESIGN_PLAN.md 3.3.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddExpenseSheet(
     viewModel: AddExpenseViewModel,
@@ -141,6 +141,23 @@ fun AddExpenseSheet(
     var periodPicker by remember { mutableStateOf<PeriodPicker?>(null) }
     val periodStart = periodStartOverride ?: selectedDate
     val periodEnd = periodStart.plusDays(periodLengthDays)
+
+    // Trip: only trips of the expense's own scope can be picked (a shared expense joins a group
+    // trip, a personal one a personal trip). For a brand-new expense the trip that is on today is
+    // pre-selected - that's the whole point of having one, no tapping per expense while travelling -
+    // until the user chooses for themselves. Editing/duplicating keeps whatever it already had.
+    var selectedTripId by remember { mutableStateOf(source?.tripId) }
+    var userPickedTrip by remember { mutableStateOf(false) }
+    val tripScopeIsGroup = isShared && uiState.inGroup
+    val tripChoices = uiState.trips.filter { it.isGroup == tripScopeIsGroup }
+    LaunchedEffect(uiState.trips, tripScopeIsGroup) {
+        val current = selectedTripId
+        if (current != null && tripChoices.none { it.id == current }) selectedTripId = null
+        if (!userPickedTrip && prefill == null && selectedTripId == null) {
+            val today = LocalDate.now()
+            selectedTripId = tripChoices.firstOrNull { !today.isBefore(it.start) && !today.isAfter(it.end) }?.id
+        }
+    }
 
     // Keeps re-deciding the category until the user picks one themselves, so a slow DataStore read
     // still beats the first-in-list guess made a moment earlier. In order of preference:
@@ -260,6 +277,7 @@ fun AddExpenseSheet(
                 date = selectedDate,
                 isShared = isShared,
                 isSubscription = isSubscription,
+                tripLabel = tripChoices.firstOrNull { it.id == selectedTripId }?.let { "${it.icon} ${it.name}" },
                 inGroup = uiState.inGroup,
                 partnerName = uiState.partnerName,
                 expanded = showDetails,
@@ -349,6 +367,23 @@ fun AddExpenseSheet(
                         )
                     }
                 }
+                if (tripChoices.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(R.string.trip_label), style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        tripChoices.forEach { trip ->
+                            FilterChip(
+                                selected = selectedTripId == trip.id,
+                                onClick = {
+                                    selectedTripId = if (selectedTripId == trip.id) null else trip.id
+                                    userPickedTrip = true
+                                },
+                                label = { Text("${trip.icon} ${trip.name}") }
+                            )
+                        }
+                    }
+                }
             } else {
                 AmountKeypad(
                     onKey = { key -> amountText = appendAmountKey(amountText, key, separator) },
@@ -388,6 +423,7 @@ fun AddExpenseSheet(
                             payerShare = if (customSplitEnabled) payerShare else 0.5,
                             periodStart = if (isSubscription) periodStart else null,
                             periodEnd = if (isSubscription) periodEnd else null,
+                            tripId = selectedTripId?.takeIf { id -> tripChoices.any { it.id == id } },
                             onSaved = { createdId ->
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 // isEditing, not "createdId == null", decides which callback fires -
@@ -540,6 +576,7 @@ private fun DetailsSummaryRow(
     date: LocalDate,
     isShared: Boolean,
     isSubscription: Boolean,
+    tripLabel: String?,
     inGroup: Boolean,
     partnerName: String,
     expanded: Boolean,
@@ -556,6 +593,7 @@ private fun DetailsSummaryRow(
         add(dateLabel)
         if (inGroup) add(sharedLabel)
         if (isSubscription) add(stringResource(R.string.subscription_short))
+        if (tripLabel != null) add(tripLabel)
     }.joinToString(" · ")
 
     Card(

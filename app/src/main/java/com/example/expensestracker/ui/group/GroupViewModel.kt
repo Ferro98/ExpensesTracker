@@ -151,7 +151,8 @@ class GroupViewModel(
                     isShared = expense.isShared,
                     payerShare = expense.payerShare,
                     periodStart = expense.localPeriodStart,
-                    periodEnd = expense.localPeriodEnd
+                    periodEnd = expense.localPeriodEnd,
+                    tripId = expense.tripId
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.

@@ -23,6 +23,8 @@ import com.example.expensestracker.domain.EssentialSplit
 import com.example.expensestracker.domain.EssentialSplitCalculator
 import com.example.expensestracker.domain.RecurringExpenseGenerator
 import com.example.expensestracker.domain.SavingsMath
+import com.example.expensestracker.domain.SubscriptionCalculator
+import com.example.expensestracker.domain.SubscriptionsOverview
 import com.example.expensestracker.domain.UpcomingRecurring
 import com.example.expensestracker.domain.attributedTo
 import com.example.expensestracker.ui.GroupContext
@@ -261,6 +263,17 @@ class MonthViewModel(
         }
     }
 
+    /**
+     * What's running right now on a schedule: active recurring templates and prepaid periods still
+     * in force. Reads the same snapshots as everything else, so it needs no listeners of its own.
+     */
+    fun subscriptionsOverview(): Flow<SubscriptionsOverview> =
+        combine(allExpenses, sideData) { expenses, side ->
+            SubscriptionCalculator.compute(side.recurring, expenses, LocalDate.now(), myUid) { code ->
+                side.rates.firstOrNull { it.code == code }?.rateToBase ?: 1.0
+            }
+        }
+
     /** How [yearMonth] compares to the month right before it, in total and by category. */
     fun comparisonFor(yearMonth: YearMonth): Flow<MonthComparison> {
         val previousMonth = yearMonth.minusMonths(1)
@@ -449,7 +462,8 @@ class MonthViewModel(
                     isShared = expense.isShared,
                     payerShare = expense.payerShare,
                     periodStart = expense.localPeriodStart,
-                    periodEnd = expense.localPeriodEnd
+                    periodEnd = expense.localPeriodEnd,
+                    tripId = expense.tripId
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.

@@ -35,9 +35,10 @@ object PaceCalculator {
         val threshold = median * OUTLIER_MULTIPLIER
         // A subscription's share of the month is a known fixed cost, not a daily habit, whatever its
         // size - projecting 14 of a prepaid pass forward as a per-day rate would be plainly wrong.
+        // Spending on a trip is likewise out of the ordinary: a week away isn't how a normal day goes.
         val lumpExpenses = monthExpenses.filter { expense ->
             val share = expense.shareFor(myUid)
-            share > 0 && (expense.hasPeriod || (canDetectOutliers && share > threshold))
+            share > 0 && (expense.hasPeriod || expense.tripId != null || (canDetectOutliers && share > threshold))
         }
         val lumpTotal = lumpExpenses.sumOf { it.shareFor(myUid) }
         val regularSpent = totalSpent - lumpTotal

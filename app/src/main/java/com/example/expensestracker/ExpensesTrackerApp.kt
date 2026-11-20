@@ -12,6 +12,7 @@ import com.example.expensestracker.data.repository.GroupRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.repository.SettlementRepository
+import com.example.expensestracker.data.repository.TripRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.notifications.ReminderWorker
 import com.example.expensestracker.notifications.SavingsReminderWorker
@@ -64,4 +65,10 @@ class ExpensesTrackerApp : Application() {
 
     fun groupSavingsRepositoryFor(groupId: String): SavingsRepository =
         SavingsRepository(firestore.collection("groups").document(groupId))
+
+    fun personalTripRepositoryFor(uid: String): TripRepository =
+        TripRepository(firestore.collection("users").document(uid))
+
+    fun groupTripRepositoryFor(groupId: String): TripRepository =
+        TripRepository(firestore.collection("groups").document(groupId))
 }
