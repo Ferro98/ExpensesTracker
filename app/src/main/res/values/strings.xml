@@ -430,4 +430,9 @@
     <string name="trip_scope">Who is it for?</string>
     <string name="trip_budget">Budget (optional)</string>
     <string name="trip_label">Trip</string>
+    <string name="trip_goal_label">Paid for with a savings pot</string>
+    <string name="trip_goal_hint">Shows what\'s in it next to the budget; if it\'s empty the budget starts from its target.</string>
+    <string name="trip_goal_funded_by">Funded by \"%1$s\"</string>
+    <string name="trip_goal_covers">It already covers %1$d%% of the trip\'s budget</string>
+    <string name="savings_linked_trip">Paying for the trip %1$s (%2$s – %3$s)</string>
 </resources>

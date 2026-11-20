@@ -19,6 +19,12 @@ data class Trip(
     val endDate: String = "",
     /** In the base currency; 0 means no budget, just a place to collect the spending. */
     val budget: Double = 0.0,
+    /**
+     * The savings pot this trip is being paid for with, if any - always one in the same scope (a
+     * personal trip links a personal pot, a shared trip a shared one), so whoever can see the trip
+     * can also see the pot behind it. An id matching no pot (deleted since) just means "not linked".
+     */
+    val goalId: String? = null,
     val createdAt: Timestamp? = null
 ) {
     val localStart: LocalDate get() = LocalDate.parse(startDate)

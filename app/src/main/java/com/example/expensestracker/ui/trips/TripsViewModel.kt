@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.expensestracker.data.model.Category
 import com.example.expensestracker.data.model.CurrencyRate
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.data.model.SavingsEntry
+import com.example.expensestracker.data.model.SavingsGoal
 import com.example.expensestracker.data.model.Trip
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.repository.TripRepository
 import com.example.expensestracker.data.settings.SettingsRepository
+import com.example.expensestracker.domain.SavingsMath
 import com.example.expensestracker.domain.TripCalculator
 import com.example.expensestracker.domain.TripPhase
 import com.example.expensestracker.domain.TripStats
@@ -28,17 +32,25 @@ import java.time.LocalDate
 /** How long to wait for Firestore's server ack - a timeout only means "still offline"; the write is already in the local cache. */
 private const val WRITE_TIMEOUT_MS = 8000L
 
-/** A trip with the expenses that belong to it and what they add up to. */
+/** The savings pot paying for a trip, as the trip screen shows it. */
+data class LinkedGoal(val id: String, val name: String, val icon: String, val balance: Double, val target: Double)
+
+/** A pot a trip could be linked to (same scope only), for the picker in the trip dialog. */
+data class GoalChoice(val id: String, val name: String, val icon: String, val isGroup: Boolean, val target: Double)
+
+/** A trip with the expenses that belong to it, what they add up to, and the pot funding it if any. */
 data class TripItem(
     val trip: Trip,
     val isGroup: Boolean,
     val expenses: List<Expense>,
-    val stats: TripStats
+    val stats: TripStats,
+    val linkedGoal: LinkedGoal? = null
 )
 
 data class TripsUiState(
     val loaded: Boolean = false,
     val trips: List<TripItem> = emptyList(),
+    val goalChoices: List<GoalChoice> = emptyList(),
     val myUid: String = "",
     val partnerName: String = "Partner",
     val inGroup: Boolean = false,
@@ -52,6 +64,12 @@ private fun scopeFlow(trips: TripRepository?, expenses: ExpenseRepository?): Flo
     if (trips == null || expenses == null) flowOf(TripScope(emptyList(), emptyList()))
     else combine(trips.observeTrips(), expenses.observeAllExpenses()) { t, e -> TripScope(t, e) }
 
+private data class SavingsScope(val goals: List<SavingsGoal>, val entries: List<SavingsEntry>)
+
+private fun savingsFlow(repository: SavingsRepository?): Flow<SavingsScope> =
+    if (repository == null) flowOf(SavingsScope(emptyList(), emptyList()))
+    else combine(repository.observeGoals(), repository.observeEntries()) { g, e -> SavingsScope(g, e) }
+
 /**
  * Personal and (in a group) shared trips with what's been spent on each. A trip's spending is
  * whichever expenses of its own scope carry its id, so a personal trip never sees the partner's
@@ -63,7 +81,8 @@ class TripsViewModel(
     private val groupContext: GroupContext?,
     private val personalDataRepository: PersonalDataRepository,
     settingsRepository: SettingsRepository,
-    private val myUid: String
+    private val myUid: String,
+    personalSavingsRepository: SavingsRepository
 ) : ViewModel() {
     val uiState: StateFlow<TripsUiState> = combine(
         scopeFlow(personalTripRepository, personalExpenseRepository),
@@ -73,19 +92,27 @@ class TripsViewModel(
             groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
             personalDataRepository.observeCurrencyRates(),
             settingsRepository.defaultCurrency
-        ) { group, rates, currency -> Triple(group, rates, currency) }
-    ) { personal, shared, catsAndAliases, groupRatesCurrency ->
+        ) { group, rates, currency -> Triple(group, rates, currency) },
+        combine(savingsFlow(personalSavingsRepository), savingsFlow(groupContext?.savingsRepository)) { p, g -> p to g }
+    ) { personal, shared, catsAndAliases, groupRatesCurrency, savings ->
         val (categories, aliases) = catsAndAliases
         val (group, rates, defaultCurrency) = groupRatesCurrency
+        val (personalSavings, sharedSavings) = savings
         val today = LocalDate.now()
         val partnerUid = group?.otherMemberUid(myUid)
 
-        fun items(scope: TripScope, isGroup: Boolean, categories: List<Category>) = scope.trips.map { trip ->
+        fun items(scope: TripScope, isGroup: Boolean, savings: SavingsScope, categories: List<Category>) = scope.trips.map { trip ->
             val tripExpenses = scope.expenses.filter { it.tripId == trip.id }
-            TripItem(trip, isGroup, tripExpenses, TripCalculator.compute(trip, tripExpenses, isGroup, myUid, today, categories, aliases))
+            val linked = trip.goalId?.let { id -> savings.goals.firstOrNull { it.id == id } }?.let { goal ->
+                LinkedGoal(goal.id, goal.name, goal.icon, SavingsMath.balance(savings.entries.filter { it.goalId == goal.id }), goal.targetAmount)
+            }
+            TripItem(trip, isGroup, tripExpenses, TripCalculator.compute(trip, tripExpenses, isGroup, myUid, today, categories, aliases), linked)
         }
 
-        val all = items(personal, false, categories) + items(shared, true, categories)
+        fun choices(scope: SavingsScope, isGroup: Boolean) =
+            scope.goals.filter { !it.archived }.map { GoalChoice(it.id, it.name, it.icon, isGroup, it.targetAmount) }
+
+        val all = items(personal, false, personalSavings, categories) + items(shared, true, sharedSavings, categories)
         // What's happening now first, then what's coming (soonest first), then what's over (latest first).
         val ordered = all.sortedWith(
             compareBy<TripItem> {
@@ -99,6 +126,7 @@ class TripsViewModel(
         TripsUiState(
             loaded = true,
             trips = ordered,
+            goalChoices = choices(personalSavings, false) + choices(sharedSavings, true),
             myUid = myUid,
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
             inGroup = groupContext != null,
@@ -127,17 +155,17 @@ class TripsViewModel(
         }
     }
 
-    fun addTrip(isGroup: Boolean, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currencyCode: String) {
+    fun addTrip(isGroup: Boolean, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currencyCode: String, goalId: String?) {
         launchWrite {
             val budgetBase = budget?.let { personalDataRepository.convertToBase(it, currencyCode) } ?: 0.0
-            repositoryFor(isGroup).addTrip(name, icon, start, end, budgetBase)
+            repositoryFor(isGroup).addTrip(name, icon, start, end, budgetBase, goalId)
         }
     }
 
-    fun updateTrip(item: TripItem, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currencyCode: String) {
+    fun updateTrip(item: TripItem, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currencyCode: String, goalId: String?) {
         launchWrite {
             val budgetBase = budget?.let { personalDataRepository.convertToBase(it, currencyCode) } ?: 0.0
-            repositoryFor(item.isGroup).updateTrip(item.trip.id, name, icon, start, end, budgetBase)
+            repositoryFor(item.isGroup).updateTrip(item.trip.id, name, icon, start, end, budgetBase, goalId)
         }
     }
 

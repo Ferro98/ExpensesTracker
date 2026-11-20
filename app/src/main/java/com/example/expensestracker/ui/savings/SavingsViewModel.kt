@@ -8,9 +8,11 @@ import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.data.model.SavingsEntry
 import com.example.expensestracker.data.model.SavingsEntryKind
 import com.example.expensestracker.data.model.SavingsGoal
+import com.example.expensestracker.data.model.Trip
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
 import com.example.expensestracker.data.repository.SavingsRepository
+import com.example.expensestracker.data.repository.TripRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.domain.SavingsMath
 import com.example.expensestracker.ui.GroupContext
@@ -33,7 +35,9 @@ private const val WRITE_TIMEOUT_MS = 8000L
 data class GoalItem(
     val goal: SavingsGoal,
     val entries: List<SavingsEntry>,
-    val isGroup: Boolean
+    val isGroup: Boolean,
+    /** The trip this pot is paying for, if one points at it. */
+    val linkedTrip: Trip? = null
 ) {
     val balance: Double get() = SavingsMath.balance(entries)
     val complete: Boolean get() = SavingsMath.isComplete(goal, entries)
@@ -72,20 +76,31 @@ class SavingsViewModel(
     private val personalDataRepository: PersonalDataRepository,
     private val groupContext: GroupContext?,
     settingsRepository: SettingsRepository,
-    private val myUid: String
+    private val myUid: String,
+    personalTripRepository: TripRepository
 ) : ViewModel() {
     val uiState: StateFlow<SavingsUiState> = combine(
         scopeFlow(personalSavingsRepository),
         scopeFlow(groupContext?.savingsRepository),
         groupContext?.let { it.groupRepository.observeGroup(it.groupId) } ?: flowOf(null),
         personalDataRepository.observeCurrencyRates(),
-        combine(settingsRepository.defaultCurrency, personalDataRepository.observeCategories()) { currency, categories -> currency to categories }
-    ) { personal, shared, group, rates, currencyAndCategories ->
+        combine(
+            settingsRepository.defaultCurrency,
+            personalDataRepository.observeCategories(),
+            combine(
+                personalTripRepository.observeTrips(),
+                groupContext?.tripRepository?.observeTrips() ?: flowOf(emptyList())
+            ) { personalTrips, sharedTrips -> personalTrips to sharedTrips }
+        ) { currency, categories, trips -> Triple(currency, categories, trips) }
+    ) { personal, shared, group, rates, currencyCategoriesTrips ->
+        val (defaultCurrency, categories, trips) = currencyCategoriesTrips
         val partnerUid = group?.otherMemberUid(myUid)
-        fun items(scope: ScopeData, isGroup: Boolean) = scope.goals
+        fun items(scope: ScopeData, isGroup: Boolean, scopeTrips: List<Trip>) = scope.goals
             .filter { !it.archived }
-            .map { goal -> GoalItem(goal, scope.entries.filter { it.goalId == goal.id }, isGroup) }
-        val goals = (items(personal, false) + items(shared, true))
+            .map { goal ->
+                GoalItem(goal, scope.entries.filter { it.goalId == goal.id }, isGroup, scopeTrips.firstOrNull { it.goalId == goal.id })
+            }
+        val goals = (items(personal, false, trips.first) + items(shared, true, trips.second))
             // Still-running goals first, finished ones after; oldest first within each.
             .sortedWith(compareBy<GoalItem> { it.complete }.thenBy { it.goal.createdAt?.seconds ?: Long.MAX_VALUE })
         SavingsUiState(
@@ -96,8 +111,8 @@ class SavingsViewModel(
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
             inGroup = groupContext != null,
             currencyRates = rates,
-            defaultCurrency = currencyAndCategories.first,
-            categories = currencyAndCategories.second
+            defaultCurrency = defaultCurrency,
+            categories = categories
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SavingsUiState(myUid = myUid, inGroup = groupContext != null))
 
@@ -236,7 +251,9 @@ class SavingsViewModel(
                 note = item.goal.name,
                 paidByUid = myUid,
                 isShared = false,
-                payerShare = 0.5
+                payerShare = 0.5,
+                // The pot was funding a trip: the expense it becomes belongs to that trip.
+                tripId = item.linkedTrip?.id
             )
             personalSavingsRepository.addEntry(
                 goalId = item.goal.id,

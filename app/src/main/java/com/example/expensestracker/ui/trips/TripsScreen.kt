@@ -115,9 +115,10 @@ fun TripsScreen(
             partnerName = uiState.partnerName,
             currencyRates = uiState.currencyRates,
             defaultCurrency = uiState.defaultCurrency,
+            goalChoices = uiState.goalChoices,
             onDismiss = onDismissAddDialog,
-            onSave = { isGroup, name, icon, start, end, budget, currency ->
-                viewModel.addTrip(isGroup, name, icon, start, end, budget, currency)
+            onSave = { isGroup, name, icon, start, end, budget, currency, goalId ->
+                viewModel.addTrip(isGroup, name, icon, start, end, budget, currency, goalId)
                 onDismissAddDialog()
             }
         )
@@ -130,9 +131,10 @@ fun TripsScreen(
             partnerName = uiState.partnerName,
             currencyRates = uiState.currencyRates,
             defaultCurrency = uiState.defaultCurrency,
+            goalChoices = uiState.goalChoices,
             onDismiss = { editingId = null },
-            onSave = { _, name, icon, start, end, budget, currency ->
-                viewModel.updateTrip(item, name, icon, start, end, budget, currency)
+            onSave = { _, name, icon, start, end, budget, currency, goalId ->
+                viewModel.updateTrip(item, name, icon, start, end, budget, currency, goalId)
                 editingId = null
             }
         )
@@ -241,6 +243,51 @@ private fun TripCard(item: TripItem, partnerName: String, onClick: () -> Unit, m
     }
 }
 
+/** The pot paying for this trip: what's in it against its target, and how much of the trip's budget that already covers. */
+@Composable
+private fun LinkedGoalCard(goal: LinkedGoal, tripBudget: Double) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TripIcon(goal.icon, size = 32)
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.trip_goal_funded_by, goal.name),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(R.string.savings_progress, formatMoney(goal.balance), formatMoney(goal.target)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (goal.target > 0) {
+                Spacer(Modifier.height(8.dp))
+                BudgetProgressBar(
+                    progress = (goal.balance / goal.target).toFloat(),
+                    color = MaterialTheme.semanticColors.positive,
+                    height = 6.dp
+                )
+            }
+            if (tripBudget > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.trip_goal_covers, ((goal.balance / tripBudget) * 100).coerceAtLeast(0.0).toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun TripIcon(icon: String, size: Int = 40) {
     Box(
@@ -329,6 +376,11 @@ private fun TripDetailSheet(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            item.linkedGoal?.let { goal ->
+                Spacer(Modifier.height(12.dp))
+                LinkedGoalCard(goal, stats.budget)
             }
 
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {

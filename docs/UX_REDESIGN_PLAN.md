@@ -844,8 +844,16 @@ proprio. Foto degli scontrini escluse: Cloud Storage richiede ormai Blaze (da ve
   spese. Eliminare un viaggio lascia le spese intatte: un id senza viaggio vale "nessun viaggio".
 - **Ritmo di spesa**: le spese di viaggio sono escluse dalla media giornaliera come le una tantum
   e gli abbonamenti - una settimana via non è un giorno normale.
-- **Non fatto**: collegare un viaggio a un salvadanaio (mostrare il saldo accanto al budget); il
-  segnalino del viaggio sulle righe spesa (servirebbe il nome del viaggio in ogni lista).
+- **Viaggio ↔ salvadanaio**: `Trip.goalId` opzionale, **solo dello stesso ambito** (un viaggio
+  personale collega un salvadanaio personale, uno di gruppo uno di gruppo: chi vede il viaggio
+  deve poter vedere il salvadanaio dietro). Nel dialog del viaggio una scelta "Pagato con un
+  salvadanaio"; se il budget è vuoto parte dall'obiettivo del salvadanaio. Nel dettaglio viaggio
+  una scheda con saldo/obiettivo e quanto del budget copre già; nel foglio del salvadanaio la riga
+  "Sta pagando il viaggio X". "Usalo per la spesa" (solo personali) ora tagga la spesa creata con
+  il viaggio collegato. Un id che non corrisponde a nessun salvadanaio (cancellato) vale "non
+  collegato". Aggiornato con `update` mirato (`FieldValue.delete()` per scollegare).
+- **Non fatto**: il segnalino del viaggio sulle righe spesa (servirebbe il nome del viaggio in
+  ogni lista).
 
 ## Fonti consultate
 

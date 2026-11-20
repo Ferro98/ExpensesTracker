@@ -45,13 +45,13 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(TripsViewModel::class.java) ->
                 TripsViewModel(
                     personalTripRepository, personalExpenseRepository, groupContext,
-                    personalDataRepository, app.settingsRepository, myUid
+                    personalDataRepository, app.settingsRepository, myUid, personalSavingsRepository
                 ) as T
 
             modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
                 SavingsViewModel(
                     personalSavingsRepository, personalExpenseRepository, personalDataRepository,
-                    groupContext, app.settingsRepository, myUid
+                    groupContext, app.settingsRepository, myUid, personalTripRepository
                 ) as T
 
             modelClass.isAssignableFrom(AddExpenseViewModel::class.java) ->

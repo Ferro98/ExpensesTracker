@@ -430,4 +430,9 @@
     <string name="trip_scope">Per chi è?</string>
     <string name="trip_budget">Budget (opzionale)</string>
     <string name="trip_label">Viaggio</string>
+    <string name="trip_goal_label">Pagato con un salvadanaio</string>
+    <string name="trip_goal_hint">Mostra quanto c\'è dentro accanto al budget; se il budget è vuoto parte dal suo obiettivo.</string>
+    <string name="trip_goal_funded_by">Finanziato da \"%1$s\"</string>
+    <string name="trip_goal_covers">Copre già il %1$d%% del budget del viaggio</string>
+    <string name="savings_linked_trip">Sta pagando il viaggio %1$s (%2$s – %3$s)</string>
 </resources>

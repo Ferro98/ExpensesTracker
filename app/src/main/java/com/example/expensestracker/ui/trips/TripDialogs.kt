@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,8 +62,9 @@ fun TripEditDialog(
     partnerName: String,
     currencyRates: List<CurrencyRate>,
     defaultCurrency: String,
+    goalChoices: List<GoalChoice>,
     onDismiss: () -> Unit,
-    onSave: (isGroup: Boolean, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currency: String) -> Unit
+    onSave: (isGroup: Boolean, name: String, icon: String, start: LocalDate, end: LocalDate, budget: Double?, currency: String, goalId: String?) -> Unit
 ) {
     val trip = initial?.trip
     var name by remember { mutableStateOf(trip?.name ?: "") }
@@ -75,6 +77,12 @@ fun TripEditDialog(
         mutableStateOf(trip?.budget?.takeIf { it > 0 }?.let { if (it == it.toLong().toDouble()) it.toLong().toString() else String.format("%.2f", it) } ?: "")
     }
     var picking by remember { mutableStateOf<DateField?>(null) }
+    var goalId by remember { mutableStateOf(trip?.goalId) }
+    // Only a pot of the trip's own scope can fund it: whoever can see the trip must be able to see the pot.
+    val scopedGoals = goalChoices.filter { it.isGroup == isGroup }
+    LaunchedEffect(isGroup) {
+        if (goalId != null && scopedGoals.none { it.id == goalId }) goalId = null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -141,12 +149,48 @@ fun TripEditDialog(
                         }
                     }
                 }
+                if (scopedGoals.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(R.string.trip_goal_label), style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        stringResource(R.string.trip_goal_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        scopedGoals.forEach { goal ->
+                            FilterChip(
+                                selected = goalId == goal.id,
+                                onClick = {
+                                    if (goalId == goal.id) {
+                                        goalId = null
+                                    } else {
+                                        goalId = goal.id
+                                        // A pot already says how much is being put aside for this: start the
+                                        // budget from its target instead of making the user type it twice.
+                                        if (budgetText.isBlank() && goal.target > 0) {
+                                            currency = DefaultUserData.BASE_CURRENCY
+                                            budgetText = if (goal.target == goal.target.toLong().toDouble()) goal.target.toLong().toString() else String.format("%.2f", goal.target)
+                                        }
+                                    }
+                                },
+                                label = { Text("${goal.icon} ${goal.name}") }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onSave(isGroup, name.trim(), icon, start, end, budgetText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 }, currency)
+                    onSave(
+                        isGroup, name.trim(), icon, start, end,
+                        budgetText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 },
+                        currency,
+                        goalId?.takeIf { id -> scopedGoals.any { it.id == id } }
+                    )
                 },
                 enabled = name.isNotBlank()
             ) { Text(stringResource(R.string.action_save)) }

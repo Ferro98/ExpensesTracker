@@ -537,6 +537,18 @@ private fun GoalDetailSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            item.linkedTrip?.let { trip ->
+                Text(
+                    stringResource(
+                        R.string.savings_linked_trip,
+                        "${trip.icon} ${trip.name}",
+                        formatShortDate(trip.localStart),
+                        formatShortDate(trip.localEnd)
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
