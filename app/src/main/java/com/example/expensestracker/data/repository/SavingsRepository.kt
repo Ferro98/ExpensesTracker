@@ -26,6 +26,10 @@ class SavingsRepository(private val scopeRef: DocumentReference) {
     fun observeGoals(): Flow<List<SavingsGoal>> = goalsRef.observeAsFlow()
     fun observeEntries(): Flow<List<SavingsEntry>> = entriesRef.observeAsFlow()
 
+    // One-shot reads for background work (the start-of-month reminder), which has no UI to keep live.
+    suspend fun getGoals(): List<SavingsGoal> = goalsRef.get().await().toObjects(SavingsGoal::class.java)
+    suspend fun getEntries(): List<SavingsEntry> = entriesRef.get().await().toObjects(SavingsEntry::class.java)
+
     suspend fun addGoal(
         name: String,
         icon: String,

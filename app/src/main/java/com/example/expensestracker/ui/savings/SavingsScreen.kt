@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -96,14 +98,35 @@ fun SavingsScreen(
     var entryRequest by remember { mutableStateOf<EntryRequest?>(null) }
     var useGoalId by remember { mutableStateOf<String?>(null) }
     var deleteGoalId by remember { mutableStateOf<String?>(null) }
+    // (goal id, amount to suggest) while the "other amount" dialog of a monthly check-in is open.
+    var checkInOther by remember { mutableStateOf<Pair<String, Double>?>(null) }
 
     fun goalById(id: String?) = uiState.goals.firstOrNull { it.goal.id == id }
+
+    // Pots where I planned a monthly amount and haven't yet said whether it went in. A plan never
+    // records a deposit by itself - only these answers do, so a pot can't claim money that wasn't
+    // actually put aside. The start-of-month notification links straight here.
+    val today = LocalDate.now()
+    val dueCheckIns = uiState.goals.mapNotNull { item ->
+        SavingsMath.checkInDue(item.goal, item.entries, uiState.myUid, today)?.let { item to it }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        items(dueCheckIns, key = { "checkin-${it.first.goal.id}" }) { (item, remaining) ->
+            CheckInCard(
+                item = item,
+                remaining = remaining,
+                onYes = { viewModel.checkIn(item, remaining) },
+                onOther = { checkInOther = item.goal.id to remaining },
+                onSkip = { viewModel.checkIn(item, null) },
+                modifier = Modifier.animateItem()
+            )
+        }
+
         if (uiState.goals.isNotEmpty()) {
             item {
                 Card(
@@ -224,6 +247,31 @@ fun SavingsScreen(
         }
     }
 
+    checkInOther?.let { (goalId, remaining) ->
+        val item = goalById(goalId)
+        if (item == null) {
+            checkInOther = null
+        } else {
+            SavingsEntryDialog(
+                kind = SavingsEntryKind.DEPOSIT,
+                goalName = item.goal.name,
+                inGroup = item.isGroup,
+                myUid = uiState.myUid,
+                partnerUid = uiState.partnerUid,
+                partnerName = uiState.partnerName,
+                currencyRates = uiState.currencyRates,
+                defaultCurrency = uiState.defaultCurrency,
+                suggestedAmount = remaining,
+                onDismiss = { checkInOther = null },
+                onSave = { amount, currency, date, note, byUid ->
+                    viewModel.addEntry(item, SavingsEntryKind.DEPOSIT, amount, currency, date, note, byUid)
+                    viewModel.dismissCheckIn(item)
+                    checkInOther = null
+                }
+            )
+        }
+    }
+
     goalById(useGoalId)?.let { item ->
         UseGoalDialog(
             item = item,
@@ -253,6 +301,42 @@ fun SavingsScreen(
                 TextButton(onClick = { deleteGoalId = null }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CheckInCard(
+    item: GoalItem,
+    remaining: Double,
+    onYes: () -> Unit,
+    onOther: () -> Unit,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GoalIcon(item.goal.icon)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    stringResource(R.string.savings_checkin_text, item.goal.name, formatMoney(remaining)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onYes) { Text(stringResource(R.string.savings_checkin_yes, formatMoney(remaining))) }
+                OutlinedButton(onClick = onOther) { Text(stringResource(R.string.savings_checkin_other)) }
+                TextButton(onClick = onSkip) { Text(stringResource(R.string.savings_checkin_skip)) }
+            }
+        }
     }
 }
 

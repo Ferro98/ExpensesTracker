@@ -14,6 +14,7 @@ import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.repository.SettlementRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.notifications.ReminderWorker
+import com.example.expensestracker.notifications.SavingsReminderWorker
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
@@ -29,6 +30,12 @@ class ExpensesTrackerApp : Application() {
             "recurring_reminder_check",
             ExistingPeriodicWorkPolicy.KEEP,
             reminderCheck
+        )
+        val savingsReminderCheck = PeriodicWorkRequestBuilder<SavingsReminderWorker>(1, TimeUnit.DAYS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "savings_checkin_reminder",
+            ExistingPeriodicWorkPolicy.KEEP,
+            savingsReminderCheck
         )
     }
 

@@ -350,6 +350,9 @@
     <string name="savings_checkin_yes">Yes, %1$s</string>
     <string name="savings_checkin_other">Other amount</string>
     <string name="savings_checkin_skip">Not this month</string>
+    <string name="savings_channel_name">Savings reminders</string>
+    <string name="savings_channel_description">Asks at the start of the month whether you put the planned amount into your savings pots</string>
+    <string name="savings_reminder_body_many">%1$d savings pots have a planned deposit this month (%2$s in total). Did you put it in?</string>
     <string name="budget_saved_note">Includes %1$s put aside</string>
     <string name="budget_withdrawn_note">Includes %1$s taken out of savings</string>
 </resources>

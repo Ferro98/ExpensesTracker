@@ -33,6 +33,7 @@ class SettingsRepository(private val context: Context) {
         val LAST_USED_CATEGORY = stringPreferencesKey("last_used_category_id")
         val LAST_SEEN_SHARED_EXPENSES_AT = longPreferencesKey("last_seen_shared_expenses_at")
         val CATEGORY_ALIASES = stringPreferencesKey("category_aliases")
+        val LAST_SAVINGS_REMINDER_MONTH = stringPreferencesKey("last_savings_reminder_month")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -111,6 +112,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLastSeenSharedExpensesAt(epochMillis: Long) {
         context.dataStore.edit { prefs -> prefs[Keys.LAST_SEEN_SHARED_EXPENSES_AT] = epochMillis }
+    }
+
+    /** The "yyyy-MM" the savings reminder notification last went out for, so it fires once a month, not on every worker run. */
+    val lastSavingsReminderMonth: Flow<String?> = context.dataStore.data.map { prefs -> prefs[Keys.LAST_SAVINGS_REMINDER_MONTH] }
+
+    suspend fun setLastSavingsReminderMonth(month: String) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_SAVINGS_REMINDER_MONTH] = month }
     }
 
     suspend fun clearGroup() {

@@ -350,6 +350,9 @@
     <string name="savings_checkin_yes">Sì, %1$s</string>
     <string name="savings_checkin_other">Altro importo</string>
     <string name="savings_checkin_skip">Non questo mese</string>
+    <string name="savings_channel_name">Promemoria salvadanai</string>
+    <string name="savings_channel_description">Ti chiede a inizio mese se hai messo da parte l\'importo previsto nei salvadanai</string>
+    <string name="savings_reminder_body_many">%1$d salvadanai hanno un versamento previsto questo mese (%2$s in totale). Li hai messi?</string>
     <string name="budget_saved_note">Compresi %1$s messi da parte</string>
     <string name="budget_withdrawn_note">Compresi %1$s prelevati dai salvadanai</string>
 </resources>

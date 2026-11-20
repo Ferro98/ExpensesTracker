@@ -1,6 +1,7 @@
 package com.example.expensestracker
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -78,6 +79,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.expensestracker.data.WriteOutcome
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.notifications.EXTRA_OPEN_SAVINGS
 import com.example.expensestracker.data.settings.ThemeMode
 import com.example.expensestracker.ui.AppViewModelFactory
 import com.example.expensestracker.ui.addexpense.AddExpenseSheet
@@ -103,8 +105,13 @@ import com.example.expensestracker.ui.theme.semanticColors
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    // A plain Activity property (not inside setContent) so onNewIntent - which fires outside
+    // Compose when the app is already running and the notification is tapped - can reach it.
+    private var openSavingsSignal by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openSavingsSignal = intent?.getBooleanExtra(EXTRA_OPEN_SAVINGS, false) == true
         enableEdgeToEdge()
         val app = application as ExpensesTrackerApp
         setContent {
@@ -159,12 +166,20 @@ class MainActivity : ComponentActivity() {
                         ExpensesTrackerRoot(
                             factory,
                             vmKey = "$groupId:$uid",
-                            isOnline = isOnline
+                            isOnline = isOnline,
+                            openSavingsSignal = openSavingsSignal,
+                            onOpenSavingsHandled = { openSavingsSignal = false }
                         )
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_SAVINGS, false)) openSavingsSignal = true
     }
 }
 
@@ -180,9 +195,18 @@ private fun SplashScreen() {
 fun ExpensesTrackerRoot(
     factory: AppViewModelFactory,
     vmKey: String,
-    isOnline: Boolean = true
+    isOnline: Boolean = true,
+    openSavingsSignal: Boolean = false,
+    onOpenSavingsHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    // Consumed straight away so backing out of Savings afterwards doesn't jump there again.
+    LaunchedEffect(openSavingsSignal) {
+        if (openSavingsSignal) {
+            navController.navigate(Screen.Savings.route)
+            onOpenSavingsHandled()
+        }
+    }
     var showAddExpense by remember { mutableStateOf(false) }
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
@@ -364,9 +388,7 @@ fun ExpensesTrackerRoot(
                     onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
                     onSeeAllExpenses = { navController.navigateToTab(Screen.History) },
                     onOpenGroup = { navController.navigate(Screen.Group.route) },
-                    onDeleteExpense = onDeleteExpenseWithUndo,
-                    savingsViewModel = savingsViewModel,
-                    onOpenSavings = { navController.navigate(Screen.Savings.route) }
+                    onDeleteExpense = onDeleteExpenseWithUndo
                 )
             }
             composable(Screen.History.route) {
