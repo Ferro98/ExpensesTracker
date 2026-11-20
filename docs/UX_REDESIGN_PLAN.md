@@ -730,8 +730,8 @@ template", una cosa memorabile e il resto sobrio - sono stati applicati a mano s
 
 Richieste: (1) distinguere categorie "essenziali" dalle altre; (2) un salvadanaio con obiettivi
 (personali o di gruppo), piano mensile e/o versato reale, prelievi; (3) altre idee utili. Ordine
-scelto dall'utente: prima gli essenziali, poi il salvadanaio. Il punto 1 è implementato (sotto);
-il salvadanaio è **solo progettato**, non costruito.
+scelto dall'utente: prima gli essenziali, poi il salvadanaio. Entrambi sono ora
+implementati (vedi "Salvadanaio" sotto per cosa c'è e cosa è rimasto fuori).
 
 ### Essenziali (implementato)
 - `Category.essential` (default false). Proprietà della *categoria*, non della spesa: cambiarla
