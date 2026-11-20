@@ -75,7 +75,8 @@
     <string name="category_essential_label">Essential</string>
     <string name="category_essential_hint">A need rather than a want - counts as \"Essentials\" in Stats.</string>
     <string name="category_essential_tag">Essential</string>
-    <string name="stats_essentials_title">Essentials and extras</string>
+    <string name="stats_essentials_title">Where the money goes</string>
+    <string name="stats_saved_label">Put aside</string>
     <string name="stats_essentials_label">Essentials</string>
     <string name="stats_extra_label">Extras</string>
     <string name="stats_essentials_setup_hint">Mark which categories are essential (rent, bills, health…) to see how much of the month goes on needs and how much on extras.</string>
@@ -305,4 +306,50 @@
         <item quantity="one">%2$s due in %1$d day</item>
         <item quantity="other">%2$s due in %1$d days</item>
     </plurals>
+
+    <!-- Savings pots -->
+    <string name="title_savings">Savings pots</string>
+    <string name="more_savings_desc">Put money aside for a goal, alone or together</string>
+    <string name="fab_savings">Savings pot</string>
+    <string name="savings_total_saved">Put aside in total</string>
+    <string name="savings_empty_title">No savings pots yet. Create one for something you\'re saving up for.</string>
+    <string name="savings_empty_action">New savings pot</string>
+    <string name="savings_scope_personal">Just me</string>
+    <string name="savings_scope_group">Shared with %1$s</string>
+    <string name="savings_progress">%1$s of %2$s</string>
+    <string name="savings_reached">Goal reached</string>
+    <string name="savings_projection">At this pace: %1$s</string>
+    <string name="savings_required">To reach it by %1$s: %2$s a month</string>
+    <string name="savings_contributions">%1$s: %2$s · %3$s: %4$s</string>
+    <string name="savings_plan_line">Your plan: %1$s a month</string>
+    <string name="savings_this_month_line">this month %1$s of %2$s put in</string>
+    <string name="savings_partner_plan">%1$s plans %2$s a month</string>
+    <string name="savings_goal_deadline">Deadline: %1$s</string>
+    <string name="savings_deposit">Add money</string>
+    <string name="savings_withdraw">Take out</string>
+    <string name="savings_use">Use it for the expense</string>
+    <string name="savings_movements">Movements</string>
+    <string name="savings_no_movements">Nothing yet</string>
+    <string name="savings_delete_title">Delete this savings pot?</string>
+    <string name="savings_delete_text">The pot and all its movements will be deleted. Expenses you already booked stay.</string>
+    <string name="savings_use_title">Use \"%1$s\"</string>
+    <string name="savings_use_hint">Books %1$s as an expense in the category you pick and empties the pot.</string>
+    <string name="savings_goal_new_title">New savings pot</string>
+    <string name="savings_goal_edit_title">Edit savings pot</string>
+    <string name="savings_goal_name">Name (e.g. Disneyland)</string>
+    <string name="savings_goal_scope">Who is it for?</string>
+    <string name="savings_goal_target">Amount to reach</string>
+    <string name="savings_goal_plan">I\'d like to put in per month (optional)</string>
+    <string name="savings_goal_no_deadline">No deadline - tap to set one</string>
+    <string name="savings_goal_clear_deadline">Remove</string>
+    <string name="savings_entry_deposit_title">Add to %1$s</string>
+    <string name="savings_entry_withdraw_title">Take out of %1$s</string>
+    <string name="savings_withdraw_reason">What for? (optional)</string>
+    <string name="savings_entry_who">Whose money</string>
+    <string name="savings_checkin_text">%1$s: you planned %2$s this month. Did you put it in?</string>
+    <string name="savings_checkin_yes">Yes, %1$s</string>
+    <string name="savings_checkin_other">Other amount</string>
+    <string name="savings_checkin_skip">Not this month</string>
+    <string name="budget_saved_note">Includes %1$s put aside</string>
+    <string name="budget_withdrawn_note">Includes %1$s taken out of savings</string>
 </resources>

@@ -10,6 +10,7 @@ import com.example.expensestracker.data.repository.AuthRepository
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.GroupRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.repository.SettlementRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.notifications.ReminderWorker
@@ -49,4 +50,10 @@ class ExpensesTrackerApp : Application() {
 
     fun settlementRepositoryFor(groupId: String): SettlementRepository =
         SettlementRepository(firestore, groupId)
+
+    fun personalSavingsRepositoryFor(uid: String): SavingsRepository =
+        SavingsRepository(firestore.collection("users").document(uid))
+
+    fun groupSavingsRepositoryFor(groupId: String): SavingsRepository =
+        SavingsRepository(firestore.collection("groups").document(groupId))
 }

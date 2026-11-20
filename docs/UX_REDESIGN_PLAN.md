@@ -748,7 +748,25 @@ il salvadanaio è **solo progettato**, non costruito.
   essenziali, chiaro = extra) appena esiste almeno un mese con essenziali.
 - Non fatto: ritmo giornaliero calcolato solo sugli extra.
 
-### Salvadanaio (solo progetto)
+### Salvadanaio (implementato; il testo sotto è il disegno, con le differenze qui)
+**Realizzato:** `SavingsGoal`/`SavingsEntry` + `SavingsRepository` (collezioni piatte, ambito
+personale o di gruppo); `domain/SavingsMath` (saldo, netto per persona e per mese, proiezione,
+mensile necessario, ritmo, promemoria) con `SavingsMathTest`; `SavingsViewModel` (scritture con
+timeout come il resto dell'app, errore → snackbar); schermata Salvadanai (in Altro) con scheda
+obiettivo, foglio di dettaglio (movimenti, piano mio e del partner, barra per contributi nel
+gruppo, versa/preleva/modifica/elimina), dialog obiettivo e movimento (con data e "di chi sono i
+soldi"); in Home il promemoria di inizio mese e i progressi; nel budget una barra a due segmenti
+(speso + messo da parte) con "rimasti" netto; in Statistiche "Dove vanno i soldi" con il terzo
+spicchio. Una "Usa il salvadanaio" per i soli obiettivi personali (registra la spesa, poi
+preleva: in quest'ordine, così un'interruzione non fa sparire denaro dal salvadanaio senza spesa).
+
+**Rimasto fuori (v2):** spicchio "messo da parte" nel grafico a 6 mesi; movimenti del partner nel
+dialog "nuove spese condivise"; "Usa" per i salvadanai di gruppo (come spesa condivisa ordinaria
+accrediterebbe sul saldo chi la inserisce - serve una spesa "pagata dal salvadanaio" esclusa dal
+saldo); archiviazione dalla UI (il campo `archived` c'è); l'importo obiettivo si modifica nella
+valuta base perché la valuta originale non è salvata.
+
+### Salvadanaio: disegno originale
 - **Dati**: collezioni *piatte* `savingsGoals` e `savingsEntries` (con `goalId`), sia sotto
   `users/{uid}` sia sotto `groups/{id}`. Piatte perché le regole Firestore attuali coprono solo
   `…/{collezione}/{doc}`: una sotto-collezione annidata sarebbe negata senza toccarle.

@@ -24,6 +24,7 @@ sealed class Screen(val route: String, @StringRes val titleRes: Int) {
     object Recurring : Screen("recurring", R.string.title_recurring)
     object Categories : Screen("categories", R.string.title_categories)
     object Group : Screen("group", R.string.title_group)
+    object Savings : Screen("savings", R.string.title_savings)
     object Settings : Screen("settings", R.string.title_settings)
 
     companion object {
@@ -40,7 +41,7 @@ sealed class Screen(val route: String, @StringRes val titleRes: Int) {
         }
 
         private val all: List<Screen> by lazy {
-            listOf(Home, History, Stats, More, Recurring, Categories, Group, Settings)
+            listOf(Home, History, Stats, More, Recurring, Categories, Group, Savings, Settings)
         }
 
         fun fromRoute(route: String?): Screen = all.firstOrNull { it.route == route } ?: Home

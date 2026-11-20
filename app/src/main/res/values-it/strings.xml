@@ -75,7 +75,8 @@
     <string name="category_essential_label">Essenziale</string>
     <string name="category_essential_hint">Una necessità, non un extra: conta come \"Essenziali\" nelle Statistiche.</string>
     <string name="category_essential_tag">Essenziale</string>
-    <string name="stats_essentials_title">Essenziali ed extra</string>
+    <string name="stats_essentials_title">Dove vanno i soldi</string>
+    <string name="stats_saved_label">Messi da parte</string>
     <string name="stats_essentials_label">Essenziali</string>
     <string name="stats_extra_label">Extra</string>
     <string name="stats_essentials_setup_hint">Segna quali categorie sono essenziali (affitto, bollette, salute…) per vedere quanto del mese va in necessità e quanto in extra.</string>
@@ -305,4 +306,50 @@
         <item quantity="one">%2$s tra %1$d giorno</item>
         <item quantity="other">%2$s tra %1$d giorni</item>
     </plurals>
+
+    <!-- Salvadanai -->
+    <string name="title_savings">Salvadanai</string>
+    <string name="more_savings_desc">Metti da parte per un obiettivo, da solo o in coppia</string>
+    <string name="fab_savings">Salvadanaio</string>
+    <string name="savings_total_saved">Messo da parte in totale</string>
+    <string name="savings_empty_title">Ancora nessun salvadanaio. Creane uno per qualcosa per cui stai risparmiando.</string>
+    <string name="savings_empty_action">Nuovo salvadanaio</string>
+    <string name="savings_scope_personal">Solo per me</string>
+    <string name="savings_scope_group">Condiviso con %1$s</string>
+    <string name="savings_progress">%1$s di %2$s</string>
+    <string name="savings_reached">Obiettivo raggiunto</string>
+    <string name="savings_projection">Di questo passo: %1$s</string>
+    <string name="savings_required">Per arrivarci entro %1$s: %2$s al mese</string>
+    <string name="savings_contributions">%1$s: %2$s · %3$s: %4$s</string>
+    <string name="savings_plan_line">Il tuo piano: %1$s al mese</string>
+    <string name="savings_this_month_line">questo mese %1$s su %2$s messi</string>
+    <string name="savings_partner_plan">%1$s prevede %2$s al mese</string>
+    <string name="savings_goal_deadline">Scadenza: %1$s</string>
+    <string name="savings_deposit">Versa</string>
+    <string name="savings_withdraw">Preleva</string>
+    <string name="savings_use">Usalo per la spesa</string>
+    <string name="savings_movements">Movimenti</string>
+    <string name="savings_no_movements">Ancora nessun movimento</string>
+    <string name="savings_delete_title">Eliminare questo salvadanaio?</string>
+    <string name="savings_delete_text">Il salvadanaio e tutti i suoi movimenti verranno eliminati. Le spese già registrate restano.</string>
+    <string name="savings_use_title">Usa \"%1$s\"</string>
+    <string name="savings_use_hint">Registra %1$s come spesa nella categoria che scegli e svuota il salvadanaio.</string>
+    <string name="savings_goal_new_title">Nuovo salvadanaio</string>
+    <string name="savings_goal_edit_title">Modifica salvadanaio</string>
+    <string name="savings_goal_name">Nome (es. Disneyland)</string>
+    <string name="savings_goal_scope">Per chi è?</string>
+    <string name="savings_goal_target">Importo da raggiungere</string>
+    <string name="savings_goal_plan">Vorrei metterne al mese (opzionale)</string>
+    <string name="savings_goal_no_deadline">Nessuna scadenza - tocca per impostarla</string>
+    <string name="savings_goal_clear_deadline">Rimuovi</string>
+    <string name="savings_entry_deposit_title">Versa in %1$s</string>
+    <string name="savings_entry_withdraw_title">Preleva da %1$s</string>
+    <string name="savings_withdraw_reason">Per cosa? (opzionale)</string>
+    <string name="savings_entry_who">Di chi sono i soldi</string>
+    <string name="savings_checkin_text">%1$s: avevi previsto %2$s questo mese. Li hai messi?</string>
+    <string name="savings_checkin_yes">Sì, %1$s</string>
+    <string name="savings_checkin_other">Altro importo</string>
+    <string name="savings_checkin_skip">Non questo mese</string>
+    <string name="budget_saved_note">Compresi %1$s messi da parte</string>
+    <string name="budget_withdrawn_note">Compresi %1$s prelevati dai salvadanai</string>
 </resources>

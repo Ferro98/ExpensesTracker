@@ -30,7 +30,8 @@ fun MonthSummaryCard(
     totalSpent: Double,
     monthlyBudget: Double?,
     daysLeft: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    savedThisMonth: Double = 0.0
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -66,16 +67,32 @@ fun MonthSummaryCard(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-            val progress = (totalSpent / monthlyBudget).toFloat().coerceIn(0f, 1f)
-            val overBudget = totalSpent > monthlyBudget
+            // "Spent" stays the real spending; money put aside is budget already spoken for, so it
+            // takes up room on the bar and comes off what's left, without inflating the total above.
+            // A net withdrawal (negative) frees budget instead.
+            val used = (totalSpent + savedThisMonth).coerceAtLeast(0.0)
+            val progress = (used / monthlyBudget).toFloat().coerceIn(0f, 1f)
+            val overBudget = used > monthlyBudget
             val progressColor = when {
                 overBudget -> MaterialTheme.semanticColors.negative
                 progress > 0.8f -> MaterialTheme.semanticColors.warning
                 else -> MaterialTheme.colorScheme.primary
             }
-            BudgetProgressBar(progress = progress, color = progressColor, height = 10.dp)
+            if (savedThisMonth > 0) {
+                val spentFraction = (totalSpent / monthlyBudget).toFloat().coerceIn(0f, 1f)
+                val savedFraction = (savedThisMonth / monthlyBudget).toFloat().coerceIn(0f, 1f - spentFraction)
+                SegmentedBudgetBar(
+                    spentFraction = spentFraction,
+                    savedFraction = savedFraction,
+                    spentColor = progressColor,
+                    savedColor = MaterialTheme.semanticColors.positive,
+                    height = 10.dp
+                )
+            } else {
+                BudgetProgressBar(progress = (totalSpent / monthlyBudget).toFloat().coerceIn(0f, 1f), color = progressColor, height = 10.dp)
+            }
             Spacer(modifier = Modifier.height(8.dp))
-            val remaining = monthlyBudget - totalSpent
+            val remaining = monthlyBudget - used
             Text(
                 text = if (remaining >= 0)
                     stringResource(R.string.budget_left, formatMoney(monthlyBudget), formatMoney(remaining))
@@ -84,6 +101,16 @@ fun MonthSummaryCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = if (overBudget) MaterialTheme.semanticColors.negative else MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (savedThisMonth != 0.0) {
+                Text(
+                    if (savedThisMonth > 0)
+                        stringResource(R.string.budget_saved_note, formatMoney(savedThisMonth))
+                    else
+                        stringResource(R.string.budget_withdrawn_note, formatMoney(-savedThisMonth)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (savedThisMonth > 0) MaterialTheme.semanticColors.positive else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (daysLeft != null && daysLeft > 0 && remaining > 0) {
                 Text(
                     stringResource(R.string.budget_daily_pace, formatMoney(remaining / daysLeft)),

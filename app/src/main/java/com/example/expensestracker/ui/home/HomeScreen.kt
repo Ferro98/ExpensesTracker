@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.Expense
+import com.example.expensestracker.data.model.SavingsEntryKind
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.ui.components.CategorySpendingRow
 import com.example.expensestracker.ui.components.EmptyState
@@ -48,6 +49,9 @@ import com.example.expensestracker.ui.components.SettlementDialog
 import com.example.expensestracker.ui.month.MonthDetailSheets
 import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.month.rememberMonthDetailState
+import com.example.expensestracker.ui.savings.SavingsEntryDialog
+import com.example.expensestracker.ui.savings.SavingsViewModel
+import com.example.expensestracker.ui.savings.savingsHomeItems
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMonthName
 import com.example.expensestracker.util.formatMoney
@@ -77,8 +81,13 @@ fun HomeScreen(
     onSeeAllCategories: () -> Unit,
     onSeeAllExpenses: () -> Unit,
     onOpenGroup: () -> Unit,
-    onDeleteExpense: (Expense) -> Unit
+    onDeleteExpense: (Expense) -> Unit,
+    savingsViewModel: SavingsViewModel,
+    onOpenSavings: () -> Unit
 ) {
+    val savingsState by savingsViewModel.uiState.collectAsState()
+    // (goal id, amount to suggest) while the "other amount" entry dialog of a check-in is open.
+    var checkInOther by remember { mutableStateOf<Pair<String, Double>?>(null) }
     val month = viewModel.currentMonth
     val uiState by remember { viewModel.uiStateFor(month) }
         .collectAsState(initial = viewModel.emptyStateFor(month))
@@ -127,7 +136,8 @@ fun HomeScreen(
                 title = stringResource(R.string.spent_in_month, formatMonthName(month)),
                 totalSpent = uiState.totalSpent,
                 monthlyBudget = uiState.monthlyBudget,
-                daysLeft = daysLeft
+                daysLeft = daysLeft,
+                savedThisMonth = uiState.savedThisMonth
             )
         }
 
@@ -144,6 +154,14 @@ fun HomeScreen(
                 )
             }
         }
+
+        savingsHomeItems(
+            state = savingsState,
+            onCheckInDeposit = { item, amount -> savingsViewModel.checkIn(item, amount) },
+            onCheckInOther = { item, amount -> checkInOther = item.goal.id to amount },
+            onCheckInSkip = { savingsViewModel.checkIn(it, null) },
+            onOpenSavings = onOpenSavings
+        )
 
         if (categories.isNotEmpty()) {
             item {
@@ -206,6 +224,31 @@ fun HomeScreen(
         onDuplicateExpense = onDuplicateExpense,
         onDeleteExpense = onDeleteExpense
     )
+
+    checkInOther?.let { (goalId, remaining) ->
+        val item = savingsState.goals.firstOrNull { it.goal.id == goalId }
+        if (item == null) {
+            checkInOther = null
+        } else {
+            SavingsEntryDialog(
+                kind = SavingsEntryKind.DEPOSIT,
+                goalName = item.goal.name,
+                inGroup = item.isGroup,
+                myUid = savingsState.myUid,
+                partnerUid = savingsState.partnerUid,
+                partnerName = savingsState.partnerName,
+                currencyRates = savingsState.currencyRates,
+                defaultCurrency = savingsState.defaultCurrency,
+                suggestedAmount = remaining,
+                onDismiss = { checkInOther = null },
+                onSave = { amount, currency, date, note, byUid ->
+                    savingsViewModel.addEntry(item, SavingsEntryKind.DEPOSIT, amount, currency, date, note, byUid)
+                    savingsViewModel.dismissCheckIn(item)
+                    checkInOther = null
+                }
+            )
+        }
+    }
 
     if (showSettlementDialog) {
         val partnerUid = uiState.partnerUid

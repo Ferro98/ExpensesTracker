@@ -92,6 +92,8 @@ import com.example.expensestracker.ui.more.MoreScreen
 import com.example.expensestracker.ui.navigation.BottomTab
 import com.example.expensestracker.ui.navigation.Screen
 import com.example.expensestracker.ui.recurring.RecurringScreen
+import com.example.expensestracker.ui.savings.SavingsScreen
+import com.example.expensestracker.ui.savings.SavingsViewModel
 import com.example.expensestracker.ui.settings.SettingsScreen
 import com.example.expensestracker.ui.stats.StatsScreen
 import com.example.expensestracker.ui.components.NewSharedExpensesDialog
@@ -184,6 +186,7 @@ fun ExpensesTrackerRoot(
     var showAddExpense by remember { mutableStateOf(false) }
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
+    var showAddSavingsGoal by remember { mutableStateOf(false) }
     // Unlike the per-screen ViewModels (each scoped to its own NavBackStackEntry, which gets
     // recreated whenever the NavHost itself is rebuilt below), these ViewModels are requested
     // directly here - outside any nav route - so they resolve to the Activity's own, long-lived
@@ -195,6 +198,9 @@ fun ExpensesTrackerRoot(
     // Home, History and Stats are three views over the same month data: one shared instance means
     // one set of Firestore listeners instead of three.
     val monthViewModel: MonthViewModel = viewModel(factory = factory, key = "month:$vmKey")
+    // Shared by Home (progress + the start-of-month prompt) and the Savings screen: one set of
+    // listeners, and both see the same state the moment either changes it.
+    val savingsViewModel: SavingsViewModel = viewModel(factory = factory, key = "savings:$vmKey")
     val newSharedExpensesViewModel: NewSharedExpensesViewModel =
         viewModel(factory = factory, key = "newSharedExpenses:$vmKey")
     // Re-checks every time the app comes back to the foreground, not just on this ViewModel's own
@@ -328,6 +334,11 @@ fun ExpensesTrackerRoot(
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.fab_recurring_expense)) }
                 )
+                Screen.Savings -> ExtendedFloatingActionButton(
+                    onClick = { showAddSavingsGoal = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.fab_savings)) }
+                )
                 else -> Unit
             }
         },
@@ -353,7 +364,9 @@ fun ExpensesTrackerRoot(
                     onSeeAllCategories = { navController.navigateToTab(Screen.Stats) },
                     onSeeAllExpenses = { navController.navigateToTab(Screen.History) },
                     onOpenGroup = { navController.navigate(Screen.Group.route) },
-                    onDeleteExpense = onDeleteExpenseWithUndo
+                    onDeleteExpense = onDeleteExpenseWithUndo,
+                    savingsViewModel = savingsViewModel,
+                    onOpenSavings = { navController.navigate(Screen.Savings.route) }
                 )
             }
             composable(Screen.History.route) {
@@ -379,7 +392,17 @@ fun ExpensesTrackerRoot(
                     onOpenRecurring = { navController.navigate(Screen.Recurring.route) },
                     onOpenCategories = { navController.navigate(Screen.Categories.route) },
                     onOpenGroup = { navController.navigate(Screen.Group.route) },
+                    onOpenSavings = { navController.navigate(Screen.Savings.route) },
                     onOpenSettings = { navController.navigate(Screen.Settings.route) }
+                )
+            }
+            composable(Screen.Savings.route) {
+                SavingsScreen(
+                    viewModel = savingsViewModel,
+                    showAddDialog = showAddSavingsGoal,
+                    onDismissAddDialog = { showAddSavingsGoal = false },
+                    onShowAddDialog = { showAddSavingsGoal = true },
+                    snackbarHostState = snackbarHostState
                 )
             }
             composable(Screen.Recurring.route) {

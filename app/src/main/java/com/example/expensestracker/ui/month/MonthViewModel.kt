@@ -11,6 +11,7 @@ import com.example.expensestracker.data.model.Group
 import com.example.expensestracker.data.model.Settlement
 import com.example.expensestracker.data.repository.ExpenseRepository
 import com.example.expensestracker.data.repository.PersonalDataRepository
+import com.example.expensestracker.data.repository.SavingsRepository
 import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.domain.BalanceCalculator
@@ -18,6 +19,7 @@ import com.example.expensestracker.domain.CategoryResolver
 import com.example.expensestracker.domain.EssentialSplit
 import com.example.expensestracker.domain.EssentialSplitCalculator
 import com.example.expensestracker.domain.RecurringExpenseGenerator
+import com.example.expensestracker.domain.SavingsMath
 import com.example.expensestracker.domain.attributedTo
 import com.example.expensestracker.ui.GroupContext
 import kotlinx.coroutines.flow.Flow
@@ -52,7 +54,13 @@ data class MonthUiState(
     /** This month's spend split into needs and everything else, by the viewer's essential categories. */
     val essentialSplit: EssentialSplit = EssentialSplit(),
     /** Ids of the viewer's categories currently marked essential. Empty means the split hasn't been set up yet. */
-    val essentialCategoryIds: Set<String> = emptySet()
+    val essentialCategoryIds: Set<String> = emptySet(),
+    /**
+     * Net the viewer moved into savings goals this month (deposits minus withdrawals). Not part of
+     * [totalSpent] - saving isn't spending - but it's budget already spoken for, so the budget view
+     * and the "where the money goes" split add it on top.
+     */
+    val savedThisMonth: Double = 0.0
 ) {
     /** Sum of the personal per-category budgets that have been set. */
     val categoryBudgetTotal: Double
@@ -105,7 +113,8 @@ class MonthViewModel(
     private val groupContext: GroupContext?,
     private val myUid: String,
     private val sharedCategoryLabel: String,
-    settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository,
+    personalSavingsRepository: SavingsRepository
 ) : ViewModel() {
     companion object {
         const val SHARED_BUCKET_ID = "__shared__"
@@ -159,16 +168,29 @@ class MonthViewModel(
     private val currencyRates = personalDataRepository.observeCurrencyRates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Every savings movement the viewer can see, personal and shared; netInMonth keeps only the
+    // viewer's own. Bundled with the rates since the month combine below is at its 5-flow limit.
+    private val ratesAndSavings = combine(
+        currencyRates,
+        personalSavingsRepository.observeEntries(),
+        groupContext?.savingsRepository?.observeEntries() ?: flowOf(emptyList())
+    ) { rates, personal, shared -> rates to (personal + shared) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<CurrencyRate>() to emptyList())
+
     /** Reactive state scoped to [yearMonth], recomputed as its underlying data changes. */
     fun uiStateFor(yearMonth: YearMonth): Flow<MonthUiState> {
         val monthStart = yearMonth.atDay(1)
         val monthEnd = yearMonth.atEndOfMonth()
-        return combine(allExpenses, categoriesAndAliases, settlementsAndGroup, budgets, currencyRates) {
-            expenses, catsAndAliases, settlementsAndGroupPair, budgetsTriple, rates ->
+        return combine(allExpenses, categoriesAndAliases, settlementsAndGroup, budgets, ratesAndSavings) {
+            expenses, catsAndAliases, settlementsAndGroupPair, budgetsTriple, ratesAndSavingsPair ->
             val (cats, aliases) = catsAndAliases
             val (settlements, group) = settlementsAndGroupPair
             val (monthlyBudget, categoryBudgets, defaultCurrency) = budgetsTriple
-            buildUiState(expenses, cats, aliases, settlements, group, monthlyBudget, categoryBudgets, rates, defaultCurrency, monthStart, monthEnd)
+            val (rates, savingsEntries) = ratesAndSavingsPair
+            buildUiState(
+                expenses, cats, aliases, settlements, group, monthlyBudget, categoryBudgets, rates, defaultCurrency,
+                monthStart, monthEnd, SavingsMath.netInMonth(savingsEntries, yearMonth, myUid)
+            )
         }
     }
 
@@ -260,7 +282,8 @@ class MonthViewModel(
         currencyRates: List<CurrencyRate>,
         defaultCurrency: String,
         monthStart: LocalDate,
-        monthEnd: LocalDate
+        monthEnd: LocalDate,
+        savedThisMonth: Double
     ): MonthUiState {
         val monthExpenses = expenses.attributedTo(monthStart, monthEnd)
         val myMonthSpend = monthExpenses.sumOf { it.shareFor(myUid) }
@@ -312,7 +335,8 @@ class MonthViewModel(
             defaultCurrency = defaultCurrency,
             categoryExpenses = categoryExpenses,
             essentialSplit = EssentialSplitCalculator.compute(monthExpenses, categories, aliases, myUid),
-            essentialCategoryIds = categories.filter { it.essential }.map { it.id }.toSet()
+            essentialCategoryIds = categories.filter { it.essential }.map { it.id }.toSet(),
+            savedThisMonth = savedThisMonth
         )
     }
 

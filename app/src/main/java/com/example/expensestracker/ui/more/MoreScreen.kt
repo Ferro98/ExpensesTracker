@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +44,7 @@ fun MoreScreen(
     onOpenRecurring: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenGroup: () -> Unit,
+    onOpenSavings: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     LazyColumn(
@@ -65,6 +67,14 @@ fun MoreScreen(
                 title = stringResource(R.string.title_categories),
                 subtitle = stringResource(R.string.more_categories_desc),
                 onClick = onOpenCategories
+            )
+        }
+        item {
+            MoreEntry(
+                icon = Icons.Default.Savings,
+                title = stringResource(R.string.title_savings),
+                subtitle = stringResource(R.string.more_savings_desc),
+                onClick = onOpenSavings
             )
         }
         item {

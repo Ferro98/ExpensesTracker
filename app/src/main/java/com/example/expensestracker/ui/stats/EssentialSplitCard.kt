@@ -42,6 +42,7 @@ import com.example.expensestracker.data.model.CategorySpending
 import com.example.expensestracker.data.model.DefaultUserData
 import com.example.expensestracker.domain.EssentialSplit
 import com.example.expensestracker.ui.month.MonthViewModel
+import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.localizedCategoryName
 import kotlin.math.roundToInt
@@ -56,9 +57,13 @@ fun EssentialSplitCard(
     split: EssentialSplit,
     configured: Boolean,
     onChooseEssentials: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Net put into savings goals this month. Not spending, but part of where the budget went, so
+    // it's the third slice: needs, wants, savings.
+    saved: Double = 0.0
 ) {
-    if (configured && split.total <= 0) return
+    val savedAmount = saved.coerceAtLeast(0.0)
+    if (configured && split.total <= 0 && savedAmount <= 0) return
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -85,7 +90,8 @@ fun EssentialSplitCard(
 
             val essentialColor = MaterialTheme.colorScheme.primary
             val extraColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
-            val essentialShare = split.essentialShare ?: 0.0
+            val savedColor = MaterialTheme.semanticColors.positive
+            val outflow = split.total + savedAmount
 
             Row(
                 modifier = Modifier
@@ -94,22 +100,25 @@ fun EssentialSplitCard(
                     .clip(RoundedCornerShape(6.dp))
                     .background(extraColor)
             ) {
-                if (essentialShare > 0) {
-                    Box(
-                        modifier = Modifier
-                            .weight(essentialShare.toFloat().coerceAtLeast(0.001f))
-                            .height(12.dp)
-                            .background(essentialColor)
-                    )
-                }
-                if (essentialShare < 1) {
-                    Spacer(Modifier.weight((1 - essentialShare).toFloat().coerceAtLeast(0.001f)))
+                listOf(split.essential to essentialColor, split.extra to extraColor, savedAmount to savedColor).forEach { (amount, color) ->
+                    if (amount > 0 && outflow > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight((amount / outflow).toFloat().coerceAtLeast(0.001f))
+                                .height(12.dp)
+                                .background(color)
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(14.dp))
-            SplitLegendRow(stringResource(R.string.stats_essentials_label), split.essential, split.total, essentialColor)
+            SplitLegendRow(stringResource(R.string.stats_essentials_label), split.essential, outflow, essentialColor)
             Spacer(Modifier.height(8.dp))
-            SplitLegendRow(stringResource(R.string.stats_extra_label), split.extra, split.total, extraColor)
+            SplitLegendRow(stringResource(R.string.stats_extra_label), split.extra, outflow, extraColor)
+            if (savedAmount > 0) {
+                Spacer(Modifier.height(8.dp))
+                SplitLegendRow(stringResource(R.string.stats_saved_label), savedAmount, outflow, savedColor)
+            }
             Spacer(Modifier.height(4.dp))
             TextButton(onClick = onChooseEssentials) { Text(stringResource(R.string.stats_essentials_edit)) }
         }

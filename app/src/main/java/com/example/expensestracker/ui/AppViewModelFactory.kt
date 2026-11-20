@@ -11,6 +11,7 @@ import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
 import com.example.expensestracker.ui.month.MonthViewModel
 import com.example.expensestracker.ui.onboarding.OnboardingViewModel
 import com.example.expensestracker.ui.recurring.RecurringViewModel
+import com.example.expensestracker.ui.savings.SavingsViewModel
 import com.example.expensestracker.ui.settings.SettingsViewModel
 
 /** [myUid] is always resolved before this factory is ever constructed (see MainActivity); only [groupId] is optional. */
@@ -23,15 +24,23 @@ class AppViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val personalExpenseRepository = app.personalExpenseRepositoryFor(myUid)
         val personalDataRepository = app.personalDataRepositoryFor(myUid)
+        val personalSavingsRepository = app.personalSavingsRepositoryFor(myUid)
         val groupContext = groupId?.let {
-            GroupContext(it, app.groupRepository, app.groupExpenseRepositoryFor(it), app.settlementRepositoryFor(it))
+            GroupContext(it, app.groupRepository, app.groupExpenseRepositoryFor(it), app.settlementRepositoryFor(it), app.groupSavingsRepositoryFor(it))
         }
 
         return when {
             modelClass.isAssignableFrom(MonthViewModel::class.java) ->
                 MonthViewModel(
                     personalExpenseRepository, personalDataRepository, groupContext, myUid,
-                    app.getString(R.string.dashboard_shared_category), app.settingsRepository
+                    app.getString(R.string.dashboard_shared_category), app.settingsRepository,
+                    personalSavingsRepository
+                ) as T
+
+            modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
+                SavingsViewModel(
+                    personalSavingsRepository, personalExpenseRepository, personalDataRepository,
+                    groupContext, app.settingsRepository, myUid
                 ) as T
 
             modelClass.isAssignableFrom(AddExpenseViewModel::class.java) ->

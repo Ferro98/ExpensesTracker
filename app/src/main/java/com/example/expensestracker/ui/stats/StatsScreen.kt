@@ -151,12 +151,13 @@ private fun MonthBreakdown(
         }
 
         val essentialsConfigured = uiState.essentialCategoryIds.isNotEmpty()
-        if (!essentialsConfigured || uiState.essentialSplit.total > 0) {
+        if (!essentialsConfigured || uiState.essentialSplit.total > 0 || uiState.savedThisMonth > 0) {
             item {
                 EssentialSplitCard(
                     split = uiState.essentialSplit,
                     configured = essentialsConfigured,
-                    onChooseEssentials = { showEssentialsDialog = true }
+                    onChooseEssentials = { showEssentialsDialog = true },
+                    saved = uiState.savedThisMonth
                 )
             }
         }
