@@ -15,6 +15,8 @@ import com.example.expensestracker.data.settings.SettingsRepository
 import com.example.expensestracker.domain.Balance
 import com.example.expensestracker.domain.BalanceCalculator
 import com.example.expensestracker.domain.CategoryResolver
+import com.example.expensestracker.domain.EssentialSplit
+import com.example.expensestracker.domain.EssentialSplitCalculator
 import com.example.expensestracker.domain.RecurringExpenseGenerator
 import com.example.expensestracker.domain.attributedTo
 import com.example.expensestracker.ui.GroupContext
@@ -46,7 +48,11 @@ data class MonthUiState(
     val currencyRates: List<CurrencyRate> = emptyList(),
     val defaultCurrency: String = "EUR",
     /** This month's expenses keyed by the viewer's category id they count toward (see [CategoryResolver]). */
-    val categoryExpenses: Map<String, List<Expense>> = emptyMap()
+    val categoryExpenses: Map<String, List<Expense>> = emptyMap(),
+    /** This month's spend split into needs and everything else, by the viewer's essential categories. */
+    val essentialSplit: EssentialSplit = EssentialSplit(),
+    /** Ids of the viewer's categories currently marked essential. Empty means the split hasn't been set up yet. */
+    val essentialCategoryIds: Set<String> = emptySet()
 ) {
     /** Sum of the personal per-category budgets that have been set. */
     val categoryBudgetTotal: Double
@@ -57,8 +63,8 @@ data class MonthUiState(
         get() = categorySpending.filter { it.spent > 0 || it.monthlyBudget != null }.sortedByDescending { it.spent }
 }
 
-/** One point of the Stats trend chart. */
-data class MonthTotal(val yearMonth: YearMonth, val totalSpent: Double)
+/** One point of the Stats trend chart; [essentialSpent] is the part of [totalSpent] that went on essential categories. */
+data class MonthTotal(val yearMonth: YearMonth, val totalSpent: Double, val essentialSpent: Double = 0.0)
 
 /** [months] oldest first, ending at the month the chart is centered on. */
 data class MonthlyTrend(val months: List<MonthTotal> = emptyList(), val monthlyBudget: Double? = null)
@@ -182,13 +188,13 @@ class MonthViewModel(
      */
     fun monthlyTrendFor(yearMonth: YearMonth, monthsBack: Int = 6): Flow<MonthlyTrend> {
         val months = (monthsBack - 1 downTo 0).map { yearMonth.minusMonths(it.toLong()) }
-        return combine(allExpenses, budgets) { expenses, budgetsTriple ->
+        return combine(allExpenses, budgets, categoriesAndAliases) { expenses, budgetsTriple, catsAndAliases ->
             val (monthlyBudget, _, _) = budgetsTriple
+            val (cats, aliases) = catsAndAliases
             val totals = months.map { ym ->
-                val start = ym.atDay(1)
-                val end = ym.atEndOfMonth()
-                val spent = expenses.attributedTo(start, end).sumOf { it.shareFor(myUid) }
-                MonthTotal(ym, spent)
+                val attributed = expenses.attributedTo(ym.atDay(1), ym.atEndOfMonth())
+                val split = EssentialSplitCalculator.compute(attributed, cats, aliases, myUid)
+                MonthTotal(ym, split.total, split.essential)
             }
             MonthlyTrend(totals, monthlyBudget)
         }
@@ -304,8 +310,28 @@ class MonthViewModel(
             partnerName = partnerName,
             currencyRates = currencyRates,
             defaultCurrency = defaultCurrency,
-            categoryExpenses = categoryExpenses
+            categoryExpenses = categoryExpenses,
+            essentialSplit = EssentialSplitCalculator.compute(monthExpenses, categories, aliases, myUid),
+            essentialCategoryIds = categories.filter { it.essential }.map { it.id }.toSet()
         )
+    }
+
+    /**
+     * Makes [essentialIds] exactly the set of essential categories, rewriting only the ones whose
+     * flag actually changes. Categories are private per user, so this never touches the partner's.
+     */
+    fun saveEssentialCategories(essentialIds: Set<String>) {
+        val categories = categoriesAndAliases.value.first
+        viewModelScope.launch {
+            try {
+                categories
+                    .filter { (it.id in essentialIds) != it.essential }
+                    .forEach { personalDataRepository.updateCategory(it.copy(essential = it.id in essentialIds)) }
+            } catch (e: Exception) {
+                // Nothing to undo: Firestore applied each write to its local cache already, and a
+                // failed one just leaves that category as it was.
+            }
+        }
     }
 
     /**

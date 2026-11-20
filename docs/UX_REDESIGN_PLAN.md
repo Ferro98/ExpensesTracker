@@ -726,6 +726,58 @@ template", una cosa memorabile e il resto sobrio - sono stati applicati a mano s
   colori `CoralAccentLight/Dark`, non più usati. I colori delle categorie restano quelli scelti
   dall'utente.
 
+## 12. Categorie essenziali e salvadanaio: disegno (post-piano, 2026-11-20)
+
+Richieste: (1) distinguere categorie "essenziali" dalle altre; (2) un salvadanaio con obiettivi
+(personali o di gruppo), piano mensile e/o versato reale, prelievi; (3) altre idee utili. Ordine
+scelto dall'utente: prima gli essenziali, poi il salvadanaio. Il punto 1 è implementato (sotto);
+il salvadanaio è **solo progettato**, non costruito.
+
+### Essenziali (implementato)
+- `Category.essential` (default false). Proprietà della *categoria*, non della spesa: cambiarla
+  riclassifica tutto lo storico, e una spesa condivisa del partner conta secondo la *mia*
+  categoria a cui si risolve (`CategoryResolver`, comprese le unioni).
+- Default per i nuovi utenti: Trasporti, Alloggio, Bollette, Salute. Cibo e Ristoranti no (ristoranti
+  e spesa sono mischiati; lo decide l'utente). Per chi ha già le categorie, la scheda nelle
+  Statistiche è un invito a scegliere, con i default già spuntati (`DefaultUserData.isSuggestedEssential`).
+- `domain/EssentialSplit`: spesa del mese divisa in essenziali/extra sulla quota di chi guarda,
+  dopo `attributedTo` (un abbonamento porta solo la sua fetta). Tutto ciò che non si risolve o non è
+  essenziale è extra.
+- UI: interruttore "Essenziale" nel dialog categoria; scheda "Essenziali ed extra" in Statistiche
+  (barra, importi, %) con dialog a checklist; il grafico a 6 mesi diventa a due toni (scuro =
+  essenziali, chiaro = extra) appena esiste almeno un mese con essenziali.
+- Non fatto: ritmo giornaliero calcolato solo sugli extra.
+
+### Salvadanaio (solo progetto)
+- **Dati**: collezioni *piatte* `savingsGoals` e `savingsEntries` (con `goalId`), sia sotto
+  `users/{uid}` sia sotto `groups/{id}`. Piatte perché le regole Firestore attuali coprono solo
+  `…/{collezione}/{doc}`: una sotto-collezione annidata sarebbe negata senza toccarle.
+- **Registro, non saldo salvato**: ogni movimento è +versamento / −prelievo (data, chi, nota,
+  valuta convertita come le spese); il saldo è la somma. Due telefoni offline non si pestano i piedi
+  (stessa lezione di duplicati e ricorrenti); id deterministici dove serve.
+- **Obiettivo**: nome, emoji, importo (EUR), scadenza opzionale, piano mensile *per persona*.
+- **Piano e versato indipendenti**: il piano non registra mai nulla da solo. A inizio mese una
+  scheda in Home chiede "messi?" con [importo previsto] / [altro importo] / [niente]. Con scadenza
+  l'app calcola il ritmo; con entrambi mostra previsto contro versato e il ritardo.
+- **Prelievi** per gli imprevisti; "Usa il salvadanaio" a obiettivo raggiunto preleva e registra la
+  spesa vera.
+- **Gruppo**: barra divisa nei colori dei paganti; i versamenti **non** entrano in
+  `BalanceCalculator` (denaro che sposto io, non un debito); il dialog "nuove spese condivise" può
+  includere i movimenti del partner.
+- **Conteggio mensile (scelta dell'utente)**: un versamento *non* gonfia "speso", ma deve comparire
+  in "dove vanno i soldi del mese". Quindi: "speso" resta puro; la barra del budget e le Statistiche
+  mostrano speso + messo da parte (netto di prelievi) = budget impegnato, con "Salvadanai" come
+  voce a parte nella ripartizione. Un prelievo per un imprevisto compensa: la spesa conta, il
+  prelievo la riporta a zero sul budget.
+- **Navigazione**: voce "Salvadanai" in Altro + scheda in Home quando ce n'è almeno uno (niente
+  quinta tab: la barra col "+" centrale si affollerebbe).
+
+### Altre idee, in ordine di valore
+"Quanto posso spendere davvero" (budget − speso − ricorrenti ancora da addebitare − quote
+previste); esportazione CSV/backup; scorciatoia "Nuova spesa" sull'icona; elenco abbonamenti
+attivi con rinnovo; avvisi budget all'apertura; modalità privacy; progetti/viaggi con budget
+proprio. Foto degli scontrini escluse: Cloud Storage richiede ormai Blaze (da verificare).
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

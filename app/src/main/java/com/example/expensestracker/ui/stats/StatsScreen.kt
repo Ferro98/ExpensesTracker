@@ -18,8 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -80,6 +82,7 @@ fun StatsScreen(
             comparison = comparison,
             onOpenCategory = { detailState.openCategory(it, uiState) },
             onAddExpense = onAddExpense,
+            onSaveEssentials = viewModel::saveEssentialCategories,
             onMonthClick = { target ->
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(pageForMonth(viewModel.currentMonth, target))
@@ -105,8 +108,10 @@ private fun MonthBreakdown(
     comparison: MonthComparison,
     onOpenCategory: (CategorySpending) -> Unit,
     onAddExpense: () -> Unit,
+    onSaveEssentials: (Set<String>) -> Unit,
     onMonthClick: (YearMonth) -> Unit
 ) {
+    var showEssentialsDialog by remember { mutableStateOf(false) }
     val categories = uiState.categorySpendingByAmount
     val chartColors = remember(categories) { distinctChartColors(categories) }
     val categoryTotal = categories.sumOf { it.spent }
@@ -142,6 +147,17 @@ private fun MonthBreakdown(
                         )
                     }
                 }
+            }
+        }
+
+        val essentialsConfigured = uiState.essentialCategoryIds.isNotEmpty()
+        if (!essentialsConfigured || uiState.essentialSplit.total > 0) {
+            item {
+                EssentialSplitCard(
+                    split = uiState.essentialSplit,
+                    configured = essentialsConfigured,
+                    onChooseEssentials = { showEssentialsDialog = true }
+                )
             }
         }
 
@@ -206,5 +222,17 @@ private fun MonthBreakdown(
 
         // Clears the centred FAB floating above the navigation bar.
         item { Spacer(modifier = Modifier.height(72.dp)) }
+    }
+
+    if (showEssentialsDialog) {
+        EssentialCategoriesDialog(
+            categories = uiState.categorySpending,
+            currentEssentialIds = uiState.essentialCategoryIds,
+            onDismiss = { showEssentialsDialog = false },
+            onConfirm = { ids ->
+                onSaveEssentials(ids)
+                showEssentialsDialog = false
+            }
+        )
     }
 }

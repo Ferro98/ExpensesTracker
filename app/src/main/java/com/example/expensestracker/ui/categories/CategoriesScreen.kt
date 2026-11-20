@@ -42,6 +42,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -241,8 +242,8 @@ fun CategoriesScreen(
             monthlyBudget = uiState.monthlyBudget,
             otherCategoryBudgetsTotal = uiState.categoryBudgets.values.sum(),
             onDismiss = onDismissAddDialog,
-            onSave = { name, icon, color, budget, budgetCcy ->
-                viewModel.addCategory(name, icon, color, budget, budgetCcy)
+            onSave = { name, icon, color, budget, budgetCcy, essential ->
+                viewModel.addCategory(name, icon, color, budget, budgetCcy, essential)
                 onDismissAddDialog()
             }
         )
@@ -258,8 +259,8 @@ fun CategoriesScreen(
             monthlyBudget = uiState.monthlyBudget,
             otherCategoryBudgetsTotal = uiState.categoryBudgets.filterKeys { it != category.id }.values.sum(),
             onDismiss = { editingCategory = null },
-            onSave = { name, icon, color, budget, budgetCcy ->
-                viewModel.updateCategory(category, name, icon, color, budget, budgetCcy)
+            onSave = { name, icon, color, budget, budgetCcy, essential ->
+                viewModel.updateCategory(category, name, icon, color, budget, budgetCcy, essential)
                 editingCategory = null
             }
         )
@@ -430,8 +431,9 @@ private fun CategoryRow(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(category.name, fontWeight = FontWeight.SemiBold)
+                val budgetText = budget?.let { stringResource(R.string.budget_prefix, formatMoney(it)) } ?: stringResource(R.string.no_budget)
                 Text(
-                    text = budget?.let { stringResource(R.string.budget_prefix, formatMoney(it)) } ?: stringResource(R.string.no_budget),
+                    text = if (category.essential) "${stringResource(R.string.category_essential_tag)} · $budgetText" else budgetText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -468,8 +470,9 @@ private fun CategoryEditDialog(
     monthlyBudget: Double?,
     otherCategoryBudgetsTotal: Double,
     onDismiss: () -> Unit,
-    onSave: (name: String, icon: String, color: String, budget: Double?, budgetCurrency: String) -> Unit
+    onSave: (name: String, icon: String, color: String, budget: Double?, budgetCurrency: String, essential: Boolean) -> Unit
 ) {
+    var essential by remember { mutableStateOf(initial?.essential ?: false) }
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var icon by remember { mutableStateOf(initial?.icon ?: presetIcons.first()) }
     var color by remember { mutableStateOf(initial?.colorHex ?: nextUnusedCategoryColor(usedColors)) }
@@ -530,6 +533,18 @@ private fun CategoryEditDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.category_essential_label), style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            stringResource(R.string.category_essential_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = essential, onCheckedChange = { essential = it })
+                }
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = budgetText,
                     onValueChange = { input ->
@@ -573,7 +588,7 @@ private fun CategoryEditDialog(
             TextButton(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onSave(name.trim(), icon, color, budgetText.replace(',', '.').toDoubleOrNull(), budgetCurrency)
+                        onSave(name.trim(), icon, color, budgetText.replace(',', '.').toDoubleOrNull(), budgetCurrency, essential)
                     }
                 },
                 enabled = name.isNotBlank()

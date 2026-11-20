@@ -20,15 +20,31 @@ object DefaultUserData {
      */
     fun categories(context: Context): List<Category> = listOf(
         Category(name = context.getString(R.string.default_category_food), icon = "🍔", colorHex = "#FF7043", sortOrder = 0),
-        Category(name = context.getString(R.string.default_category_transport), icon = "🚌", colorHex = "#42A5F5", sortOrder = 1),
-        Category(name = context.getString(R.string.default_category_accommodation), icon = "🏨", colorHex = "#AB47BC", sortOrder = 2),
+        Category(name = context.getString(R.string.default_category_transport), icon = "🚌", colorHex = "#42A5F5", sortOrder = 1, essential = true),
+        Category(name = context.getString(R.string.default_category_accommodation), icon = "🏨", colorHex = "#AB47BC", sortOrder = 2, essential = true),
         Category(name = context.getString(R.string.default_category_shopping), icon = "🛍️", colorHex = "#EC407A", sortOrder = 3),
         Category(name = context.getString(R.string.default_category_entertainment), icon = "🎉", colorHex = "#FFA726", sortOrder = 4),
-        Category(name = context.getString(R.string.default_category_bills), icon = "📱", colorHex = "#5C6BC0", sortOrder = 5),
-        Category(name = context.getString(R.string.default_category_health), icon = "💊", colorHex = "#26A69A", sortOrder = 6),
+        Category(name = context.getString(R.string.default_category_bills), icon = "📱", colorHex = "#5C6BC0", sortOrder = 5, essential = true),
+        Category(name = context.getString(R.string.default_category_health), icon = "💊", colorHex = "#26A69A", sortOrder = 6, essential = true),
         Category(name = context.getString(R.string.default_category_travel), icon = "✈️", colorHex = "#29B6F6", sortOrder = 7),
         Category(name = context.getString(R.string.default_category_other), icon = "📦", colorHex = "#78909C", sortOrder = 8)
     )
+
+    private val suggestedEssentialNames = setOf(
+        R.string.default_category_transport,
+        R.string.default_category_accommodation,
+        R.string.default_category_bills,
+        R.string.default_category_health
+    )
+
+    /**
+     * Whether a category with this stored name is one of the defaults that counts as a need - used
+     * to pre-tick the "which categories are essential" checklist for someone whose categories were
+     * created before the flag existed. Food & Dining is deliberately not suggested: it's restaurants
+     * as much as groceries, and only the user knows which they use it for.
+     */
+    fun isSuggestedEssential(categoryName: String): Boolean =
+        knownDefaultNameVariants[categoryName] in suggestedEssentialNames
 
     /**
      * Every literal name this app has ever seeded a default category with, in any supported

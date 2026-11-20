@@ -69,6 +69,20 @@
     <string name="by_category">Per categoria</string>
     <string name="stats_trend_title">Ultimi 6 mesi</string>
     <string name="stats_trend_budget_line">Linea tratteggiata: budget mensile %1$s</string>
+    <string name="stats_trend_essentials_legend">Più scuro: essenziali · più chiaro: extra</string>
+
+    <!-- Categorie essenziali ed extra -->
+    <string name="category_essential_label">Essenziale</string>
+    <string name="category_essential_hint">Una necessità, non un extra: conta come \"Essenziali\" nelle Statistiche.</string>
+    <string name="category_essential_tag">Essenziale</string>
+    <string name="stats_essentials_title">Essenziali ed extra</string>
+    <string name="stats_essentials_label">Essenziali</string>
+    <string name="stats_extra_label">Extra</string>
+    <string name="stats_essentials_setup_hint">Segna quali categorie sono essenziali (affitto, bollette, salute…) per vedere quanto del mese va in necessità e quanto in extra.</string>
+    <string name="stats_essentials_setup_action">Scegli</string>
+    <string name="stats_essentials_edit">Modifica categorie essenziali</string>
+    <string name="essentials_dialog_title">Quali categorie sono essenziali?</string>
+    <string name="essentials_dialog_hint">Le necessità a cui non puoi rinunciare. Tutto il resto conta come extra. Puoi cambiarlo quando vuoi.</string>
     <string name="stats_donut_title">%1$s per categoria</string>
     <string name="stats_vs_last_month">Rispetto a %1$s</string>
     <string name="stats_previous_total">%1$s il mese scorso</string>

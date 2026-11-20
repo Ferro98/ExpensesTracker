@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.stringResource
@@ -57,6 +58,12 @@ fun MonthlyTrendChart(
 
     val primary = MaterialTheme.colorScheme.primary
     val mutedBar = primary.copy(alpha = 0.32f)
+    // Only once there are essential categories to split by: every bar then shows needs (darker)
+    // under everything else (lighter), instead of one flat tone.
+    val showSplit = months.any { it.essentialSpent > 0 }
+    val extraSelected = primary.copy(alpha = 0.5f)
+    val essentialMuted = primary.copy(alpha = 0.45f)
+    val extraMuted = primary.copy(alpha = 0.22f)
     val baseline = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
     val budgetColor = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -90,15 +97,41 @@ fun MonthlyTrendChart(
                                 )
                                 Spacer(Modifier.height(3.dp))
                             }
-                            Box(
-                                modifier = Modifier
-                                    .width(if (spent > 0) 26.dp else 18.dp)
-                                    .height(if (spent > 0) (BarAreaHeight * fraction).coerceAtLeast(4.dp) else 2.dp)
-                                    .background(
-                                        color = if (spent <= 0) baseline else if (selected) primary else mutedBar,
-                                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
-                                    )
-                            )
+                            val barShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+                            val barWidth = if (spent > 0) 26.dp else 18.dp
+                            val barHeight = if (spent > 0) (BarAreaHeight * fraction).coerceAtLeast(4.dp) else 2.dp
+                            if (showSplit && spent > 0) {
+                                // Two tones in one bar: needs at the bottom, the rest on top.
+                                val essentialFraction = (month.essentialSpent / spent).toFloat().coerceIn(0f, 1f)
+                                Column(modifier = Modifier.width(barWidth).height(barHeight).clip(barShape)) {
+                                    if (essentialFraction < 1f) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight((1f - essentialFraction).coerceAtLeast(0.001f))
+                                                .fillMaxWidth()
+                                                .background(if (selected) extraSelected else extraMuted)
+                                        )
+                                    }
+                                    if (essentialFraction > 0f) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(essentialFraction.coerceAtLeast(0.001f))
+                                                .fillMaxWidth()
+                                                .background(if (selected) primary else essentialMuted)
+                                        )
+                                    }
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .width(barWidth)
+                                        .height(barHeight)
+                                        .background(
+                                            color = if (spent <= 0) baseline else if (selected) primary else mutedBar,
+                                            shape = barShape
+                                        )
+                                )
+                            }
                         }
                         Text(
                             formatMonthShort(month.yearMonth),
@@ -126,12 +159,20 @@ fun MonthlyTrendChart(
             }
         }
 
+        if (showSplit) {
+            Text(
+                stringResource(R.string.stats_trend_essentials_legend),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+            )
+        }
         if (budget != null) {
             Text(
                 stringResource(R.string.stats_trend_budget_line, formatMoney(budget)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, start = 8.dp)
+                modifier = Modifier.padding(top = if (showSplit) 2.dp else 8.dp, start = 8.dp)
             )
         }
     }

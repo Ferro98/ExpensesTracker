@@ -98,18 +98,18 @@ class CategoriesViewModel(
         }
     }
 
-    fun addCategory(name: String, icon: String, colorHex: String, budget: Double?, budgetCurrency: String) {
+    fun addCategory(name: String, icon: String, colorHex: String, budget: Double?, budgetCurrency: String, essential: Boolean) {
         viewModelScope.launch {
             val id = repository.addCategory(
-                Category(name = name, icon = icon, colorHex = colorHex, sortOrder = uiState.value.categories.size)
+                Category(name = name, icon = icon, colorHex = colorHex, sortOrder = uiState.value.categories.size, essential = essential)
             )
             settingsRepository.setCategoryBudget(id, budget?.let { toBase(it, budgetCurrency) })
         }
     }
 
-    fun updateCategory(category: Category, name: String, icon: String, colorHex: String, budget: Double?, budgetCurrency: String) {
+    fun updateCategory(category: Category, name: String, icon: String, colorHex: String, budget: Double?, budgetCurrency: String, essential: Boolean) {
         viewModelScope.launch {
-            repository.updateCategory(category.copy(name = name, icon = icon, colorHex = colorHex))
+            repository.updateCategory(category.copy(name = name, icon = icon, colorHex = colorHex, essential = essential))
             settingsRepository.setCategoryBudget(category.id, budget?.let { toBase(it, budgetCurrency) })
         }
     }

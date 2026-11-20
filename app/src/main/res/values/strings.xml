@@ -69,6 +69,20 @@
     <string name="by_category">By category</string>
     <string name="stats_trend_title">Last 6 months</string>
     <string name="stats_trend_budget_line">Dashed line: monthly budget %1$s</string>
+    <string name="stats_trend_essentials_legend">Darker: essentials · lighter: extras</string>
+
+    <!-- Essential vs extra categories -->
+    <string name="category_essential_label">Essential</string>
+    <string name="category_essential_hint">A need rather than a want - counts as \"Essentials\" in Stats.</string>
+    <string name="category_essential_tag">Essential</string>
+    <string name="stats_essentials_title">Essentials and extras</string>
+    <string name="stats_essentials_label">Essentials</string>
+    <string name="stats_extra_label">Extras</string>
+    <string name="stats_essentials_setup_hint">Mark which categories are essential (rent, bills, health…) to see how much of the month goes on needs and how much on extras.</string>
+    <string name="stats_essentials_setup_action">Choose</string>
+    <string name="stats_essentials_edit">Change essential categories</string>
+    <string name="essentials_dialog_title">Which categories are essential?</string>
+    <string name="essentials_dialog_hint">The needs you can\'t skip. Everything else counts as extras. You can change this any time.</string>
     <string name="stats_donut_title">%1$s by category</string>
     <string name="stats_vs_last_month">Vs %1$s</string>
     <string name="stats_previous_total">%1$s last month</string>
