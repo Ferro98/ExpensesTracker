@@ -25,6 +25,7 @@ class ExpensesTrackerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        registerAppShortcuts(this)
         val reminderCheck = PeriodicWorkRequestBuilder<ReminderWorker>(1, TimeUnit.DAYS).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "recurring_reminder_check",

@@ -1,5 +1,8 @@
 package com.example.expensestracker.util
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import java.time.LocalDate
 import java.time.YearMonth
@@ -21,7 +24,19 @@ fun currencySymbol(currencyCode: String): String = try {
     currencyCode
 }
 
+/**
+ * "Hide amounts": while on, every formatted figure shows dots instead. A Compose state read inside
+ * [formatMoney] itself, so flipping it recomposes every screen that shows an amount without each one
+ * having to know about it. Text typed into an input field is not masked - it's being entered, not displayed.
+ */
+object PrivacyMode {
+    var hidden: Boolean by mutableStateOf(false)
+}
+
+private const val MASKED_AMOUNT = "•••"
+
 fun formatMoney(amount: Double, currencyCode: String = "EUR"): String {
+    if (PrivacyMode.hidden) return "${currencySymbol(currencyCode)} $MASKED_AMOUNT"
     val formatted = String.format(appLocale, "%,.2f", amount)
     return "${currencySymbol(currencyCode)} $formatted"
 }
@@ -34,7 +49,8 @@ fun formatShortDate(date: LocalDate): String =
 
 /** "1,3k" / "840" - an amount short enough to sit on top of a chart bar. */
 fun formatCompactAmount(amount: Double): String =
-    if (amount >= 1000) String.format(appLocale, "%.1fk", amount / 1000).replace(Regex("[.,]0k$"), "k")
+    if (PrivacyMode.hidden) MASKED_AMOUNT
+    else if (amount >= 1000) String.format(appLocale, "%.1fk", amount / 1000).replace(Regex("[.,]0k$"), "k")
     else String.format(appLocale, "%.0f", amount)
 
 /** "29 ott 2026" - where the year matters, e.g. the two ends of a subscription period. */

@@ -353,6 +353,38 @@
     <string name="savings_channel_name">Savings reminders</string>
     <string name="savings_channel_description">Asks at the start of the month whether you put the planned amount into your savings pots</string>
     <string name="savings_reminder_body_many">%1$d savings pots have a planned deposit this month (%2$s in total). Did you put it in?</string>
+    <string name="budget_really_free">Really free: %1$s (%2$s a day)</string>
+    <string name="budget_really_free_negative">%1$s over once what\'s still to come is counted</string>
+    <string name="budget_ahead_note">Counting %1$s</string>
+    <string name="budget_ahead_fixed">%1$s of fixed expenses still to come</string>
+    <string name="budget_ahead_savings">%1$s of planned savings</string>
     <string name="budget_saved_note">Includes %1$s put aside</string>
     <string name="budget_withdrawn_note">Includes %1$s taken out of savings</string>
+
+    <!-- Budget alerts, privacy, export -->
+    <string name="budget_alert_title">Watch your budgets</string>
+    <string name="budget_alert_near">%1$s: %2$d%% of its budget (%3$s of %4$s)</string>
+    <string name="budget_alert_over">%1$s: over budget by %2$s</string>
+    <string name="cd_hide_amounts">Hide amounts</string>
+    <string name="cd_show_amounts">Show amounts</string>
+    <string name="privacy_data_label">Privacy and data</string>
+    <string name="privacy_hide_amounts">Hide amounts</string>
+    <string name="privacy_hide_amounts_desc">Shows dots instead of every figure. Also toggled from the eye in the top bar.</string>
+    <string name="export_csv">Export expenses (CSV)</string>
+    <string name="export_csv_desc">Every expense you can see, including shared ones, as a spreadsheet file you choose where to save.</string>
+    <string name="export_file_prefix">expenses</string>
+    <string name="export_done">Exported %1$d expenses</string>
+    <string name="export_failed">Couldn\'t export the expenses</string>
+    <string name="csv_date">Date</string>
+    <string name="csv_category">Category</string>
+    <string name="csv_note">Note</string>
+    <string name="csv_amount">Amount</string>
+    <string name="csv_currency">Currency</string>
+    <string name="csv_amount_base">Amount (EUR)</string>
+    <string name="csv_type">Type</string>
+    <string name="csv_type_shared">Shared</string>
+    <string name="csv_paid_by">Paid by</string>
+    <string name="csv_my_share">My share (EUR)</string>
+    <string name="csv_period_start">Period start</string>
+    <string name="csv_period_end">Period end</string>
 </resources>

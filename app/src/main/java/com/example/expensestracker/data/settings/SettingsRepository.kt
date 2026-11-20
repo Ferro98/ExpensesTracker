@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
         val LAST_SEEN_SHARED_EXPENSES_AT = longPreferencesKey("last_seen_shared_expenses_at")
         val CATEGORY_ALIASES = stringPreferencesKey("category_aliases")
         val LAST_SAVINGS_REMINDER_MONTH = stringPreferencesKey("last_savings_reminder_month")
+        val PRIVACY_MODE = booleanPreferencesKey("privacy_mode")
     }
 
     val myMonthlyBudget: Flow<Double?> = context.dataStore.data.map { prefs -> prefs[Keys.MY_MONTHLY_BUDGET] }
@@ -119,6 +120,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLastSavingsReminderMonth(month: String) {
         context.dataStore.edit { prefs -> prefs[Keys.LAST_SAVINGS_REMINDER_MONTH] = month }
+    }
+
+    /** Whether amounts are hidden everywhere (see util.PrivacyMode) - for glancing at the app with someone next to you. */
+    val privacyMode: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[Keys.PRIVACY_MODE] ?: false }
+
+    suspend fun setPrivacyMode(hidden: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.PRIVACY_MODE] = hidden }
     }
 
     suspend fun clearGroup() {

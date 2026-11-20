@@ -31,7 +31,9 @@ fun MonthSummaryCard(
     monthlyBudget: Double?,
     daysLeft: Int? = null,
     modifier: Modifier = Modifier,
-    savedThisMonth: Double = 0.0
+    savedThisMonth: Double = 0.0,
+    upcomingFixed: Double = 0.0,
+    plannedSavings: Double = 0.0
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -111,12 +113,39 @@ fun MonthSummaryCard(
                     color = if (savedThisMonth > 0) MaterialTheme.semanticColors.positive else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (daysLeft != null && daysLeft > 0 && remaining > 0) {
-                Text(
-                    stringResource(R.string.budget_daily_pace, formatMoney(remaining / daysLeft)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            val ahead = upcomingFixed + plannedSavings
+            if (daysLeft != null && daysLeft > 0) {
+                if (ahead > 0.005) {
+                    // "Left" counts only what's already gone out. Fixed expenses that haven't hit yet and
+                    // savings I've planned but not put in are just as spoken for, so the figure to
+                    // plan the rest of the month by takes them off too.
+                    val free = remaining - ahead
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        if (free >= 0)
+                            stringResource(R.string.budget_really_free, formatMoney(free), formatMoney(free / daysLeft))
+                        else
+                            stringResource(R.string.budget_really_free_negative, formatMoney(-free)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (free >= 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.semanticColors.negative
+                    )
+                    val parts = listOfNotNull(
+                        stringResource(R.string.budget_ahead_fixed, formatMoney(upcomingFixed)).takeIf { upcomingFixed > 0.005 },
+                        stringResource(R.string.budget_ahead_savings, formatMoney(plannedSavings)).takeIf { plannedSavings > 0.005 }
+                    )
+                    Text(
+                        stringResource(R.string.budget_ahead_note, parts.joinToString(" + ")),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (remaining > 0) {
+                    Text(
+                        stringResource(R.string.budget_daily_pace, formatMoney(remaining / daysLeft)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
         }

@@ -796,6 +796,32 @@ previste); esportazione CSV/backup; scorciatoia "Nuova spesa" sull'icona; elenco
 attivi con rinnovo; avvisi budget all'apertura; modalità privacy; progetti/viaggi con budget
 proprio. Foto degli scontrini escluse: Cloud Storage richiede ormai Blaze (da verificare).
 
+## 13. Salvadanaio fuori da Home, promemoria e altre funzioni (post-piano, 2026-11-21)
+
+- **Salvadanai solo nella loro sezione**: tolti da Home l'elenco progressi e il promemoria; il
+  promemoria vive in cima alla schermata Salvadanai. La barra del budget in Home continua a
+  mostrare "messo da parte" (riguarda dove vanno i soldi, non il salvadanaio in sé).
+- **Notifica di inizio mese** (`notifications/SavingsReminderWorker`): job giornaliero locale
+  (WorkManager, nessun server), agisce solo nei primi 5 giorni del mese e al massimo una volta al
+  mese (`lastSavingsReminderMonth`), solo se c'è un versamento previsto non ancora confermato. Il
+  mese si segna come "avvisato" solo se la notifica è stata davvero mostrata (senza permesso non
+  parte e si riprova). Il tocco apre Salvadanai; `MainActivity` diventa `singleTask` per
+  ricevere il tocco anche ad app aperta.
+- **"Davvero liberi"** (`domain/UpcomingRecurring`): sotto il budget, per il mese in corso, "rimasti"
+  diventa anche *meno le spese fisse ancora in arrivo e i risparmi previsti non ancora versati*,
+  con il per-giorno calcolato su quello. Conta la mia quota (split condivisi) convertita in valuta base.
+- **Esporta CSV** (Impostazioni → Privacy e dati): tutte le spese visibili (personali + gruppo) via
+  "salva con nome" di sistema, quindi senza permessi di archiviazione. Separatore dei campi e
+  decimale seguono la lingua (virgola decimale → `;`), BOM per Excel.
+- **Nascondi importi**: `PrivacyMode` (stato Compose letto da `formatMoney`, quindi tutto si
+  aggiorna da solo), occhio nella barra in alto + interruttore in Impostazioni.
+- **Scorciatoia "Nuova spesa"** sull'icona (pressione lunga), registrata da codice con
+  `ShortcutManagerCompat` così punta al package con cui l'app è davvero installata
+  (applicationId e namespace sono diversi).
+- **Avviso budget** in Home: categorie *non essenziali* al 90%+ del budget (o oltre). Gli
+  essenziali sono esclusi: l'affitto è al 100% ogni mese per costruzione.
+- **Non fatto**: elenco abbonamenti attivi, progetti/viaggi con budget proprio.
+
 ## Fonti consultate
 
 - [Monarch vs YNAB (Monarch)](https://www.monarch.com/compare/ynab-alternative)

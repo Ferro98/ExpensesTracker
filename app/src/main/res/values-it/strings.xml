@@ -353,6 +353,38 @@
     <string name="savings_channel_name">Promemoria salvadanai</string>
     <string name="savings_channel_description">Ti chiede a inizio mese se hai messo da parte l\'importo previsto nei salvadanai</string>
     <string name="savings_reminder_body_many">%1$d salvadanai hanno un versamento previsto questo mese (%2$s in totale). Li hai messi?</string>
+    <string name="budget_really_free">Davvero liberi: %1$s (%2$s al giorno)</string>
+    <string name="budget_really_free_negative">%1$s oltre, contando ciò che deve ancora uscire</string>
+    <string name="budget_ahead_note">Tenendo conto di %1$s</string>
+    <string name="budget_ahead_fixed">%1$s di spese fisse in arrivo</string>
+    <string name="budget_ahead_savings">%1$s di risparmi previsti</string>
     <string name="budget_saved_note">Compresi %1$s messi da parte</string>
     <string name="budget_withdrawn_note">Compresi %1$s prelevati dai salvadanai</string>
+
+    <!-- Avvisi budget, privacy, esportazione -->
+    <string name="budget_alert_title">Occhio ai budget</string>
+    <string name="budget_alert_near">%1$s: %2$d%% del budget (%3$s su %4$s)</string>
+    <string name="budget_alert_over">%1$s: budget superato di %2$s</string>
+    <string name="cd_hide_amounts">Nascondi gli importi</string>
+    <string name="cd_show_amounts">Mostra gli importi</string>
+    <string name="privacy_data_label">Privacy e dati</string>
+    <string name="privacy_hide_amounts">Nascondi gli importi</string>
+    <string name="privacy_hide_amounts_desc">Mostra dei puntini al posto di ogni cifra. Si cambia anche dall\'occhio nella barra in alto.</string>
+    <string name="export_csv">Esporta le spese (CSV)</string>
+    <string name="export_csv_desc">Tutte le spese che vedi, comprese quelle condivise, in un file per foglio di calcolo: scegli tu dove salvarlo.</string>
+    <string name="export_file_prefix">spese</string>
+    <string name="export_done">Esportate %1$d spese</string>
+    <string name="export_failed">Non sono riuscito a esportare le spese</string>
+    <string name="csv_date">Data</string>
+    <string name="csv_category">Categoria</string>
+    <string name="csv_note">Nota</string>
+    <string name="csv_amount">Importo</string>
+    <string name="csv_currency">Valuta</string>
+    <string name="csv_amount_base">Importo (EUR)</string>
+    <string name="csv_type">Tipo</string>
+    <string name="csv_type_shared">Condivisa</string>
+    <string name="csv_paid_by">Pagato da</string>
+    <string name="csv_my_share">Mia quota (EUR)</string>
+    <string name="csv_period_start">Inizio periodo</string>
+    <string name="csv_period_end">Fine periodo</string>
 </resources>

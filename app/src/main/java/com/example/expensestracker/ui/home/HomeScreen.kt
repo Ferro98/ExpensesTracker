@@ -39,7 +39,9 @@ import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
 import com.example.expensestracker.data.model.Expense
 import com.example.expensestracker.domain.Balance
+import com.example.expensestracker.ui.components.BudgetAlertCard
 import com.example.expensestracker.ui.components.CategorySpendingRow
+import com.example.expensestracker.ui.components.budgetAlertsFor
 import com.example.expensestracker.ui.components.EmptyState
 import com.example.expensestracker.ui.components.ExpenseRow
 import com.example.expensestracker.ui.components.MonthSummaryCard
@@ -128,8 +130,15 @@ fun HomeScreen(
                 totalSpent = uiState.totalSpent,
                 monthlyBudget = uiState.monthlyBudget,
                 daysLeft = daysLeft,
-                savedThisMonth = uiState.savedThisMonth
+                savedThisMonth = uiState.savedThisMonth,
+                upcomingFixed = uiState.upcomingFixed,
+                plannedSavings = uiState.plannedSavingsPending
             )
+        }
+
+        val budgetAlerts = budgetAlertsFor(uiState.categorySpending, uiState.essentialCategoryIds, MonthViewModel.SHARED_BUCKET_ID)
+        if (budgetAlerts.isNotEmpty()) {
+            item { BudgetAlertCard(budgetAlerts) }
         }
 
         // Right under the month total, ahead of the category list: for a couple, "who owes whom"

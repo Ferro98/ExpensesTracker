@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -86,7 +87,15 @@ fun SettingsScreen(factory: AppViewModelFactory) {
     val defaultSharedForExpense by viewModel.defaultSharedForExpense.collectAsState()
     val defaultSharedForRecurring by viewModel.defaultSharedForRecurring.collectAsState()
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
+    val privacyMode by viewModel.privacyMode.collectAsState()
     val context = LocalContext.current
+
+    // The system "save as" dialog hands back a document URI the app may write to, so exporting
+    // needs no storage permission.
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) viewModel.exportExpenses(uri)
+    }
+    val exportFileName = "${stringResource(R.string.export_file_prefix)}-${java.time.LocalDate.now()}.csv"
 
     val googleSignInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -174,6 +183,46 @@ fun SettingsScreen(factory: AppViewModelFactory) {
                         leadingIcon = { Icon(Icons.Default.BrightnessAuto, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         label = { Text(stringResource(R.string.theme_system)) }
                     )
+                }
+            }
+
+            item {
+                Text(
+                    stringResource(R.string.privacy_data_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        PreferenceSwitchRow(
+                            title = stringResource(R.string.privacy_hide_amounts),
+                            subtitle = stringResource(R.string.privacy_hide_amounts_desc),
+                            checked = privacyMode,
+                            onCheckedChange = viewModel::setPrivacyMode
+                        )
+                        OutlinedButton(
+                            onClick = { exportLauncher.launch(exportFileName) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.export_csv))
+                        }
+                        Text(
+                            stringResource(R.string.export_csv_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
 

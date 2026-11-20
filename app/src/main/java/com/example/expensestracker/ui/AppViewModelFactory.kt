@@ -59,7 +59,10 @@ class AppViewModelFactory(
                 NewSharedExpensesViewModel(groupContext, app.settingsRepository, myUid) as T
 
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(app, personalDataRepository, groupContext, app.settingsRepository, app.authRepository) as T
+                SettingsViewModel(
+                    app, personalDataRepository, groupContext, app.settingsRepository, app.authRepository,
+                    personalExpenseRepository, myUid
+                ) as T
 
             modelClass.isAssignableFrom(OnboardingViewModel::class.java) ->
                 OnboardingViewModel(app, app.groupRepository, app.settingsRepository, myUid) as T

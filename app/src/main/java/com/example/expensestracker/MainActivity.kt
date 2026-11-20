@@ -29,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -102,19 +104,26 @@ import com.example.expensestracker.ui.components.NewSharedExpensesDialog
 import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
 import com.example.expensestracker.ui.theme.semanticColors
+import com.example.expensestracker.util.PrivacyMode
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     // A plain Activity property (not inside setContent) so onNewIntent - which fires outside
     // Compose when the app is already running and the notification is tapped - can reach it.
     private var openSavingsSignal by mutableStateOf(false)
+    private var openAddExpenseSignal by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         openSavingsSignal = intent?.getBooleanExtra(EXTRA_OPEN_SAVINGS, false) == true
+        openAddExpenseSignal = intent?.action == ACTION_NEW_EXPENSE
         enableEdgeToEdge()
         val app = application as ExpensesTrackerApp
         setContent {
+            val appScope = rememberCoroutineScope()
+            // Mirrors the stored "hide amounts" preference into the state formatMoney reads.
+            val privacyHidden by app.settingsRepository.privacyMode.collectAsState(initial = false)
+            LaunchedEffect(privacyHidden) { PrivacyMode.hidden = privacyHidden }
             val themeMode by app.settingsRepository.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val darkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
@@ -168,7 +177,11 @@ class MainActivity : ComponentActivity() {
                             vmKey = "$groupId:$uid",
                             isOnline = isOnline,
                             openSavingsSignal = openSavingsSignal,
-                            onOpenSavingsHandled = { openSavingsSignal = false }
+                            onOpenSavingsHandled = { openSavingsSignal = false },
+                            openAddExpenseSignal = openAddExpenseSignal,
+                            onOpenAddExpenseHandled = { openAddExpenseSignal = false },
+                            privacyHidden = privacyHidden,
+                            onTogglePrivacy = { appScope.launch { app.settingsRepository.setPrivacyMode(!privacyHidden) } }
                         )
                     }
                 }
@@ -180,6 +193,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_SAVINGS, false)) openSavingsSignal = true
+        if (intent.action == ACTION_NEW_EXPENSE) openAddExpenseSignal = true
     }
 }
 
@@ -197,7 +211,11 @@ fun ExpensesTrackerRoot(
     vmKey: String,
     isOnline: Boolean = true,
     openSavingsSignal: Boolean = false,
-    onOpenSavingsHandled: () -> Unit = {}
+    onOpenSavingsHandled: () -> Unit = {},
+    openAddExpenseSignal: Boolean = false,
+    onOpenAddExpenseHandled: () -> Unit = {},
+    privacyHidden: Boolean = false,
+    onTogglePrivacy: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     // Consumed straight away so backing out of Savings afterwards doesn't jump there again.
@@ -211,6 +229,14 @@ fun ExpensesTrackerRoot(
     var showAddCategory by remember { mutableStateOf(false) }
     var showAddRecurring by remember { mutableStateOf(false) }
     var showAddSavingsGoal by remember { mutableStateOf(false) }
+    // From the launcher shortcut: straight to the add-expense sheet. Consumed at once so a
+    // rotation or recomposition doesn't reopen it.
+    LaunchedEffect(openAddExpenseSignal) {
+        if (openAddExpenseSignal) {
+            showAddExpense = true
+            onOpenAddExpenseHandled()
+        }
+    }
     // Unlike the per-screen ViewModels (each scoped to its own NavBackStackEntry, which gets
     // recreated whenever the NavHost itself is rebuilt below), these ViewModels are requested
     // directly here - outside any nav route - so they resolve to the Activity's own, long-lived
@@ -318,6 +344,16 @@ fun ExpensesTrackerRoot(
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                         }
+                    }
+                },
+                actions = {
+                    // One tap to blank every amount (and back) - for glancing at the app with
+                    // someone next to you, without a trip into Settings.
+                    IconButton(onClick = onTogglePrivacy) {
+                        Icon(
+                            if (privacyHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = stringResource(if (privacyHidden) R.string.cd_show_amounts else R.string.cd_hide_amounts)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
