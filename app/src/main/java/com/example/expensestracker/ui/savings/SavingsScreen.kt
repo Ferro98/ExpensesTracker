@@ -59,6 +59,7 @@ import com.example.expensestracker.domain.SavingsMath
 import com.example.expensestracker.ui.components.BudgetProgressBar
 import com.example.expensestracker.ui.components.CategoryPicker
 import com.example.expensestracker.ui.components.EmptyState
+import com.example.expensestracker.ui.components.SectionHeader
 import com.example.expensestracker.ui.components.SegmentedBudgetBar
 import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatMoney
@@ -101,7 +102,7 @@ fun SavingsScreen(
     // (goal id, amount to suggest) while the "other amount" dialog of a monthly check-in is open.
     var checkInOther by remember { mutableStateOf<Pair<String, Double>?>(null) }
 
-    fun goalById(id: String?) = uiState.goals.firstOrNull { it.goal.id == id }
+    fun goalById(id: String?) = (uiState.goals + uiState.archivedGoals).firstOrNull { it.goal.id == id }
 
     // Pots where I planned a monthly amount and haven't yet said whether it went in. A plan never
     // records a deposit by itself - only these answers do, so a pot can't claim money that wasn't
@@ -159,12 +160,25 @@ fun SavingsScreen(
                     modifier = Modifier.animateItem()
                 )
             }
-        } else if (uiState.loaded) {
+        } else if (uiState.loaded && uiState.archivedGoals.isEmpty()) {
             item {
                 EmptyState(
                     icon = "🐷",
                     title = stringResource(R.string.savings_empty_title),
                     action = { Button(onClick = onShowAddDialog) { Text(stringResource(R.string.savings_empty_action)) } }
+                )
+            }
+        }
+
+        if (uiState.archivedGoals.isNotEmpty()) {
+            item { SectionHeader(stringResource(R.string.savings_archived), topPadding = 8.dp) }
+            items(uiState.archivedGoals, key = { "archived-${it.goal.id}" }) { item ->
+                GoalCard(
+                    item = item,
+                    myUid = uiState.myUid,
+                    partnerName = uiState.partnerName,
+                    onClick = { selectedGoalId = item.goal.id },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -217,6 +231,10 @@ fun SavingsScreen(
             onDeposit = { entryRequest = EntryRequest(item.goal.id, SavingsEntryKind.DEPOSIT) },
             onWithdraw = { entryRequest = EntryRequest(item.goal.id, SavingsEntryKind.WITHDRAWAL) },
             onUse = { useGoalId = item.goal.id },
+            onArchive = {
+                viewModel.setArchived(item, !item.goal.archived)
+                selectedGoalId = null
+            },
             onEdit = { editingGoalId = item.goal.id },
             onDelete = { deleteGoalId = item.goal.id },
             onDeleteEntry = { viewModel.deleteEntry(item, it) }
@@ -438,6 +456,7 @@ private fun GoalDetailSheet(
     onDeposit: () -> Unit,
     onWithdraw: () -> Unit,
     onUse: () -> Unit,
+    onArchive: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onDeleteEntry: (SavingsEntry) -> Unit
@@ -557,11 +576,14 @@ private fun GoalDetailSheet(
                     Text(stringResource(R.string.savings_withdraw))
                 }
             }
-            if (item.complete && !item.isGroup) {
+            if (item.complete) {
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = onUse, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.savings_use)) }
             }
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onArchive) {
+                    Text(stringResource(if (goal.archived) R.string.savings_unarchive else R.string.savings_archive))
+                }
                 TextButton(onClick = onEdit) { Text(stringResource(R.string.cd_edit)) }
                 TextButton(onClick = onDelete) { Text(stringResource(R.string.cd_delete)) }
             }

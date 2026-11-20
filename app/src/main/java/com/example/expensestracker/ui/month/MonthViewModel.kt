@@ -82,7 +82,13 @@ data class MonthUiState(
 }
 
 /** One point of the Stats trend chart; [essentialSpent] is the part of [totalSpent] that went on essential categories. */
-data class MonthTotal(val yearMonth: YearMonth, val totalSpent: Double, val essentialSpent: Double = 0.0)
+data class MonthTotal(
+    val yearMonth: YearMonth,
+    val totalSpent: Double,
+    val essentialSpent: Double = 0.0,
+    /** Net the viewer moved into savings that month, never below zero (a net withdrawal isn't a negative bar). */
+    val savedAmount: Double = 0.0
+)
 
 /** [months] oldest first, ending at the month the chart is centered on. */
 data class MonthlyTrend(val months: List<MonthTotal> = emptyList(), val monthlyBudget: Double? = null)
@@ -251,13 +257,13 @@ class MonthViewModel(
      */
     fun monthlyTrendFor(yearMonth: YearMonth, monthsBack: Int = 6): Flow<MonthlyTrend> {
         val months = (monthsBack - 1 downTo 0).map { yearMonth.minusMonths(it.toLong()) }
-        return combine(allExpenses, budgets, categoriesAndAliases) { expenses, budgetsTriple, catsAndAliases ->
+        return combine(allExpenses, budgets, categoriesAndAliases, sideData) { expenses, budgetsTriple, catsAndAliases, side ->
             val (monthlyBudget, _, _) = budgetsTriple
             val (cats, aliases) = catsAndAliases
             val totals = months.map { ym ->
                 val attributed = expenses.attributedTo(ym.atDay(1), ym.atEndOfMonth())
                 val split = EssentialSplitCalculator.compute(attributed, cats, aliases, myUid)
-                MonthTotal(ym, split.total, split.essential)
+                MonthTotal(ym, split.total, split.essential, SavingsMath.netInMonth(side.savingsEntries, ym, myUid).coerceAtLeast(0.0))
             }
             MonthlyTrend(totals, monthlyBudget)
         }
@@ -463,7 +469,8 @@ class MonthViewModel(
                     payerShare = expense.payerShare,
                     periodStart = expense.localPeriodStart,
                     periodEnd = expense.localPeriodEnd,
-                    tripId = expense.tripId
+                    tripId = expense.tripId,
+                    paidFromPot = expense.paidFromPot
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.

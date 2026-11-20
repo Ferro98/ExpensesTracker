@@ -107,7 +107,8 @@ fun ExpenseRow(
                     categoryName.takeIf { note != null && !note.equals(categoryName, ignoreCase = true) },
                     formatShortDate(expense.localDate).takeIf { showDate },
                     sharedLabel,
-                    stringResource(R.string.subscription_short).takeIf { expense.hasPeriod }
+                    stringResource(R.string.subscription_short).takeIf { expense.hasPeriod },
+                    expense.tripId?.let { LocalTripNames.current[it] }
                 ).joinToString(" · ")
                 Text(
                     subtitle,

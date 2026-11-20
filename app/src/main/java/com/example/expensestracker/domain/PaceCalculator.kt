@@ -13,7 +13,9 @@ data class MonthPace(
     val dailyAverage: Double,
     val projectedTotal: Double,
     val excludedCount: Int,
-    val excludedTotal: Double
+    val excludedTotal: Double,
+    /** The same daily average counting only non-essential spending - the part you can actually steer. Null when essentials aren't set up. */
+    val extraDailyAverage: Double? = null
 )
 
 object PaceCalculator {
@@ -23,7 +25,20 @@ object PaceCalculator {
     /** Below this many expenses, a median is too noisy to call anything an "outlier" against it - everything counts as regular. */
     private const val MIN_EXPENSES_FOR_OUTLIER_DETECTION = 3
 
-    fun compute(monthExpenses: List<Expense>, myUid: String, totalSpent: Double, daysElapsed: Int, daysInMonth: Int): MonthPace {
+    /**
+     * [isEssential], when given, adds [MonthPace.extraDailyAverage]. It's a second figure rather than a
+     * change to the main one: essential spending (groceries, transport) keeps happening for the rest
+     * of the month, so leaving it out of the projection would make that too rosy - it only makes
+     * sense as "how much am I spending per day on things I could skip".
+     */
+    fun compute(
+        monthExpenses: List<Expense>,
+        myUid: String,
+        totalSpent: Double,
+        daysElapsed: Int,
+        daysInMonth: Int,
+        isEssential: ((Expense) -> Boolean)? = null
+    ): MonthPace {
         val shares = monthExpenses.map { it.shareFor(myUid) }.filter { it > 0 }.sorted()
         val median = when {
             shares.isEmpty() -> 0.0
@@ -49,11 +64,17 @@ object PaceCalculator {
         // forward - never re-projects a rent payment as if it recurred every remaining day.
         val projectedTotal = totalSpent + dailyAverage * daysRemaining
 
+        val extraDailyAverage = if (isEssential != null && daysElapsed > 0) {
+            val lumpIds = lumpExpenses.map { it.id }.toSet()
+            monthExpenses.filter { it.id !in lumpIds && !isEssential(it) }.sumOf { it.shareFor(myUid) } / daysElapsed
+        } else null
+
         return MonthPace(
             dailyAverage = dailyAverage,
             projectedTotal = projectedTotal,
             excludedCount = lumpExpenses.size,
-            excludedTotal = lumpTotal
+            excludedTotal = lumpTotal,
+            extraDailyAverage = extraDailyAverage
         )
     }
 }

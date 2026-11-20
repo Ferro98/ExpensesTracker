@@ -94,8 +94,8 @@ class GroupViewModel(
                 partnerUid = partnerUid,
                 partnerName = partnerName,
                 balance = balance,
-                paidByMe = sharedExpenses.filter { it.paidByUid == myUid }.sumOf { it.amountInBaseCurrency },
-                paidByPartner = sharedExpenses.filter { it.paidByUid == partnerUid }.sumOf { it.amountInBaseCurrency },
+                paidByMe = sharedExpenses.filter { it.paidByUid == myUid && !it.paidFromPot }.sumOf { it.amountInBaseCurrency },
+                paidByPartner = sharedExpenses.filter { it.paidByUid == partnerUid && !it.paidFromPot }.sumOf { it.amountInBaseCurrency },
                 activity = activity,
                 currencyRates = rates,
                 defaultCurrency = defaultCurrency
@@ -152,7 +152,8 @@ class GroupViewModel(
                     payerShare = expense.payerShare,
                     periodStart = expense.localPeriodStart,
                     periodEnd = expense.localPeriodEnd,
-                    tripId = expense.tripId
+                    tripId = expense.tripId,
+                    paidFromPot = expense.paidFromPot
                 )
             } catch (e: Exception) {
                 // Nothing more to do - see the doc comment above.

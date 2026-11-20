@@ -16,7 +16,9 @@ object BalanceCalculator {
         val m2 = sorted[1]
         var net = 0.0 // amount m2 owes m1
 
-        expenses.filter { it.isShared }.forEach { expense ->
+        // A pot-funded expense moved no money between the two of them - the pot already held it -
+        // so it can't create or change a debt.
+        expenses.filter { it.isShared && !it.paidFromPot }.forEach { expense ->
             val nonPayerShare = expense.amountInBaseCurrency * (1 - expense.payerShare)
             when (expense.paidByUid) {
                 m1 -> net += nonPayerShare

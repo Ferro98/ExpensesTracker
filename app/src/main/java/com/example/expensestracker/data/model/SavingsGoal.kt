@@ -46,8 +46,18 @@ data class SavingsEntry(
     val note: String? = null,
     /** Whose money moved - not necessarily who typed it in. */
     val byUid: String = "",
+    /**
+     * Who recorded it, when that isn't the same person (e.g. spending a shared pot writes one
+     * withdrawal per member, all recorded by whoever pressed the button). Null on older entries,
+     * which were always recorded by [byUid]. Lets the "what your partner did" notice tell their own
+     * actions apart from changes made on their behalf.
+     */
+    val recordedByUid: String? = null,
     val createdAt: Timestamp? = null
 ) {
+    /** Who actually did this - the recorder if known, else the owner of the money. */
+    val doneByUid: String get() = recordedByUid ?: byUid
+
     val localDate: LocalDate get() = LocalDate.parse(date)
 
     /** + for a deposit, - for a withdrawal, in the base currency. */

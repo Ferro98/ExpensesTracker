@@ -119,6 +119,30 @@ class SavingsMathTest {
     }
 
     @Test
+    fun aPotWithdrawalSplitsByWhatEachPersonPutIn() {
+        val entries = listOf(entry(150.0, "2026-09-05", "me"), entry(50.0, "2026-09-06", "her"))
+        val split = SavingsMath.potWithdrawalSplit(entries, 200.0)
+        assertEquals(150.0, split["me"]!!, 1e-9)
+        assertEquals(50.0, split["her"]!!, 1e-9)
+        // A smaller take keeps the same proportions.
+        val half = SavingsMath.potWithdrawalSplit(entries, 100.0)
+        assertEquals(75.0, half["me"]!!, 1e-9)
+        assertEquals(25.0, half["her"]!!, 1e-9)
+    }
+
+    @Test
+    fun aPotWithdrawalIgnoresSomeoneWhoTookOutMoreThanTheyPutIn() {
+        val entries = listOf(
+            entry(200.0, "2026-09-05", "me"),
+            entry(50.0, "2026-09-06", "her"),
+            entry(80.0, "2026-09-07", "her", SavingsEntryKind.WITHDRAWAL)
+        )
+        // Her net is -30: only my contribution counts, so it all comes out as mine.
+        assertEquals(mapOf("me" to 100.0), SavingsMath.potWithdrawalSplit(entries, 100.0))
+        assertTrue(SavingsMath.potWithdrawalSplit(emptyList(), 100.0).isEmpty())
+    }
+
+    @Test
     fun completeMeansTheTargetIsReached() {
         assertFalse(SavingsMath.isComplete(goal, listOf(entry(999.0, "2026-10-01"))))
         assertTrue(SavingsMath.isComplete(goal, listOf(entry(1000.0, "2026-10-01"))))

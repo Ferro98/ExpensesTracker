@@ -70,6 +70,7 @@
     <string name="stats_trend_title">Ultimi 6 mesi</string>
     <string name="stats_trend_budget_line">Linea tratteggiata: budget mensile %1$s</string>
     <string name="stats_trend_essentials_legend">Più scuro: essenziali · più chiaro: extra</string>
+    <string name="stats_trend_saved_legend">Verde in cima: messo da parte quel mese</string>
 
     <!-- Categorie essenziali ed extra -->
     <string name="category_essential_label">Essenziale</string>
@@ -90,6 +91,7 @@
     <string name="stats_biggest_movers">Variazioni maggiori</string>
     <string name="stats_pace_title">Ritmo</string>
     <string name="stats_daily_average">%1$s al giorno in media</string>
+    <string name="stats_pace_extras">Solo extra: %1$s al giorno</string>
     <string name="stats_projected_total">Proiezione fine mese: %1$s</string>
     <string name="stats_projected_over_budget">Previsto sforamento del budget: %1$s</string>
     <string name="stats_pace_excludes_one">Esclude 1 spesa occasionale, abbonamento o di viaggio (%1$s)</string>
@@ -333,7 +335,7 @@
     <string name="savings_delete_title">Eliminare questo salvadanaio?</string>
     <string name="savings_delete_text">Il salvadanaio e tutti i suoi movimenti verranno eliminati. Le spese già registrate restano.</string>
     <string name="savings_use_title">Usa \"%1$s\"</string>
-    <string name="savings_use_hint">Registra %1$s come spesa nella categoria che scegli e svuota il salvadanaio.</string>
+    <string name="savings_use_hint">Registra %1$s come spesa nella categoria che scegli e svuota il salvadanaio. In uno condiviso il costo si divide in base a quanto ha messo ciascuno, e nessuno resta a debito.</string>
     <string name="savings_goal_new_title">Nuovo salvadanaio</string>
     <string name="savings_goal_edit_title">Modifica salvadanaio</string>
     <string name="savings_goal_name">Nome (es. Disneyland)</string>
@@ -346,6 +348,12 @@
     <string name="savings_entry_withdraw_title">Preleva da %1$s</string>
     <string name="savings_withdraw_reason">Per cosa? (opzionale)</string>
     <string name="savings_entry_who">Di chi sono i soldi</string>
+    <string name="new_savings_moves_title">%1$s ha aggiornato i salvadanai condivisi</string>
+    <string name="new_savings_move_deposit">%1$s ha messo %2$s in %3$s</string>
+    <string name="new_savings_move_withdrawal">%1$s ha prelevato %2$s da %3$s</string>
+    <string name="savings_archived">Archiviati</string>
+    <string name="savings_archive">Archivia</string>
+    <string name="savings_unarchive">Ripristina</string>
     <string name="savings_checkin_text">%1$s: avevi previsto %2$s questo mese. Li hai messi?</string>
     <string name="savings_checkin_yes">Sì, %1$s</string>
     <string name="savings_checkin_other">Altro importo</string>

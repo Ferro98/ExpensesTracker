@@ -852,8 +852,32 @@ proprio. Foto degli scontrini escluse: Cloud Storage richiede ormai Blaze (da ve
   "Sta pagando il viaggio X". "Usalo per la spesa" (solo personali) ora tagga la spesa creata con
   il viaggio collegato. Un id che non corrisponde a nessun salvadanaio (cancellato) vale "non
   collegato". Aggiornato con `update` mirato (`FieldValue.delete()` per scollegare).
-- **Non fatto**: il segnalino del viaggio sulle righe spesa (servirebbe il nome del viaggio in
-  ogni lista).
+
+### Cose rimaste fuori dai giri precedenti, ora fatte (2026-11-22)
+- **Segnalino del viaggio sulle righe spesa**: `LocalTripNames` (mappa id → "✈️ Nome", non
+  statica) fornita una volta alla radice; `ExpenseRow` la legge e aggiunge il viaggio al
+  sottotitolo, senza che ogni lista debba caricare i viaggi.
+- **"Messo da parte" nel grafico a 6 mesi**: ogni barra è spesa + versamenti netti del mese
+  (mai sotto zero), con un segmento verde in cima; la linea del budget confronta la stessa somma
+  che mostra la barra del budget in Home. Legenda "Verde in cima".
+- **"Usalo per la spesa" anche per i salvadanai di gruppo**: la spesa è marcata
+  `Expense.paidFromPot` e **resta fuori da** `BalanceCalculator` e dai totali "pagato da me/da
+  lui" - nessuno ha anticipato niente, i soldi erano già nel salvadanaio - ma `payerShare`
+  registra il contributo di ciascuno, quindi la quota di spesa di ognuno è giusta. Il prelievo
+  è diviso in un movimento per membro, in proporzione a quanto ha messo (`potWithdrawalSplit`,
+  chi ne ha tolti più di quanti ne aveva messi non conta), così il netto personale di ognuno
+  torna a zero. Modificare/annullare l'eliminazione non fa perdere il flag.
+- **Movimenti del partner nel dialog "nuove spese condivise"**: anche cosa ha messo/prelevato
+  dai salvadanai condivisi. `SavingsEntry.recordedByUid` distingue chi ha registrato da chi è il
+  proprietario dei soldi, così il prelievo che ho fatto io usando il salvadanaio non viene
+  attribuito a lui; le spese pagate dal salvadanaio non contano come "aggiunte da lui".
+- **Archiviazione**: "Archivia"/"Ripristina" nel foglio del salvadanaio; gli archiviati stanno in
+  una sezione a parte e restano fuori da promemoria, selettore dei viaggi e totale.
+- **Ritmo solo sugli extra**: una riga in più nella scheda, "Solo extra: X al giorno". Il ritmo
+  principale non cambia di proposito: le spese essenziali (spesa, trasporti) continuano per il
+  resto del mese, escluderle dal ritmo renderebbe la proiezione troppo ottimistica.
+- **Ancora fuori**: modificare l'importo obiettivo nella valuta in cui era stato scritto (si
+  modifica in EUR, la valuta originale non è salvata).
 
 ## Fonti consultate
 

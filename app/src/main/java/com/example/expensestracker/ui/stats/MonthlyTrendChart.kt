@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.expensestracker.R
 import com.example.expensestracker.ui.month.MonthlyTrend
+import com.example.expensestracker.ui.theme.semanticColors
 import com.example.expensestracker.util.formatCompactAmount
 import com.example.expensestracker.util.formatMoney
 import com.example.expensestracker.util.formatMonthShort
@@ -54,9 +55,14 @@ fun MonthlyTrendChart(
     if (months.isEmpty()) return
 
     val budget = trend.monthlyBudget?.takeIf { it > 0 }
-    val scaleMax = maxOf(months.maxOf { it.totalSpent }, budget ?: 0.0).coerceAtLeast(1.0)
+    // A bar is what went out plus what was put into savings that month - the same two things the
+    // budget bar on Home adds up - so the dashed budget line compares like with like.
+    val scaleMax = maxOf(months.maxOf { it.totalSpent + it.savedAmount }, budget ?: 0.0).coerceAtLeast(1.0)
 
     val primary = MaterialTheme.colorScheme.primary
+    val savedColor = MaterialTheme.semanticColors.positive
+    val savedMuted = savedColor.copy(alpha = 0.45f)
+    val showSaved = months.any { it.savedAmount > 0 }
     val mutedBar = primary.copy(alpha = 0.32f)
     // Only once there are essential categories to split by: every bar then shows needs (darker)
     // under everything else (lighter), instead of one flat tone.
@@ -73,8 +79,11 @@ fun MonthlyTrendChart(
                 months.forEachIndexed { index, month ->
                     val selected = index == months.lastIndex
                     val spent = month.totalSpent
-                    val fraction = (spent / scaleMax).toFloat().coerceIn(0f, 1f)
-                    val description = "${formatMonthShort(month.yearMonth)}: ${formatMoney(spent)}"
+                    val saved = month.savedAmount
+                    val total = spent + saved
+                    val fraction = (total / scaleMax).toFloat().coerceIn(0f, 1f)
+                    val description = "${formatMonthShort(month.yearMonth)}: ${formatMoney(spent)}" +
+                        if (saved > 0) " + ${formatMoney(saved)}" else ""
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
@@ -87,9 +96,9 @@ fun MonthlyTrendChart(
                             verticalArrangement = Arrangement.Bottom,
                             modifier = Modifier.height(BarAreaHeight + LabelSlotHeight)
                         ) {
-                            if (spent > 0) {
+                            if (total > 0) {
                                 Text(
-                                    formatCompactAmount(spent),
+                                    formatCompactAmount(total),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (selected) primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -98,26 +107,27 @@ fun MonthlyTrendChart(
                                 Spacer(Modifier.height(3.dp))
                             }
                             val barShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
-                            val barWidth = if (spent > 0) 26.dp else 18.dp
-                            val barHeight = if (spent > 0) (BarAreaHeight * fraction).coerceAtLeast(4.dp) else 2.dp
-                            if (showSplit && spent > 0) {
-                                // Two tones in one bar: needs at the bottom, the rest on top.
-                                val essentialFraction = (month.essentialSpent / spent).toFloat().coerceIn(0f, 1f)
-                                Column(modifier = Modifier.width(barWidth).height(barHeight).clip(barShape)) {
-                                    if (essentialFraction < 1f) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight((1f - essentialFraction).coerceAtLeast(0.001f))
-                                                .fillMaxWidth()
-                                                .background(if (selected) extraSelected else extraMuted)
-                                        )
+                            val barWidth = if (total > 0) 26.dp else 18.dp
+                            val barHeight = if (total > 0) (BarAreaHeight * fraction).coerceAtLeast(4.dp) else 2.dp
+                            if (total > 0) {
+                                // Stacked bottom to top: needs, other spending (or all of it, when no
+                                // categories are marked essential), then what was put aside.
+                                val segments = buildList {
+                                    if (showSplit) {
+                                        add(month.essentialSpent to if (selected) primary else essentialMuted)
+                                        add((spent - month.essentialSpent) to if (selected) extraSelected else extraMuted)
+                                    } else {
+                                        add(spent to if (selected) primary else mutedBar)
                                     }
-                                    if (essentialFraction > 0f) {
+                                    add(saved to if (selected) savedColor else savedMuted)
+                                }.filter { it.first > 0.0 }
+                                Column(modifier = Modifier.width(barWidth).height(barHeight).clip(barShape)) {
+                                    segments.asReversed().forEach { (amount, color) ->
                                         Box(
                                             modifier = Modifier
-                                                .weight(essentialFraction.coerceAtLeast(0.001f))
+                                                .weight((amount / total).toFloat().coerceAtLeast(0.001f))
                                                 .fillMaxWidth()
-                                                .background(if (selected) primary else essentialMuted)
+                                                .background(color)
                                         )
                                     }
                                 }
@@ -126,10 +136,7 @@ fun MonthlyTrendChart(
                                     modifier = Modifier
                                         .width(barWidth)
                                         .height(barHeight)
-                                        .background(
-                                            color = if (spent <= 0) baseline else if (selected) primary else mutedBar,
-                                            shape = barShape
-                                        )
+                                        .background(color = baseline, shape = barShape)
                                 )
                             }
                         }
@@ -167,12 +174,20 @@ fun MonthlyTrendChart(
                 modifier = Modifier.padding(top = 8.dp, start = 8.dp)
             )
         }
+        if (showSaved) {
+            Text(
+                stringResource(R.string.stats_trend_saved_legend),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = if (showSplit) 2.dp else 8.dp, start = 8.dp)
+            )
+        }
         if (budget != null) {
             Text(
                 stringResource(R.string.stats_trend_budget_line, formatMoney(budget)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = if (showSplit) 2.dp else 8.dp, start = 8.dp)
+                modifier = Modifier.padding(top = if (showSplit || showSaved) 2.dp else 8.dp, start = 8.dp)
             )
         }
     }

@@ -53,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -103,6 +104,7 @@ import com.example.expensestracker.ui.subscriptions.SubscriptionsScreen
 import com.example.expensestracker.ui.trips.TripsScreen
 import com.example.expensestracker.ui.trips.TripsViewModel
 import com.example.expensestracker.ui.stats.StatsScreen
+import com.example.expensestracker.ui.components.LocalTripNames
 import com.example.expensestracker.ui.components.NewSharedExpensesDialog
 import com.example.expensestracker.ui.group.NewSharedExpensesViewModel
 import com.example.expensestracker.ui.theme.ExpensesTrackerTheme
@@ -330,6 +332,12 @@ fun ExpensesTrackerRoot(
         snackbarScope.launch { snackbarHostState.showSnackbar(expenseUpdatedMessage) }
     }
 
+    val tripsState by tripsViewModel.uiState.collectAsState()
+    val tripNames = remember(tripsState.trips) {
+        tripsState.trips.associate { it.trip.id to "${it.trip.icon} ${it.trip.name}" }
+    }
+
+    CompositionLocalProvider(LocalTripNames provides tripNames) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -528,13 +536,15 @@ fun ExpensesTrackerRoot(
         )
     }
 
-    if (newSharedExpensesState.newExpenses.isNotEmpty()) {
+    if (newSharedExpensesState.hasNews) {
         NewSharedExpensesDialog(
             expenses = newSharedExpensesState.newExpenses,
+            savingsMoves = newSharedExpensesState.savingsMoves,
             myUid = newSharedExpensesState.myUid,
             partnerName = newSharedExpensesState.partnerName,
             onDismiss = { newSharedExpensesViewModel.dismiss() }
         )
+    }
     }
 }
 

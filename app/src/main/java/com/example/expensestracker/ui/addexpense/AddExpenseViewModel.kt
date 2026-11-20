@@ -242,7 +242,9 @@ class AddExpenseViewModel(
                                 createdAt = editing.createdAt,
                                 periodStart = periodStart,
                                 periodEnd = periodEnd,
-                                tripId = tripId
+                                tripId = tripId,
+                                // Editing must not quietly turn a pot-funded expense into one somebody fronted.
+                                paidFromPot = editing.paidFromPot
                             )
                             null
                         }

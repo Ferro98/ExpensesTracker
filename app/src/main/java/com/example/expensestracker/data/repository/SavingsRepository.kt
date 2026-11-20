@@ -96,7 +96,8 @@ class SavingsRepository(private val scopeRef: DocumentReference) {
         amountInBaseCurrency: Double,
         date: LocalDate,
         note: String?,
-        byUid: String
+        byUid: String,
+        recordedByUid: String? = null
     ): String {
         val ref = entriesRef.document()
         ref.set(
@@ -109,6 +110,7 @@ class SavingsRepository(private val scopeRef: DocumentReference) {
                 date = date.toString(),
                 note = note,
                 byUid = byUid,
+                recordedByUid = recordedByUid,
                 createdAt = Timestamp.now()
             )
         ).await()

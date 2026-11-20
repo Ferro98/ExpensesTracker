@@ -70,6 +70,7 @@
     <string name="stats_trend_title">Last 6 months</string>
     <string name="stats_trend_budget_line">Dashed line: monthly budget %1$s</string>
     <string name="stats_trend_essentials_legend">Darker: essentials · lighter: extras</string>
+    <string name="stats_trend_saved_legend">Green on top: put aside that month</string>
 
     <!-- Essential vs extra categories -->
     <string name="category_essential_label">Essential</string>
@@ -90,6 +91,7 @@
     <string name="stats_biggest_movers">Biggest changes</string>
     <string name="stats_pace_title">Pace</string>
     <string name="stats_daily_average">%1$s a day on average</string>
+    <string name="stats_pace_extras">Extras only: %1$s a day</string>
     <string name="stats_projected_total">Projected total: %1$s</string>
     <string name="stats_projected_over_budget">Projected to go %1$s over budget</string>
     <string name="stats_pace_excludes_one">Excludes 1 one-off, subscription or trip expense (%1$s)</string>
@@ -333,7 +335,7 @@
     <string name="savings_delete_title">Delete this savings pot?</string>
     <string name="savings_delete_text">The pot and all its movements will be deleted. Expenses you already booked stay.</string>
     <string name="savings_use_title">Use \"%1$s\"</string>
-    <string name="savings_use_hint">Books %1$s as an expense in the category you pick and empties the pot.</string>
+    <string name="savings_use_hint">Books %1$s as an expense in the category you pick and empties the pot. In a shared pot the cost is split by what each of you put in, and nobody ends up owing anything.</string>
     <string name="savings_goal_new_title">New savings pot</string>
     <string name="savings_goal_edit_title">Edit savings pot</string>
     <string name="savings_goal_name">Name (e.g. Disneyland)</string>
@@ -346,6 +348,12 @@
     <string name="savings_entry_withdraw_title">Take out of %1$s</string>
     <string name="savings_withdraw_reason">What for? (optional)</string>
     <string name="savings_entry_who">Whose money</string>
+    <string name="new_savings_moves_title">%1$s updated the shared savings pots</string>
+    <string name="new_savings_move_deposit">%1$s put %2$s into %3$s</string>
+    <string name="new_savings_move_withdrawal">%1$s took %2$s out of %3$s</string>
+    <string name="savings_archived">Archived</string>
+    <string name="savings_archive">Archive</string>
+    <string name="savings_unarchive">Restore</string>
     <string name="savings_checkin_text">%1$s: you planned %2$s this month. Did you put it in?</string>
     <string name="savings_checkin_yes">Yes, %1$s</string>
     <string name="savings_checkin_other">Other amount</string>

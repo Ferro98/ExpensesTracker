@@ -37,6 +37,13 @@ data class Expense(
     /** The [Trip] this expense belongs to, if any - always one in the same scope (personal/group) as the expense itself. */
     val tripId: String? = null,
     /**
+     * Paid out of a shared savings pot rather than by [paidByUid] personally. [paidByUid] and
+     * [payerShare] then only record whose contribution covered how much of it (so each member's own
+     * share of the cost is right), and the expense stays out of the "who owes whom" balance: nobody
+     * fronted anything, the money was already in the pot.
+     */
+    val paidFromPot: Boolean = false,
+    /**
      * Never stored. The slice (0..1) of a [periodStart]..[periodEnd] expense that falls inside the
      * month being viewed, set by [com.example.expensestracker.domain.attributedTo]. Deliberately
      * a multiplier rather than a rewritten [amount]: edit, duplicate and undo-delete all read the

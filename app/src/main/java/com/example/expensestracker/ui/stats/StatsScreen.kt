@@ -207,13 +207,19 @@ private fun MonthBreakdown(
 
             if (isCurrentMonth && daysElapsed != null && daysElapsed > 0) {
                 item {
-                    val pace = remember(uiState.monthExpenses, uiState.totalSpent, daysElapsed) {
+                    val pace = remember(uiState.monthExpenses, uiState.totalSpent, daysElapsed, uiState.essentialCategoryIds) {
+                        // Which expenses sit in essential categories, already resolved onto my own
+                        // categories (the same grouping Stats and budgets use).
+                        val essentialExpenseIds = uiState.categoryExpenses
+                            .filterKeys { it in uiState.essentialCategoryIds }
+                            .values.flatten().map { it.id }.toSet()
                         PaceCalculator.compute(
                             monthExpenses = uiState.monthExpenses,
                             myUid = uiState.myUid,
                             totalSpent = uiState.totalSpent,
                             daysElapsed = daysElapsed,
-                            daysInMonth = uiState.monthEnd.dayOfMonth
+                            daysInMonth = uiState.monthEnd.dayOfMonth,
+                            isEssential = if (uiState.essentialCategoryIds.isNotEmpty()) { e -> e.id in essentialExpenseIds } else null
                         )
                     }
                     PaceCard(pace = pace, monthlyBudget = uiState.monthlyBudget)

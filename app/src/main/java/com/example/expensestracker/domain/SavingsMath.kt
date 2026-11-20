@@ -16,6 +16,19 @@ object SavingsMath {
     fun netByUid(entries: List<SavingsEntry>): Map<String, Double> =
         entries.groupBy { it.byUid }.mapValues { (_, list) -> list.sumOf { it.signedBase } }
 
+    /**
+     * How taking [amount] out of a shared pot splits between the members, in proportion to what each
+     * one put in (their positive net contribution): whoever funded most pays most of it. Empty if
+     * nobody has a positive contribution. Splitting the withdrawal this way - rather than booking it
+     * all to whoever pressed the button - is what leaves each person's own net at zero afterwards.
+     */
+    fun potWithdrawalSplit(entries: List<SavingsEntry>, amount: Double): Map<String, Double> {
+        val contributions = netByUid(entries).filterValues { it > 0 }
+        val total = contributions.values.sum()
+        if (total <= 0 || amount <= 0) return emptyMap()
+        return contributions.mapValues { (_, contributed) -> amount * contributed / total }
+    }
+
     fun isComplete(goal: SavingsGoal, entries: List<SavingsEntry>): Boolean =
         goal.targetAmount > 0 && balance(entries) >= goal.targetAmount
 

@@ -56,7 +56,8 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
         payerShare: Double,
         periodStart: LocalDate? = null,
         periodEnd: LocalDate? = null,
-        tripId: String? = null
+        tripId: String? = null,
+        paidFromPot: Boolean = false
     ): String {
         val ref = expensesRef.document()
         ref.set(
@@ -76,7 +77,8 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
                 payerShare = payerShare,
                 periodStart = periodStart?.toString(),
                 periodEnd = periodEnd?.toString(),
-                tripId = tripId
+                tripId = tripId,
+                paidFromPot = paidFromPot
             )
         ).await()
         return ref.id
@@ -101,7 +103,8 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
         createdAt: Timestamp?,
         periodStart: LocalDate? = null,
         periodEnd: LocalDate? = null,
-        tripId: String? = null
+        tripId: String? = null,
+        paidFromPot: Boolean = false
     ) {
         expensesRef.document(expenseId).set(
             Expense(
@@ -121,7 +124,8 @@ class ExpenseRepository(private val scopeRef: DocumentReference) {
                 payerShare = payerShare,
                 periodStart = periodStart?.toString(),
                 periodEnd = periodEnd?.toString(),
-                tripId = tripId
+                tripId = tripId,
+                paidFromPot = paidFromPot
             )
         ).await()
     }

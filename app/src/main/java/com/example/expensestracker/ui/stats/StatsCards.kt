@@ -144,6 +144,13 @@ fun PaceCard(pace: MonthPace, monthlyBudget: Double?, modifier: Modifier = Modif
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
+            pace.extraDailyAverage?.let {
+                Text(
+                    stringResource(R.string.stats_pace_extras, formatMoney(it)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 stringResource(R.string.stats_projected_total, formatMoney(pace.projectedTotal)),

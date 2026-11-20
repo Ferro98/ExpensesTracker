@@ -48,6 +48,8 @@ data class GoalItem(
 data class SavingsUiState(
     val loaded: Boolean = false,
     val goals: List<GoalItem> = emptyList(),
+    /** Put away but kept: out of the lists, the check-ins and the trip picker, restorable. */
+    val archivedGoals: List<GoalItem> = emptyList(),
     val myUid: String = "",
     val partnerUid: String? = null,
     val partnerName: String = "Partner",
@@ -96,16 +98,17 @@ class SavingsViewModel(
         val (defaultCurrency, categories, trips) = currencyCategoriesTrips
         val partnerUid = group?.otherMemberUid(myUid)
         fun items(scope: ScopeData, isGroup: Boolean, scopeTrips: List<Trip>) = scope.goals
-            .filter { !it.archived }
             .map { goal ->
                 GoalItem(goal, scope.entries.filter { it.goalId == goal.id }, isGroup, scopeTrips.firstOrNull { it.goalId == goal.id })
             }
-        val goals = (items(personal, false, trips.first) + items(shared, true, trips.second))
+        val (archived, active) = (items(personal, false, trips.first) + items(shared, true, trips.second))
             // Still-running goals first, finished ones after; oldest first within each.
             .sortedWith(compareBy<GoalItem> { it.complete }.thenBy { it.goal.createdAt?.seconds ?: Long.MAX_VALUE })
+            .partition { it.goal.archived }
         SavingsUiState(
             loaded = true,
-            goals = goals,
+            goals = active,
+            archivedGoals = archived,
             myUid = myUid,
             partnerUid = partnerUid,
             partnerName = if (group != null && partnerUid != null) group.nameOf(partnerUid) else "Partner",
@@ -177,6 +180,10 @@ class SavingsViewModel(
         }
     }
 
+    fun setArchived(item: GoalItem, archived: Boolean) {
+        launchWrite { repositoryFor(item.isGroup).setArchived(item.goal.id, archived) }
+    }
+
     fun deleteGoal(item: GoalItem) {
         launchWrite { repositoryFor(item.isGroup).deleteGoal(item.goal.id) }
     }
@@ -191,7 +198,8 @@ class SavingsViewModel(
                 amountInBaseCurrency = toBase(amount, currencyCode),
                 date = date,
                 note = note?.takeIf { it.isNotBlank() },
-                byUid = byUid
+                byUid = byUid,
+                recordedByUid = myUid
             )
         }
     }
@@ -213,7 +221,8 @@ class SavingsViewModel(
                     amountInBaseCurrency = depositBase,
                     date = LocalDate.now(),
                     note = null,
-                    byUid = myUid
+                    byUid = myUid,
+                    recordedByUid = myUid
                 )
             }
             repository.markCheckIn(item.goal.id, myUid, YearMonth.now().toString())
@@ -229,14 +238,60 @@ class SavingsViewModel(
      * Turns a finished personal pot into the real expense it was saved for: books the expense under
      * [categoryId], then takes the whole balance out. The expense goes first - if this is cut short,
      * the money still shows in the pot where it can be taken out by hand, rather than vanishing
-     * from the pot with no expense to account for it. Personal pots only: a shared pot spent as an
-     * ordinary shared expense would wrongly credit whoever typed it in on the group balance.
+     * from the pot with no expense to account for it.
+     *
+     * A shared pot is spent differently, so it can't be booked as an ordinary shared expense paid by
+     * whoever pressed the button (that would make the partner owe them half): the expense is flagged
+     * [com.example.expensestracker.data.model.Expense.paidFromPot] - left out of the balance - and
+     * carries each member's contribution as the split, while the withdrawal is split between the
+     * members in the same proportion. That leaves each person's own spend and savings right and
+     * nobody owing anything.
      */
     fun useGoal(item: GoalItem, categoryId: String) {
-        if (item.isGroup) return
         val category = uiState.value.categories.firstOrNull { it.id == categoryId } ?: return
         val amount = item.balance
         if (amount <= 0) return
+
+        if (item.isGroup) {
+            val context = groupContext ?: return
+            val split = SavingsMath.potWithdrawalSplit(item.entries, amount)
+            if (split.isEmpty()) return
+            launchWrite {
+                val today = LocalDate.now()
+                context.expenseRepository.addExpense(
+                    categoryId = category.id,
+                    categoryName = category.name,
+                    categoryIcon = category.icon,
+                    categoryColorHex = category.colorHex,
+                    amount = amount,
+                    currencyCode = DefaultUserData.BASE_CURRENCY,
+                    amountInBaseCurrency = amount,
+                    date = today,
+                    note = item.goal.name,
+                    paidByUid = myUid,
+                    isShared = true,
+                    // My part of what the pot held = my part of the cost.
+                    payerShare = (split[myUid] ?: 0.0) / amount,
+                    tripId = item.linkedTrip?.id,
+                    paidFromPot = true
+                )
+                split.forEach { (uid, part) ->
+                    context.savingsRepository.addEntry(
+                        goalId = item.goal.id,
+                        kind = SavingsEntryKind.WITHDRAWAL,
+                        amount = part,
+                        currencyCode = DefaultUserData.BASE_CURRENCY,
+                        amountInBaseCurrency = part,
+                        date = today,
+                        note = item.goal.name,
+                        byUid = uid,
+                        recordedByUid = myUid
+                    )
+                }
+            }
+            return
+        }
+
         launchWrite {
             val today = LocalDate.now()
             personalExpenseRepository.addExpense(
@@ -263,7 +318,8 @@ class SavingsViewModel(
                 amountInBaseCurrency = amount,
                 date = today,
                 note = item.goal.name,
-                byUid = myUid
+                byUid = myUid,
+                recordedByUid = myUid
             )
         }
     }
